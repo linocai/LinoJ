@@ -154,6 +154,18 @@
 	<string>%d 待办</string>
 	<key>ProjectCard.urgentSuffix</key>
 	<string>%d 紧急</string>
+	<key>ProjectDetail.delete</key>
+	<string>删除项目</string>
+	<key>ProjectDetail.deleteConfirmConfirm</key>
+	<string>删除</string>
+	<key>ProjectDetail.deleteConfirmMessage</key>
+	<string>其下的待办和事件将变为独立项。此操作无法撤销。</string>
+	<key>ProjectDetail.deleteConfirmTitle</key>
+	<string>删除该项目？</string>
+	<key>QuickAdd.attendeesAdd</key>
+	<string>+ 添加参会人</string>
+	<key>QuickAdd.attendeesEmpty</key>
+	<string>暂无参会人</string>
 	<key>QuickAdd.cancel</key>
 	<string>取消</string>
 	<key>QuickAdd.cancelHint</key>
@@ -216,10 +228,24 @@
 	<string>紧急度</string>
 	<key>QuickAdd.location.placeholder</key>
 	<string>会议室 A / Zoom / ...</string>
+	<key>QuickAdd.membersAdd</key>
+	<string>+ 添加成员</string>
+	<key>QuickAdd.membersEmpty</key>
+	<string>暂无成员</string>
 	<key>QuickAdd.new</key>
 	<string>新建</string>
 	<key>QuickAdd.optional</key>
 	<string>· 可选</string>
+	<key>QuickAdd.peopleCreateNew</key>
+	<string>新建人员</string>
+	<key>QuickAdd.peopleDone</key>
+	<string>完成</string>
+	<key>QuickAdd.peopleNoResults</key>
+	<string>没有匹配的人员</string>
+	<key>QuickAdd.peoplePickerTitle</key>
+	<string>选择人员</string>
+	<key>QuickAdd.peopleSearchPlaceholder</key>
+	<string>搜索或输入名字…</string>
 	<key>QuickAdd.project.placeholder</key>
 	<string>项目名称</string>
 	<key>QuickAdd.save</key>

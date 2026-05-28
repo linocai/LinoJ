@@ -101,4 +101,48 @@ struct MainViewModelTests {
         let (vm, _) = try makeSeededVM()
         #expect(vm.headsUp == nil)
     }
+
+    // MARK: - W2: includeCompletedInCounts
+
+    @Test("W2: openCount includes done todos when includeCompletedInCounts == true (14 → 16)")
+    func openCountIncludesCompletedWhenFlagOn() throws {
+        let (vm, _) = try makeSeededVM()
+        // 默认 flag = false → 仅未完成 = 14。
+        #expect(vm.includeCompletedInCounts == false)
+        #expect(vm.openCount == 14)
+        // 打开 flag → 含 done 的全部 = 16（seed 总 16 todos，含 2 done）。
+        vm.includeCompletedInCounts = true
+        #expect(vm.openCount == 16)
+        // 关回 false 恢复。
+        vm.includeCompletedInCounts = false
+        #expect(vm.openCount == 14)
+    }
+
+    // MARK: - W2: showYesterdayMissed gate
+
+    @Test("W2: yesterdayMissed is empty when showYesterdayMissed == false (fallback path)")
+    func yesterdayMissedGatedOffFallback() throws {
+        let (vm, _) = try makeSeededVM()
+        // 默认 true → seed 有 2 条。
+        #expect(vm.showYesterdayMissed == true)
+        #expect(vm.yesterdayMissed.count == 2)
+        // 关掉 → 短路为空。
+        vm.showYesterdayMissed = false
+        #expect(vm.yesterdayMissed.isEmpty)
+        // 打开恢复。
+        vm.showYesterdayMissed = true
+        #expect(vm.yesterdayMissed.count == 2)
+    }
+
+    @Test("W2: yesterdayMissed gate also short-circuits the service-backed path")
+    func yesterdayMissedGatedOffWithService() throws {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        try SeedData.seedIfEmpty(context)
+        let service = YesterdayMissedService(context: context)
+        let vm = MainViewModel(context: context, yesterdayMissedService: service)
+        #expect(vm.yesterdayMissed.count == 2)
+        vm.showYesterdayMissed = false
+        #expect(vm.yesterdayMissed.isEmpty)
+    }
 }

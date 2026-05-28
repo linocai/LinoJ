@@ -14,12 +14,18 @@ import LinoJCore
 struct CompanyView_iOS: View {
 
     @Environment(\.modelContext) private var modelContext
+    /// W3：Search 精确定位需要监听 router.pendingProjectID / pendingTodoID。
+    @Environment(TabRouter.self) private var router
 
     @Query private var todos: [Todo]
     @Query private var projects: [Project]
     @Query private var events: [Event]
 
     @State private var vm: CompanyViewModel?
+
+    /// W2：本屏自有 SettingsViewModel，用于读 `showCompletedInCounts` 注入到 CompanyViewModel
+    /// （影响 "X todos" 计数）。
+    @State private var settings = SettingsViewModel()
 
     /// NavigationStack 的 path —— 用 `UUID` 作为 destination value，避免给 `@Model Project`
     /// 实现 Hashable。详见 plan P3.5。
@@ -29,20 +35,43 @@ struct CompanyView_iOS: View {
         NavigationStack(path: $navigationPath) {
             Group {
                 if let vm {
-                    content(vm: vm)
+                    // W3：ScrollViewReader 让 pendingTodoID 能 scrollTo 到具体 bubble。
+                    ScrollViewReader { proxy in
+                        content(vm: vm)
+                            .onChange(of: router.pendingTodoID) { _, newValue in
+                                consumePendingTodo(newValue, vm: vm, proxy: proxy)
+                            }
+                            .onAppear {
+                                consumePendingTodo(router.pendingTodoID, vm: vm, proxy: proxy)
+                            }
+                    }
                 } else {
                     Color.lj.iosMainBg.ignoresSafeArea()
                 }
             }
             .task {
                 if vm == nil {
-                    vm = CompanyViewModel(context: modelContext)
+                    let model = CompanyViewModel(context: modelContext)
+                    model.includeCompletedInCounts = settings.showCompletedInCounts
+                    vm = model
                 }
+            }
+            // W2：Settings 改 showCompletedInCounts → 注入 + refresh（计数即时切换）。
+            .onChange(of: settings.showCompletedInCounts) { _, newValue in
+                vm?.includeCompletedInCounts = newValue
+                vm?.refresh()
             }
             .onChange(of: todos.count) { _, _ in vm?.refresh() }
             .onChange(of: todos.map(\.done)) { _, _ in vm?.refresh() }
             .onChange(of: projects.count) { _, _ in vm?.refresh() }
             .onChange(of: events.count) { _, _ in vm?.refresh() }
+            // W3：Search 选中 project → push 到该 ProjectDetail（append path）后清回 nil。
+            .onChange(of: router.pendingProjectID) { _, newValue in
+                consumePendingProject(newValue)
+            }
+            .onAppear {
+                consumePendingProject(router.pendingProjectID)
+            }
             .navigationDestination(for: UUID.self) { projectID in
                 if let project = projects.first(where: { $0.id == projectID }) {
                     ProjectDetailView_iOS(project: project)
@@ -51,6 +80,33 @@ struct CompanyView_iOS: View {
                         .foregroundStyle(Color.lj.inkMute)
                 }
             }
+        }
+    }
+
+    // MARK: - W3 pending consumption
+
+    /// W3：消费 router.pendingProjectID —— 把目标 project push 进 NavigationStack 后清回 nil。
+    private func consumePendingProject(_ id: UUID?) {
+        guard let id, projects.contains(where: { $0.id == id }) else { return }
+        if navigationPath.last != id {
+            navigationPath.append(id)
+        }
+        router.pendingProjectID = nil
+    }
+
+    /// W3：消费 router.pendingTodoID —— 若目标 todo 属 company scope，先把 filter 重置为 All
+    /// （避免被某个 project chip 隐藏），再滚动到该 bubble，最后清回 nil。
+    private func consumePendingTodo(_ id: UUID?, vm: CompanyViewModel, proxy: ScrollViewProxy) {
+        guard let id else { return }
+        guard let todo = todos.first(where: { $0.id == id }), todo.scope == .company else { return }
+        if vm.filter != .allWork {
+            vm.setFilter(.allWork)
+        }
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                proxy.scrollTo(id, anchor: .center)
+            }
+            router.pendingTodoID = nil
         }
     }
 
@@ -206,6 +262,7 @@ struct CompanyView_iOS: View {
             } else {
                 ForEach(vm.urgent, id: \.id) { todo in
                     TodoBubble(todo: todo, onToggleDone: { vm.toggleDone(todo) })
+                        .id(todo.id) // W3：ScrollViewReader 锚点（Search 定位用）。
                 }
             }
         }
@@ -223,6 +280,7 @@ struct CompanyView_iOS: View {
                         Rectangle().fill(Color.lj.border).frame(height: 0.5)
                     }
                     compactNormalRow(todo: todo, onToggle: { vm.toggleDone(todo) })
+                        .id(todo.id) // W3：ScrollViewReader 锚点（Search 定位用）。
                 }
                 if vm.normal.isEmpty {
                     Text(LJStrings.nothingInNormal)
@@ -342,6 +400,7 @@ private extension Project {
         let container = try LinoJStore.makeContainer(inMemory: true)
         try SeedData.seedIfEmpty(container.mainContext)
         return CompanyView_iOS()
+            .environment(TabRouter())
             .modelContainer(container)
     } catch {
         return Text("Preview error: \(error.localizedDescription)")

@@ -49,5 +49,24 @@ public final class TabRouter {
     /// Settings 是否展示。P3.8 接通；当前 ⌘, 只翻这个 flag。
     public var showSettings: Bool = false
 
+    // MARK: - W3 精确定位信号（Search 结果 → 跨视图定位）
+
+    /// W3：Search 选中 project 后写入目标 project.id。CompanyView 监听非 nil 时把它
+    /// append 进 NavigationStack path（push ProjectDetail），消费后清回 nil。
+    /// 与 `quickAddEditingProject` 同模式：router 设值 → 目标 View 监听消费后清回 nil。
+    public var pendingProjectID: UUID? = nil
+
+    /// W3：Search 选中 event 后写入该 event 所在那天的 startOfDay。CalendarView 监听非 nil 时
+    /// 把 CalendarViewModel 定位到那天（设 selectedDay / 移动窗口），消费后清回 nil。
+    public var pendingEventDate: Date? = nil
+
+    /// W3：Search 选中 event 后写入 event.id，预留给「高亮具体事件卡」。
+    /// 当前各 CalendarViewModel 无承载字段，本期不做高亮；目标 View 仅消费 pendingEventDate。
+    public var pendingEventID: UUID? = nil
+
+    /// W3：Search 选中 todo 后写入 todo.id。目标屏（Personal/Company/Main）用 ScrollViewReader
+    /// 监听非 nil 时滚动到该 bubble（被 filter 隐藏则先重置 filter），消费后清回 nil。
+    public var pendingTodoID: UUID? = nil
+
     public init() {}
 }

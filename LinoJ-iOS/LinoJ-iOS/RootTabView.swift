@@ -130,18 +130,41 @@ struct RootTabView: View {
                 services.appleSignIn = auth
                 await auth.refreshCredentialState()
             }
+            // W2：systemBannerEnabled 是本地通知横幅总闸门 —— OFF 时不申请也不调度，并 cancelAll
+            // 清掉可能已排队的（覆盖上次启动 ON、本次关掉的场景）。
             let notifier = NotificationService()
-            let granted = await notifier.requestAuthorization()
-            if granted {
-                await notifier.scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
+            if settings.systemBannerEnabled {
+                let granted = await notifier.requestAuthorization()
+                if granted {
+                    await notifier.scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
+                }
+            } else {
+                await notifier.cancelAll()
             }
         }
+        // W2：systemBannerEnabled 切换闸门 —— ON 重新 scheduleAll；OFF cancelAll 清空 pending。
+        .onChange(of: settings.systemBannerEnabled) { _, enabled in
+            Task {
+                let notifier = NotificationService()
+                if enabled {
+                    let granted = await notifier.requestAuthorization()
+                    if granted {
+                        await notifier.scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
+                    }
+                } else {
+                    await notifier.cancelAll()
+                }
+            }
+        }
+        // W2：lead minutes 重排同样受 systemBannerEnabled 总闸门约束。
         .onChange(of: settings.headsUpLeadMinutes) { _, newValue in
+            guard settings.systemBannerEnabled else { return }
             Task {
                 await NotificationService().scheduleAll(events: allEvents, leadMinutes: newValue)
             }
         }
         .onChange(of: allEvents.count) { _, _ in
+            guard settings.systemBannerEnabled else { return }
             Task {
                 await NotificationService().scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
             }
@@ -149,7 +172,9 @@ struct RootTabView: View {
         // I8: 额外监听所有 event.start 变化（覆盖 "事件被编辑了 start 时间" 场景）。
         // v0.9 没有事件编辑入口，但 monitor 已就位；NotificationService 内部全量
         // removeAll + add，无重复触发问题。
+        // W2：同样受 systemBannerEnabled 总闸门约束。
         .onChange(of: allEvents.map(\.start)) { _, _ in
+            guard settings.systemBannerEnabled else { return }
             Task {
                 await NotificationService().scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
             }

@@ -48,6 +48,10 @@ public final class CalendarViewModel {
     /// SwiftUI re-render 重新走 fetch。
     private var tick: Int = 0
 
+    /// W2：Settings 的 `yesterdayMissedReminderEnabled` 注入值（View 灌入）。
+    /// 为 false 时 `yesterdayMissed` getter 短路返回 `[]`，「From yesterday」box 不渲染。
+    public var showYesterdayMissed: Bool = true
+
     // MARK: Init
 
     /// - Parameters:
@@ -114,6 +118,8 @@ public final class CalendarViewModel {
     /// P4 起优先委托 YesterdayMissedService；service 未注入时 fallback 到本地计算。
     public var yesterdayMissed: [Event] {
         _ = tick
+        // W2：Settings 关掉「yesterday missed」提醒时短路返回空（box 自然不渲染）。
+        guard showYesterdayMissed else { return [] }
         if let service = yesterdayMissedService {
             return service.computeMissed(now: today)
         }
@@ -174,6 +180,16 @@ public final class CalendarViewModel {
     public func selectDay(_ day: Date) {
         selectedDay = Self.calendar.startOfDay(for: day)
         // 不改 weekStart —— UI 调用方应保证选中的 day 落在当前周内。
+        refresh()
+    }
+
+    /// W3：Search 选中某个 event 后定位到它所在那天。与 `selectDay` 不同——
+    /// 这里**同时移动 7 天窗口**让目标天落入窗口（`weekStart = startOfWeek(containing: day)`），
+    /// 使任意日期（含未来/过去周）都能被定位、而不只是当前窗口内。selectedDay 设到目标天。
+    public func focus(on day: Date) {
+        let dayStart = Self.calendar.startOfDay(for: day)
+        weekStart = Self.startOfWeek(containing: dayStart)
+        selectedDay = dayStart
         refresh()
     }
 

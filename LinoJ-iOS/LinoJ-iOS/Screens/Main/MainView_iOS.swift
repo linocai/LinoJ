@@ -33,6 +33,10 @@ struct MainView_iOS: View {
 
     @State private var vm: MainViewModel?
 
+    /// W2：本屏自有 SettingsViewModel，用于读 `showCompletedInCounts`（影响 open 计数）与
+    /// `yesterdayMissedReminderEnabled`（影响 yesterday-missed 短路）注入到 MainViewModel。
+    @State private var settings = SettingsViewModel()
+
     var body: some View {
         Group {
             if let vm {
@@ -43,26 +47,40 @@ struct MainView_iOS: View {
         }
         .task {
             if vm == nil {
-                vm = MainViewModel(
-                    context: modelContext,
-                    headsUpService: services.headsUp,
-                    yesterdayMissedService: services.yesterdayMissed
-                )
+                vm = makeVM()
             }
         }
         // services.headsUp 从 nil 变成实际 service 时重建 vm。
         .onChange(of: services.headsUp == nil) { _, _ in
-            vm = MainViewModel(
-                context: modelContext,
-                headsUpService: services.headsUp,
-                yesterdayMissedService: services.yesterdayMissed
-            )
+            vm = makeVM()
+        }
+        // W2：Settings 改 showCompletedInCounts → 注入 + refresh（计数即时切换）。
+        .onChange(of: settings.showCompletedInCounts) { _, newValue in
+            vm?.includeCompletedInCounts = newValue
+            vm?.refresh()
+        }
+        // W2：Settings 改 yesterdayMissedReminderEnabled → 注入 + refresh。
+        .onChange(of: settings.yesterdayMissedReminderEnabled) { _, newValue in
+            vm?.showYesterdayMissed = newValue
+            vm?.refresh()
         }
         .onChange(of: todos.count) { _, _ in vm?.refresh() }
         .onChange(of: events.count) { _, _ in vm?.refresh() }
         .onChange(of: projects.count) { _, _ in vm?.refresh() }
         .onChange(of: todos.map(\.done)) { _, _ in vm?.refresh() }
         .onChange(of: events.map(\.attendedConfirmed)) { _, _ in vm?.refresh() }
+    }
+
+    /// 构造 MainViewModel 并注入当前 service 引用 + W2 的 Settings 派生开关。
+    private func makeVM() -> MainViewModel {
+        let model = MainViewModel(
+            context: modelContext,
+            headsUpService: services.headsUp,
+            yesterdayMissedService: services.yesterdayMissed
+        )
+        model.includeCompletedInCounts = settings.showCompletedInCounts
+        model.showYesterdayMissed = settings.yesterdayMissedReminderEnabled
+        return model
     }
 
     @ViewBuilder

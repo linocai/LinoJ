@@ -38,6 +38,11 @@ struct MainView_macOS: View {
     /// 让 View body 在 task fire 之前也能编译过。
     @State private var vm: MainViewModel?
 
+    /// W2：本屏自有一个 SettingsViewModel 实例，用于读 `showCompletedInCounts`
+    /// （影响 open 计数）与 `yesterdayMissedReminderEnabled`（影响「From yesterday」box 显示），
+    /// 注入到 MainViewModel。与 RootWindow 各 own 一份同模式（VM 自带 UserDefaults 持久化）。
+    @State private var settings = SettingsViewModel()
+
     var body: some View {
         Group {
             if let vm {
@@ -51,21 +56,23 @@ struct MainView_macOS: View {
             // 的 .task 与本 .task 是并行的）；当 services 字段被填充后，下面 onChange 会
             // 再构造一次，VM 拿到最新的 service 引用。
             if vm == nil {
-                vm = MainViewModel(
-                    context: modelContext,
-                    headsUpService: services.headsUp,
-                    yesterdayMissedService: services.yesterdayMissed
-                )
+                vm = makeVM()
             }
         }
         // services.headsUp 从 nil → 实际 service 时（RootWindow .task 完成），重建 vm。
         // 用「nil-ness」作为变化信号 —— 一旦 RootWindow 把 service 灌进来，vm 就持有它。
         .onChange(of: services.headsUp == nil) { _, _ in
-            vm = MainViewModel(
-                context: modelContext,
-                headsUpService: services.headsUp,
-                yesterdayMissedService: services.yesterdayMissed
-            )
+            vm = makeVM()
+        }
+        // W2：Settings 改 showCompletedInCounts → 注入新值 + refresh（计数即时切换）。
+        .onChange(of: settings.showCompletedInCounts) { _, newValue in
+            vm?.includeCompletedInCounts = newValue
+            vm?.refresh()
+        }
+        // W2：Settings 改 yesterdayMissedReminderEnabled → 注入 + refresh（box 即时显隐）。
+        .onChange(of: settings.yesterdayMissedReminderEnabled) { _, newValue in
+            vm?.showYesterdayMissed = newValue
+            vm?.refresh()
         }
         // SwiftData 数据变化时让 ViewModel 重算 computed property。
         .onChange(of: todos.count) { _, _ in vm?.refresh() }
@@ -73,6 +80,18 @@ struct MainView_macOS: View {
         .onChange(of: projects.count) { _, _ in vm?.refresh() }
         .onChange(of: todos.map(\.done)) { _, _ in vm?.refresh() }
         .onChange(of: events.map(\.attendedConfirmed)) { _, _ in vm?.refresh() }
+    }
+
+    /// 构造 MainViewModel 并注入当前 service 引用 + W2 的 Settings 派生开关。
+    private func makeVM() -> MainViewModel {
+        let model = MainViewModel(
+            context: modelContext,
+            headsUpService: services.headsUp,
+            yesterdayMissedService: services.yesterdayMissed
+        )
+        model.includeCompletedInCounts = settings.showCompletedInCounts
+        model.showYesterdayMissed = settings.yesterdayMissedReminderEnabled
+        return model
     }
 
     // MARK: - Layout

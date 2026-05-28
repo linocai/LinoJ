@@ -187,6 +187,17 @@ public enum LJStrings {
     public static let projectMore: LocalizedStringResource = r("Project.more")
     public static let projectNotFound: LocalizedStringResource = r("Project.notFound")
 
+    // MARK: - ProjectDetail delete (W3)
+
+    /// ⋯ 菜单「Delete project」项文案。
+    public static let projectDetailDelete: LocalizedStringResource = r("ProjectDetail.delete")
+    /// 删除确认对话框标题。
+    public static let projectDetailDeleteConfirmTitle: LocalizedStringResource = r("ProjectDetail.deleteConfirmTitle")
+    /// 删除确认对话框正文（说明 todos/events 变 standalone + 不可撤销）。
+    public static let projectDetailDeleteConfirmMessage: LocalizedStringResource = r("ProjectDetail.deleteConfirmMessage")
+    /// 删除确认对话框的破坏性确认按钮文案（"Delete"）。
+    public static let projectDetailDeleteConfirmConfirm: LocalizedStringResource = r("ProjectDetail.deleteConfirmConfirm")
+
     // MARK: - Filters
 
     public static let filterAllWork: LocalizedStringResource = r("Filter.allWork")
@@ -239,6 +250,27 @@ public enum LJStrings {
     public static let quickAddEventDateRow: LocalizedStringResource = r("QuickAdd.event.dateRow")
     public static let quickAddEventStartsRow: LocalizedStringResource = r("QuickAdd.event.startsRow")
     public static let quickAddEventEndsRow: LocalizedStringResource = r("QuickAdd.event.endsRow")
+
+    // MARK: - Quick Add people picker (W1)
+
+    /// Attendees 节空态入口按钮文案（实际显示 "+ Add attendee"，"+" 含在文案内）。
+    public static let quickAddAttendeesAdd: LocalizedStringResource = r("QuickAdd.attendeesAdd")
+    /// Members 节空态入口按钮文案（实际显示 "+ Add member"）。
+    public static let quickAddMembersAdd: LocalizedStringResource = r("QuickAdd.membersAdd")
+    /// Attendees 节空态占位提示文案。
+    public static let quickAddAttendeesEmpty: LocalizedStringResource = r("QuickAdd.attendeesEmpty")
+    /// Members 节空态占位提示文案。
+    public static let quickAddMembersEmpty: LocalizedStringResource = r("QuickAdd.membersEmpty")
+    /// 选人器标题（iOS 二级 picker 导航标题 / macOS 内联区标题）。
+    public static let quickAddPeoplePickerTitle: LocalizedStringResource = r("QuickAdd.peoplePickerTitle")
+    /// 选人器顶部搜索/输入框 placeholder。
+    public static let quickAddPeopleSearchPlaceholder: LocalizedStringResource = r("QuickAdd.peopleSearchPlaceholder")
+    /// 「新建人员」行的基础文案（实际行显示 "Create『<name>』"，name 由布局拼接，不进 key）。
+    public static let quickAddPeopleCreateNew: LocalizedStringResource = r("QuickAdd.peopleCreateNew")
+    /// 选人器右上「完成」回传按钮文案。
+    public static let quickAddPeopleDone: LocalizedStringResource = r("QuickAdd.peopleDone")
+    /// 选人器搜索无匹配时的占位文案。
+    public static let quickAddPeopleNoResults: LocalizedStringResource = r("QuickAdd.peopleNoResults")
 
     // MARK: - Urgency / Scope picker labels (proper-case for chip / Picker tag)
 

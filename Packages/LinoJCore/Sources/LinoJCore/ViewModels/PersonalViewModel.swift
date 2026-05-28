@@ -27,6 +27,10 @@ public final class PersonalViewModel {
     /// Refresh tick —— 任意写入都让 Observation 把所有 computed property 标记为脏。
     private var tick: Int = 0
 
+    /// W2：Settings 的 `showCompletedInCounts` 注入值。为 true 时 `openCount` 改为
+    /// 「全部 personal todo（含 done）」计数；false 维持「仅未完成」。注入式（VM 不读 UserDefaults）。
+    public var includeCompletedInCounts: Bool = false
+
     // MARK: Init
 
     public init(context: ModelContext) {
@@ -75,8 +79,12 @@ public final class PersonalViewModel {
     }
 
     /// open todos 数量（urgent + normal）。
+    /// W2：`includeCompletedInCounts == true` 时改为「全部 personal todo（含 done）」计数。
     public var openCount: Int {
         _ = tick
+        if includeCompletedInCounts {
+            return personalTodos().count
+        }
         return personalTodos().filter { !$0.done }.count
     }
 

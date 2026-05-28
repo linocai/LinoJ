@@ -255,6 +255,94 @@ public final class QuickAddViewModel {
         }
     }
 
+    // MARK: - People picker (W1)
+
+    /// W1：选人器落点（Attendees / Members）的加入目标。
+    public enum PersonTarget: Sendable {
+        case attendee
+        case member
+    }
+
+    // MARK: Attendees (Event)
+
+    /// 切换某 Person 在 eventAttendees 中的选中态。
+    /// 已选（按 `Person.id`）则移除，未选则加入；保证不重复（按 id 去重）。
+    public func toggleAttendee(_ person: Person) {
+        if let idx = eventAttendees.firstIndex(where: { $0.id == person.id }) {
+            eventAttendees.remove(at: idx)
+        } else {
+            eventAttendees.append(person)
+        }
+    }
+
+    /// 当前 Person 是否已在 eventAttendees 中（按 id）。
+    public func isAttendeeSelected(_ person: Person) -> Bool {
+        eventAttendees.contains { $0.id == person.id }
+    }
+
+    // MARK: Members (Project)
+
+    /// 切换某 Person 在 projectMembers 中的选中态。
+    /// 已选（按 `Person.id`）则移除，未选则加入；保证不重复（按 id 去重）。
+    public func toggleMember(_ person: Person) {
+        if let idx = projectMembers.firstIndex(where: { $0.id == person.id }) {
+            projectMembers.remove(at: idx)
+        } else {
+            projectMembers.append(person)
+        }
+    }
+
+    /// 当前 Person 是否已在 projectMembers 中（按 id）。
+    public func isMemberSelected(_ person: Person) -> Bool {
+        projectMembers.contains { $0.id == person.id }
+    }
+
+    // MARK: 临时新建 Person
+
+    /// W1：在选人器内临时新建一个 Person 并立即选中。
+    ///
+    /// 行为（plan 契约）：
+    ///   - `name` 内部 trim；trim 后为空白返回 nil（不创建、不选中）。
+    ///   - 先在 `existing`（@Query 拉到的全部 Person）里按 trim + 小写查重名；命中则**复用**既有那条
+    ///     （不 insert 新对象，避免重名 Person 在 CloudKit 无唯一约束下堆积），直接选中并返回。
+    ///   - 未命中则 `Person(name:)` + `context.insert`，立即选中并返回。
+    ///   - **不在此处 save**：临时新建的 Person 随 Quick Add 整体 `submit()` 落库；
+    ///     若用户取消（dismiss 未 submit），W1 不强制回滚（个人级数据，残留一条无引用 Person 可接受）。
+    ///   - 选中即调用对应 `toggleAttendee/toggleMember`（若已选则幂等：若复用的既有 Person 已在选中列表
+    ///     里，会被 toggle 移除 —— 但「新建」语义下用户输入的是新名字、不会命中已选项；复用既有同名时
+    ///     若恰已选中，则保持选中而非移除）。
+    @discardableResult
+    public func addPerson(named name: String, existing: [Person], target: PersonTarget) -> Person? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        // 查重名：trim + case-insensitive。
+        let key = trimmed.lowercased()
+        let person: Person
+        if let match = existing.first(where: {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == key
+        }) {
+            person = match
+        } else {
+            let created = Person(name: trimmed)
+            context.insert(created)
+            person = created
+        }
+
+        // 选中：若尚未在目标列表里则加入（不用 toggle，避免「复用既有且恰已选」时被反选）。
+        switch target {
+        case .attendee:
+            if !isAttendeeSelected(person) {
+                eventAttendees.append(person)
+            }
+        case .member:
+            if !isMemberSelected(person) {
+                projectMembers.append(person)
+            }
+        }
+        return person
+    }
+
     // MARK: - Helpers
 
     /// 把 eventDate（取 y/m/d）与 eventStart（取 h/m）组合成最终 Date。

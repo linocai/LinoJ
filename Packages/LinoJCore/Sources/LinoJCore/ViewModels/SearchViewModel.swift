@@ -5,8 +5,10 @@
 //   - VM 不缓存 @Model 引用，只缓存 ID（ResultItem 全部用 UUID / QuickAction 枚举包装）。
 //     原因：@Model 实例非 Sendable，未来若把 search 移到 background actor 会爆 strict
 //     concurrency；用 UUID 既 Sendable 又方便 Equatable / Hashable。
-//   - 路由：vm 直接持有 TabRouter 引用。openFirst() 触发 router.current = .xxx 切 tab；
-//     具体定位到某个 bubble / day / project detail 留 TODO 注释（跨 view 状态超出 P3.7 范围）。
+//   - 路由：vm 直接持有 TabRouter 引用。openFirst() / open(_:) 触发 router.current = .xxx 切 tab。
+//     W3：精确定位到某个 bubble / day / project detail 通过 router.pending* 信号实现
+//     （open(.todo) 设 pendingTodoID → 目标屏 scrollTo；open(.event) 设 pendingEventDate →
+//     CalendarView.focus(on:)；open(.project) 设 pendingProjectID → CompanyView push path）。
 //     另一种选项是 callback 注入，但 router 在 @MainActor 链里 + 已是单例 + 已被 QuickAdd 等
 //     共享，直接持有最简洁。
 //   - debounce：query 的 didSet 启动一个 Task，sleep 100ms 后 performSearch。再次输入会取消
@@ -203,26 +205,35 @@ public final class SearchViewModel {
     public func open(_ item: ResultItem) {
         switch item {
         case .todo(let id):
-            // 反查 Todo，按 scope 切到 Personal 或 Company。
-            // TODO P3+ 跨视图：精确高亮到具体 bubble。当前仅切 tab。
+            // W3：反查 Todo，按 scope 切到 Personal 或 Company，并设 router.pendingTodoID
+            // 让目标屏（ScrollViewReader）滚动到该 bubble（被 filter 隐藏则目标屏先重置 filter）。
             let descriptor = FetchDescriptor<Todo>(predicate: #Predicate { $0.id == id })
             if let todo = (try? context.fetch(descriptor))?.first {
                 router.current = (todo.scope == .personal) ? .personal : .company
+                router.pendingTodoID = todo.id
             } else {
                 router.current = .main
             }
             router.showSearch = false
 
-        case .event(_):
-            // TODO P3+ 跨视图：CalendarViewModel.selectedDay 设到 event.start 那天。
-            // 当前仅切 Calendar tab。
+        case .event(let id):
+            // W3：反查 Event 拿 start，切 Calendar tab 并设 pendingEventDate（= startOfDay）
+            // 让 CalendarView 定位到那天（CalendarViewModel.focus(on:)）。pendingEventID 预留高亮，
+            // 当前各 VM 无承载字段，本期不做高亮（写进变更日志）。
+            let descriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.id == id })
             router.current = .calendar
+            if let event = (try? context.fetch(descriptor))?.first {
+                router.pendingEventDate = Calendar.current.startOfDay(for: event.start)
+                router.pendingEventID = event.id
+            }
             router.showSearch = false
 
-        case .project(_):
-            // TODO P3+ 跨视图：push 到 ProjectDetail（需要 CompanyView 的 NavigationStack
-            // path 暴露到全局；P3.7 范围外）。当前仅切 Company tab。
+        case .project(let id):
+            // W3：切 Company tab 并设 pendingProjectID。CompanyView 监听非 nil 时把它 append
+            // 进 NavigationStack path（path 是 [UUID]，destination 已按 UUID 解析 ProjectDetail），
+            // 直接 push 到该 ProjectDetail，消费后清回 nil。
             router.current = .company
+            router.pendingProjectID = id
             router.showSearch = false
 
         case .quickAction(let action):

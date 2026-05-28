@@ -116,6 +116,51 @@ struct LocalizationTests {
         }
     }
 
+    // MARK: - W1 选人器新增 key 双语验证
+
+    @Test("W1 选人器 9 个 key 双语都有非空翻译，且 zh ≠ en")
+    func w1PeoplePickerKeys() {
+        let cases: [(name: String, resource: LocalizedStringResource, expectedEn: String, expectedZh: String)] = [
+            ("QuickAdd.attendeesAdd", LJStrings.quickAddAttendeesAdd, "+ Add attendee", "+ 添加参会人"),
+            ("QuickAdd.membersAdd", LJStrings.quickAddMembersAdd, "+ Add member", "+ 添加成员"),
+            ("QuickAdd.attendeesEmpty", LJStrings.quickAddAttendeesEmpty, "No attendees yet", "暂无参会人"),
+            ("QuickAdd.membersEmpty", LJStrings.quickAddMembersEmpty, "No members yet", "暂无成员"),
+            ("QuickAdd.peoplePickerTitle", LJStrings.quickAddPeoplePickerTitle, "Select people", "选择人员"),
+            ("QuickAdd.peopleSearchPlaceholder", LJStrings.quickAddPeopleSearchPlaceholder, "Search or type a name…", "搜索或输入名字…"),
+            ("QuickAdd.peopleCreateNew", LJStrings.quickAddPeopleCreateNew, "Create new person", "新建人员"),
+            ("QuickAdd.peopleDone", LJStrings.quickAddPeopleDone, "Done", "完成"),
+            ("QuickAdd.peopleNoResults", LJStrings.quickAddPeopleNoResults, "No matching people", "没有匹配的人员"),
+        ]
+
+        for c in cases {
+            let en = resolve(c.resource, locale: "en")
+            let zh = resolve(c.resource, locale: "zh-Hans")
+            #expect(en == c.expectedEn, "[\(c.name)] EN 翻译错位：得到 '\(en)'，期望 '\(c.expectedEn)'")
+            #expect(zh == c.expectedZh, "[\(c.name)] 中文翻译错位：得到 '\(zh)'，期望 '\(c.expectedZh)'")
+            #expect(zh != en, "[\(c.name)] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+        }
+    }
+
+    // MARK: - W3 ProjectDetail delete 新增 key 双语验证
+
+    @Test("W3 ProjectDetail delete 4 个 key 双语都有非空翻译，且 zh ≠ en")
+    func w3ProjectDetailDeleteKeys() {
+        let cases: [(name: String, resource: LocalizedStringResource, expectedEn: String, expectedZh: String)] = [
+            ("ProjectDetail.delete", LJStrings.projectDetailDelete, "Delete project", "删除项目"),
+            ("ProjectDetail.deleteConfirmTitle", LJStrings.projectDetailDeleteConfirmTitle, "Delete this project?", "删除该项目？"),
+            ("ProjectDetail.deleteConfirmMessage", LJStrings.projectDetailDeleteConfirmMessage, "Its todos and events will become standalone. This can't be undone.", "其下的待办和事件将变为独立项。此操作无法撤销。"),
+            ("ProjectDetail.deleteConfirmConfirm", LJStrings.projectDetailDeleteConfirmConfirm, "Delete", "删除"),
+        ]
+
+        for c in cases {
+            let en = resolve(c.resource, locale: "en")
+            let zh = resolve(c.resource, locale: "zh-Hans")
+            #expect(en == c.expectedEn, "[\(c.name)] EN 翻译错位：得到 '\(en)'，期望 '\(c.expectedEn)'")
+            #expect(zh == c.expectedZh, "[\(c.name)] 中文翻译错位：得到 '\(zh)'，期望 '\(c.expectedZh)'")
+            #expect(zh != en, "[\(c.name)] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+        }
+    }
+
     // MARK: - Bundle 暴露验证
 
     @Test("LinoJCoreBundle.bundle 能查到 xcstrings 资源")

@@ -22,6 +22,9 @@ struct SettingsView_macOS: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    /// W3：About 区 Feedback(mailto) / Privacy(URL) 点击打开。
+    @Environment(\.openURL) private var openURL
+
     /// V1：App 级 service 容器，用来取 CloudSyncMonitor 注入到本 view 的 vm 驱动 Last-synced pill。
     /// V3：同时取 AppleSignInService 驱动 Account 行登录态。
     @Environment(AppServices.self) private var services
@@ -229,9 +232,9 @@ struct SettingsView_macOS: View {
             }
         )
 
-        // I5: showCompletedInCounts 是 v0.9 占位字段（VM 写 UserDefaults 但无 view 消费），
-        // 加 "(coming in v1.0)" 提示，让用户知道这是 placeholder。
-        rowWithV1Hint(
+        // W2: showCompletedInCounts 已真接通（影响 Main/Personal/Company/ProjectDetail 的
+        // open 计数），去掉 "(coming later)" hint，用普通 row。
+        row(
             label: LJStrings.settingsShowCompleted,
             hint: LJStrings.settingsShowCompletedHint,
             control: {
@@ -282,10 +285,10 @@ struct SettingsView_macOS: View {
             }
         )
 
-        // I5: systemBannerEnabled / yesterdayMissedReminderEnabled / dailySummaryHour /
-        // quietHours 都是 v0.9 占位字段（VM 写 UserDefaults 但无 view 消费），
-        // 加 "(coming in v1.0)" 提示。
-        rowWithV1Hint(
+        // W2: systemBannerEnabled / yesterdayMissedReminderEnabled 已真接通
+        // （前者是 NotificationService.scheduleAll 总闸门，后者是「From yesterday」box 显示闸门），
+        // 去掉 "(coming later)" hint，用普通 row。
+        row(
             label: LJStrings.settingsSystemBanner,
             hint: LJStrings.settingsSystemBannerHint,
             control: {
@@ -296,7 +299,7 @@ struct SettingsView_macOS: View {
             }
         )
 
-        rowWithV1Hint(
+        row(
             label: LJStrings.settingsYesterdayMissed,
             hint: LJStrings.settingsYesterdayMissedHint,
             control: {
@@ -307,46 +310,8 @@ struct SettingsView_macOS: View {
             }
         )
 
-        rowWithV1Hint(
-            label: LJStrings.settingsDailySummary,
-            hint: LJStrings.settingsDailySummaryHint,
-            control: {
-                // 小时选择器，0..23。Picker 列出 12 AM / 1 AM / ...
-                Picker("", selection: $vm.dailySummaryHour) {
-                    ForEach(0..<24, id: \.self) { h in
-                        Text(verbatim: formatHour(h)).tag(h)
-                    }
-                }
-                .labelsHidden()
-                .frame(width: 110)
-            }
-        )
-
-        rowWithV1Hint(
-            label: LJStrings.settingsQuietHours,
-            hint: LJStrings.settingsQuietHoursHint,
-            control: {
-                HStack(spacing: 6) {
-                    Picker("", selection: $vm.quietHoursStart) {
-                        ForEach(0..<24, id: \.self) { h in
-                            Text(verbatim: formatHour(h)).tag(h)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 90)
-                    Text(verbatim: "—")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color.lj.inkMute)
-                    Picker("", selection: $vm.quietHoursEnd) {
-                        ForEach(0..<24, id: \.self) { h in
-                            Text(verbatim: formatHour(h)).tag(h)
-                        }
-                    }
-                    .labelsHidden()
-                    .frame(width: 90)
-                }
-            }
-        )
+        // W2: Daily summary / Quiet hours 延后到 v1.1+（需要每日定时调度 + 静音窗口判断，
+        // 跨多处重活），整行隐藏。VM 字段 / UserDefaults key / 测试全部保留（向后兼容），仅不再展示 UI。
     }
 
     // MARK: - Sync
@@ -380,8 +345,9 @@ struct SettingsView_macOS: View {
         // V3：Account 行接真 —— 未登录显示 SignInWithAppleButton，已登录显示姓名 / email + Sign out。
         accountRow
 
-        // V3：EventKit mirror 两个 toggle —— v1.0 不接 EventKit（plan V3 决策），hint 改为
-        // "(coming later)" 占位，toggle 仍可拨但无运行时副作用（写 UserDefaults，不接 EKEventStore）。
+        // V3 / W2：EventKit mirror 两个 toggle —— v1.0 不接 EventKit（plan V3 决策），保留
+        // "(coming later)" 占位 hint。W2 追加 `.disabled(true)`：toggle 无消费方，可拨会误导
+        // 用户以为生效，故置灰不可拨（VM 字段仍保留，仅 UI 锁定）。
         rowWithEventKitHint(
             label: LJStrings.settingsAppleCalendar,
             hint: LJStrings.settingsAppleCalendarHint,
@@ -390,6 +356,7 @@ struct SettingsView_macOS: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                    .disabled(true)
             }
         )
 
@@ -401,6 +368,7 @@ struct SettingsView_macOS: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                    .disabled(true)
             }
         )
 
@@ -552,33 +520,41 @@ struct SettingsView_macOS: View {
         }
         .padding(.bottom, LJSpacing.s22)
 
+        // W3：只剩 Feedback(mailto) + Privacy(URL) 两行（砍掉 Release notes / Acknowledgements）。
         ForEach(Self.aboutLinks, id: \.id) { item in
-            aboutLinkRow(label: item.label, hint: item.hint, raw: item.rawHint)
+            aboutLinkRow(label: item.label, hint: item.hint, raw: item.rawHint, destination: item.destination)
         }
     }
 
     /// About 链接 row 模型：label 本地化；hint 大多本地化，但 feedback 的 email 是 raw。
+    /// W3：新增 `destination` —— 点击打开的 URL（mailto / https）。
     private struct AboutLink {
         let id: String
         let label: LocalizedStringResource
         let hint: LocalizedStringResource?
         let rawHint: String?
+        let destination: URL?
     }
+    /// W3：Release notes / Acknowledgements 两行已砍掉（无真实页面）；仅保留可点开的两条。
     private static let aboutLinks: [AboutLink] = [
-        .init(id: "release",   label: LJStrings.aboutReleaseNotes,    hint: LJStrings.aboutReleaseNotesHint, rawHint: nil),
-        .init(id: "feedback",  label: LJStrings.aboutFeedback,        hint: nil, rawHint: "feedback@linoj.app"),
-        .init(id: "privacy",   label: LJStrings.aboutPrivacy,         hint: LJStrings.aboutPrivacyHint, rawHint: nil),
-        .init(id: "acks",      label: LJStrings.aboutAcknowledgements, hint: LJStrings.aboutAcknowledgementsHint, rawHint: nil),
+        .init(id: "feedback",  label: LJStrings.aboutFeedback, hint: nil, rawHint: LinoJLinks.feedbackEmail,
+              destination: URL(string: "mailto:\(LinoJLinks.feedbackEmail)")),
+        .init(id: "privacy",   label: LJStrings.aboutPrivacy,  hint: LJStrings.aboutPrivacyHint, rawHint: nil,
+              destination: URL(string: LinoJLinks.privacyPolicy)),
     ]
 
     @ViewBuilder
     private func aboutLinkRow(
         label: LocalizedStringResource,
         hint: LocalizedStringResource?,
-        raw: String?
+        raw: String?,
+        destination: URL?
     ) -> some View {
         Button {
-            // 0.9.1：About 链接尚未接通（占位）。去掉 print，beta 可接受点击静默无反应。
+            // W3：点击打开目标 URL（Feedback → mailto 拉起邮件 compose；Privacy → 浏览器）。
+            if let destination {
+                openURL(destination)
+            }
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
@@ -657,40 +633,10 @@ struct SettingsView_macOS: View {
         }
     }
 
-    /// I5：与 `row()` 等价，但在 label 右侧加 "(coming in v1.0)" hint 提示
-    /// 该字段在 v0.9 不接通。仅给 SettingsViewModel 中持久化但无 view 消费的字段使用。
-    @ViewBuilder
-    private func rowWithV1Hint<Control: View>(
-        label: LocalizedStringResource,
-        hint: LocalizedStringResource?,
-        @ViewBuilder control: () -> Control
-    ) -> some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Text(label)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.lj.ink)
-                    Text(LJStrings.settingsV1OnlyHint)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color.lj.inkDim)
-                }
-                if let hint {
-                    Text(hint)
-                        .font(.system(size: 11.5, weight: .medium))
-                        .foregroundStyle(Color.lj.inkMute)
-                }
-            }
-            Spacer()
-            control()
-        }
-        .padding(.vertical, 12)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Color.lj.border)
-                .frame(height: 0.5)
-        }
-    }
+    // W2：移除 `rowWithV1Hint`（"(coming later)" 行模板）—— 原本挂在 showCompletedInCounts /
+    // systemBanner / yesterdayMissed 上，这三项 W2 已真接通改用普通 `row()`；dailySummary /
+    // quietHours 整行隐藏。已无调用方，删除以免留死代码。`Settings.v1OnlyHint` 本地化 key 仍保留
+    // 在 LinoJCore（其它端 / 未来用）。
 
     /// V3：Account 行 —— Sign in with Apple 接真。
     /// 未登录：label「Account」+ 次级提示 + 右侧原生 `SignInWithAppleButton`。
@@ -803,17 +749,8 @@ struct SettingsView_macOS: View {
         }
     }
 
-    // MARK: - Helpers
-
-    /// 把 24h 整数转成「8 AM」「12 PM」「3 PM」等显示。
-    private func formatHour(_ h: Int) -> String {
-        switch h {
-        case 0:        return "12 AM"
-        case 1...11:   return "\(h) AM"
-        case 12:       return "12 PM"
-        default:       return "\(h - 12) PM"
-        }
-    }
+    // W2：移除 `formatHour`（小时 Picker 的 12h 格式化）—— 仅 Daily summary / Quiet hours
+    // 两个已隐藏的 Picker 用过它，删除以免留死代码。
 }
 
 // `AppTab.localizedDisplayName` 已挪到 LinoJCore/Localization/Strings.swift —— 跨 macOS/iOS 共用。

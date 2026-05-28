@@ -22,6 +22,9 @@ struct SettingsSheet_iOS: View {
 
     @Environment(\.dismiss) private var dismiss
 
+    /// W3：About 区 Feedback(mailto) / Privacy(URL) 点击打开。
+    @Environment(\.openURL) private var openURL
+
     /// V1：App 级 service 容器，用来取 CloudSyncMonitor 注入到本 view 的 vm。
     /// V3：同时取 AppleSignInService 驱动 Account 行 + 底部 Sign out 按钮。
     @Environment(AppServices.self) private var services
@@ -249,7 +252,8 @@ struct SettingsSheet_iOS: View {
                 vm.defaultTodoScope == .personal ? LJStrings.scopePersonal : LJStrings.scopeCompany
             }
             divider
-            toggleRow(label: LJStrings.settingsShowCompleted, hint: nil, isOn: $vm.showCompletedInCounts, v1Hint: true)
+            // W2: showCompletedInCounts 已真接通（影响各屏 open 计数），去掉 "(coming later)" hint。
+            toggleRow(label: LJStrings.settingsShowCompleted, hint: nil, isOn: $vm.showCompletedInCounts)
         }
     }
 
@@ -266,40 +270,32 @@ struct SettingsSheet_iOS: View {
                 "\(vm.headsUpLeadMinutes) min"
             }
             divider
-            // I5: systemBanner / yesterdayMissed / dailySummary / quietHours 都是 v0.9
-            // 占位字段（VM 写 UserDefaults 但无 view 消费），加 "(coming in v1.0)" 提示。
-            toggleRow(label: LJStrings.settingsSystemBannerShort, hint: nil, isOn: $vm.systemBannerEnabled, v1Hint: true)
+            // W2: systemBanner（NotificationService.scheduleAll 总闸门）与 yesterdayMissed
+            //（「From yesterday」box 显示闸门）已真接通，去掉 "(coming later)" hint。
+            toggleRow(label: LJStrings.settingsSystemBannerShort, hint: nil, isOn: $vm.systemBannerEnabled)
             divider
-            toggleRow(label: LJStrings.settingsYesterdayMissed, hint: nil, isOn: $vm.yesterdayMissedReminderEnabled, v1Hint: true)
-            divider
-            pickerRowRawValue(label: LJStrings.settingsDailySummary, selection: $vm.dailySummaryHour, v1Hint: true) {
-                ForEach(0..<24, id: \.self) { h in
-                    Text(verbatim: formatHour(h)).tag(h)
-                }
-            } valueText: {
-                formatHour(vm.dailySummaryHour)
-            }
-            divider
-            // Quiet hours: 直接显示 "10 PM — 7 AM"，点击展开两个 Picker（简化为一个 hint）。
-            // 这里用单行展示 + 不带 picker（设计稿是 chevron 进二级页，本期 print 占位）。
-            quietHoursRow
+            toggleRow(label: LJStrings.settingsYesterdayMissed, hint: nil, isOn: $vm.yesterdayMissedReminderEnabled)
+            // W2: Daily summary / Quiet hours 延后到 v1.1+（需每日定时调度 + 静音窗口判断），
+            // 整行隐藏。VM 字段 / UserDefaults key / 测试全部保留，仅不再展示 UI。
         }
     }
 
     @ViewBuilder
     private var syncGroup: some View {
         group(label: LJStrings.settingsSectionSyncOtherApps) {
-            // V3：EventKit mirror —— v1.0 不接 EventKit（plan V3 决策），label 旁加 "(coming later)"
-            // 占位 hint，toggle 仍可拨但无运行时副作用。
+            // V3 / W2：EventKit mirror —— v1.0 不接 EventKit（plan V3 决策），保留 "(coming later)"
+            // 占位 hint。W2 追加 `disabled: true`：无消费方，可拨会误导用户，置灰不可拨。
             toggleRow(label: LJStrings.settingsAppleCalendarShort,
                       hint: LJStrings.settingsAppleCalendarShortHint,
                       isOn: $vm.calendarMirrorOn,
-                      eventKitHint: true)
+                      eventKitHint: true,
+                      disabled: true)
             divider
             toggleRow(label: LJStrings.settingsAppleRemindersShort,
                       hint: LJStrings.settingsAppleRemindersShortHint,
                       isOn: $vm.remindersMirrorOn,
-                      eventKitHint: true)
+                      eventKitHint: true,
+                      disabled: true)
         }
     }
 
@@ -312,14 +308,19 @@ struct SettingsSheet_iOS: View {
                 valueMono: true
             )
             divider
-            // 0.9.1：About 链接尚未接通（占位）。去掉 print，beta 可接受点击静默无反应。
-            chevronRow(label: LJStrings.aboutReleaseNotes) {}
+            // W3：Feedback → mailto 拉起邮件 compose；Privacy → 浏览器打开隐私 URL。
+            // Release notes / Acknowledgements 两行已砍掉（无真实页面）。
+            chevronRow(label: LJStrings.aboutFeedback) {
+                if let url = URL(string: "mailto:\(LinoJLinks.feedbackEmail)") {
+                    openURL(url)
+                }
+            }
             divider
-            chevronRow(label: LJStrings.aboutFeedback) {}
-            divider
-            chevronRow(label: LJStrings.aboutPrivacy) {}
-            divider
-            chevronRow(label: LJStrings.aboutAcknowledgements) {}
+            chevronRow(label: LJStrings.aboutPrivacy) {
+                if let url = URL(string: LinoJLinks.privacyPolicy) {
+                    openURL(url)
+                }
+            }
         }
     }
 
@@ -375,8 +376,9 @@ struct SettingsSheet_iOS: View {
     /// 带 Toggle 控件的行（设计稿 iOS toggle）。
     /// I5: `v1Hint` 为 true 时在 label 右边加 "(coming in v1.0)" 提示。
     /// V3: `eventKitHint` 为 true 时在 label 右边加 "(coming later)" 提示（EventKit mirror 占位）。
+    /// W2: `disabled` 为 true 时 Toggle 置灰不可拨（用于无消费方的占位开关，如 EventKit mirror）。
     @ViewBuilder
-    private func toggleRow(label: LocalizedStringResource, hint: LocalizedStringResource?, isOn: Binding<Bool>, v1Hint: Bool = false, eventKitHint: Bool = false) -> some View {
+    private func toggleRow(label: LocalizedStringResource, hint: LocalizedStringResource?, isOn: Binding<Bool>, v1Hint: Bool = false, eventKitHint: Bool = false, disabled: Bool = false) -> some View {
         rowContainer {
             HStack(spacing: 6) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -404,6 +406,7 @@ struct SettingsSheet_iOS: View {
                 Spacer()
                 Toggle("", isOn: isOn)
                     .labelsHidden()
+                    .disabled(disabled)
             }
         }
     }
@@ -569,51 +572,8 @@ struct SettingsSheet_iOS: View {
         }
     }
 
-    /// Quiet hours 单行展示 + 两个内联 menu picker（start / end）。
-    /// I5：加 "(coming in v1.0)" 提示标记 v0.9 占位字段。
-    @ViewBuilder
-    private var quietHoursRow: some View {
-        rowContainer {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(LJStrings.settingsQuietHours)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(Color.lj.ink)
-                    Text(LJStrings.settingsV1OnlyHint)
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color.lj.inkDim)
-                    Spacer()
-                    HStack(spacing: 4) {
-                        Picker("", selection: $vm.quietHoursStart) {
-                            ForEach(0..<24, id: \.self) { h in
-                                Text(verbatim: formatHour(h)).tag(h)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(Color.lj.inkSoft)
-
-                        Text(verbatim: "—")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.lj.inkMute)
-
-                        Picker("", selection: $vm.quietHoursEnd) {
-                            ForEach(0..<24, id: \.self) { h in
-                                Text(verbatim: formatHour(h)).tag(h)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .labelsHidden()
-                        .tint(Color.lj.inkSoft)
-                    }
-                }
-                Text(LJStrings.settingsQuietHoursHint)
-                    .font(.system(size: 11.5, weight: .medium))
-                    .foregroundStyle(Color.lj.inkMute)
-                    .frame(maxWidth: 280, alignment: .leading)
-            }
-        }
-    }
+    // W2：移除 `quietHoursRow`（Quiet hours 单行 + 双 picker）—— Quiet hours 整行隐藏到 v1.1+。
+    // VM 字段 / UserDefaults key / 测试全部保留，仅不再展示 UI。
 
     /// 每行通用容器：14pt padding + 撑满宽。
     @ViewBuilder
@@ -625,16 +585,8 @@ struct SettingsSheet_iOS: View {
             .contentShape(Rectangle())
     }
 
-    // MARK: - Helpers
-
-    private func formatHour(_ h: Int) -> String {
-        switch h {
-        case 0:        return "12 AM"
-        case 1...11:   return "\(h) AM"
-        case 12:       return "12 PM"
-        default:       return "\(h - 12) PM"
-        }
-    }
+    // W2：移除 `formatHour`（小时 12h 格式化）—— 仅 Daily summary / Quiet hours 两个已隐藏
+    // 的 Picker 用过它，删除以免留死代码。
 }
 
 // `AppTab.localizedDisplayName` 已在 LinoJCore 提供，无需本地 extension。

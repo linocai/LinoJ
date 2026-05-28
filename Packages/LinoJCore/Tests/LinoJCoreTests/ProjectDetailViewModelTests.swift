@@ -132,6 +132,60 @@ struct ProjectDetailViewModelTests {
         #expect(vm.openCount == openBefore - 1)
     }
 
+    // MARK: - W2: includeCompletedInCounts
+
+    @Test("W2: openCount includes done todos when includeCompletedInCounts == true")
+    func openCountIncludesCompletedWhenFlagOn() throws {
+        let context = try makeSeededContext()
+        let linoj = try fetchLinoJProject(context)
+        let vm = ProjectDetailViewModel(project: linoj, context: context)
+        // 默认 false：openCount = 3（无 done）。
+        #expect(vm.includeCompletedInCounts == false)
+        #expect(vm.openCount == 3)
+        // 把一个 open todo 标 done，使本 project 有 1 个 done。
+        guard let firstUrgent = vm.urgent.first else {
+            Issue.record("seed should have at least one urgent todo on LinoJ project")
+            return
+        }
+        vm.toggleDone(firstUrgent)
+        // flag off：openCount 掉到 2（仅未完成）。
+        #expect(vm.openCount == 2)
+        // flag on：含 done → 回到 3（2 open + 1 done）。
+        vm.includeCompletedInCounts = true
+        #expect(vm.openCount == 3)
+        vm.includeCompletedInCounts = false
+        #expect(vm.openCount == 2)
+    }
+
+    // MARK: - W3: deleteProject
+
+    @Test("W3: deleteProject removes the project; its todos become standalone (project == nil)")
+    func deleteProjectNullifiesTodos() throws {
+        let context = try makeSeededContext()
+        let linoj = try fetchLinoJProject(context)
+        let projectID = linoj.id
+        let vm = ProjectDetailViewModel(project: linoj, context: context)
+
+        // 删除前：本 project 至少有 3 个 todo（urgent 1 + normal 2）。
+        let linkedTodosBefore = try context.fetch(FetchDescriptor<Todo>())
+            .filter { $0.project?.id == projectID }
+        #expect(linkedTodosBefore.count >= 3)
+
+        vm.deleteProject()
+
+        // project 不再存在于 context。
+        let projectsAfter = try context.fetch(FetchDescriptor<Project>())
+        #expect(projectsAfter.contains { $0.id == projectID } == false)
+
+        // 这些 todo 仍存在（standalone），但 project == nil（.nullify deleteRule）。
+        let todosAfter = try context.fetch(FetchDescriptor<Todo>())
+        for todo in linkedTodosBefore {
+            let stillThere = todosAfter.first { $0.id == todo.id }
+            #expect(stillThere != nil, "todo should survive project deletion (standalone)")
+            #expect(stillThere?.project == nil, "todo.project should be nullified after project delete")
+        }
+    }
+
     // MARK: - membersSinceText
 
     @Test("membersSinceText contains '3 members' and includes 'since '")

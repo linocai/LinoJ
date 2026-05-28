@@ -32,6 +32,13 @@ struct ProjectDetailView_iOS: View {
 
     @State private var vm: ProjectDetailViewModel?
 
+    /// W2：本屏自有 SettingsViewModel，用于读 `showCompletedInCounts` 注入到 ProjectDetailViewModel
+    /// （影响 stats card 的 open 计数）。
+    @State private var settings = SettingsViewModel()
+
+    /// W3：⋯ 菜单「Delete project」的确认对话框开关。
+    @State private var showDeleteConfirm = false
+
     var body: some View {
         Group {
             if let vm {
@@ -42,8 +49,15 @@ struct ProjectDetailView_iOS: View {
         }
         .task {
             if vm == nil {
-                vm = ProjectDetailViewModel(project: project, context: modelContext)
+                let model = ProjectDetailViewModel(project: project, context: modelContext)
+                model.includeCompletedInCounts = settings.showCompletedInCounts
+                vm = model
             }
+        }
+        // W2：Settings 改 showCompletedInCounts → 注入 + refresh（计数即时切换）。
+        .onChange(of: settings.showCompletedInCounts) { _, newValue in
+            vm?.includeCompletedInCounts = newValue
+            vm?.refresh()
         }
         .onChange(of: todos.count) { _, _ in vm?.refresh() }
         .onChange(of: todos.map(\.done)) { _, _ in vm?.refresh() }
@@ -162,6 +176,7 @@ struct ProjectDetailView_iOS: View {
             Spacer()
 
             // More —— V5：菜单含「Edit project」，触发 Quick Add 的 Project edit 模式。
+            // W3：追加「Delete project」项（与 macOS 对齐，确认后删除 + pop）。
             Menu {
                 Button {
                     router.quickAddEditingProject = project
@@ -171,6 +186,15 @@ struct ProjectDetailView_iOS: View {
                         Text(LJStrings.editProject)
                     } icon: {
                         Image(systemName: "pencil")
+                    }
+                }
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    Label {
+                        Text(LJStrings.projectDetailDelete)
+                    } icon: {
+                        Image(systemName: "trash")
                     }
                 }
             } label: {
@@ -183,6 +207,24 @@ struct ProjectDetailView_iOS: View {
             .buttonStyle(.plain)
             .glassEffect(in: Capsule())
             .accessibilityLabel(Text(LJStrings.projectMore))
+            // W3：Delete 确认对话框 —— 确认后删除 project 并 pop 回 Company。
+            .confirmationDialog(
+                Text(LJStrings.projectDetailDeleteConfirmTitle),
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button(role: .destructive) {
+                    vm?.deleteProject()
+                    dismiss()
+                } label: {
+                    Text(LJStrings.projectDetailDeleteConfirmConfirm)
+                }
+                Button(role: .cancel) {} label: {
+                    Text(LJStrings.quickAddCancel)
+                }
+            } message: {
+                Text(LJStrings.projectDetailDeleteConfirmMessage)
+            }
         }
     }
 

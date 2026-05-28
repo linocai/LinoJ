@@ -154,6 +154,18 @@
 	<string>%d todos</string>
 	<key>ProjectCard.urgentSuffix</key>
 	<string>%d urgent</string>
+	<key>ProjectDetail.delete</key>
+	<string>Delete project</string>
+	<key>ProjectDetail.deleteConfirmConfirm</key>
+	<string>Delete</string>
+	<key>ProjectDetail.deleteConfirmMessage</key>
+	<string>Its todos and events will become standalone. This can't be undone.</string>
+	<key>ProjectDetail.deleteConfirmTitle</key>
+	<string>Delete this project?</string>
+	<key>QuickAdd.attendeesAdd</key>
+	<string>+ Add attendee</string>
+	<key>QuickAdd.attendeesEmpty</key>
+	<string>No attendees yet</string>
 	<key>QuickAdd.cancel</key>
 	<string>Cancel</string>
 	<key>QuickAdd.cancelHint</key>
@@ -216,10 +228,24 @@
 	<string>URGENCY</string>
 	<key>QuickAdd.location.placeholder</key>
 	<string>Conf Rm A / Zoom / ...</string>
+	<key>QuickAdd.membersAdd</key>
+	<string>+ Add member</string>
+	<key>QuickAdd.membersEmpty</key>
+	<string>No members yet</string>
 	<key>QuickAdd.new</key>
 	<string>New</string>
 	<key>QuickAdd.optional</key>
 	<string>· optional</string>
+	<key>QuickAdd.peopleCreateNew</key>
+	<string>Create new person</string>
+	<key>QuickAdd.peopleDone</key>
+	<string>Done</string>
+	<key>QuickAdd.peopleNoResults</key>
+	<string>No matching people</string>
+	<key>QuickAdd.peoplePickerTitle</key>
+	<string>Select people</string>
+	<key>QuickAdd.peopleSearchPlaceholder</key>
+	<string>Search or type a name…</string>
 	<key>QuickAdd.project.placeholder</key>
 	<string>Project name</string>
 	<key>QuickAdd.save</key>

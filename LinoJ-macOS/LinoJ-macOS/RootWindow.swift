@@ -114,15 +114,37 @@ struct RootWindow: View {
                 await auth.refreshCredentialState()
             }
             // 通知授权 + 首次 scheduleAll。
+            // W2：systemBannerEnabled 是本地通知横幅的总闸门 —— OFF 时既不申请也不调度，
+            // 并清掉可能已排队的（防御性，覆盖上次启动 ON、本次关掉的场景）。
             let notifier = NotificationService()
-            let granted = await notifier.requestAuthorization()
-            if granted {
-                await notifier.scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
+            if settings.systemBannerEnabled {
+                let granted = await notifier.requestAuthorization()
+                if granted {
+                    await notifier.scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
+                }
+            } else {
+                await notifier.cancelAll()
+            }
+        }
+        // W2：systemBannerEnabled 切换闸门 —— ON 重新 scheduleAll；OFF cancelAll 清空 pending。
+        .onChange(of: settings.systemBannerEnabled) { _, enabled in
+            Task {
+                let notifier = NotificationService()
+                if enabled {
+                    let granted = await notifier.requestAuthorization()
+                    if granted {
+                        await notifier.scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
+                    }
+                } else {
+                    await notifier.cancelAll()
+                }
             }
         }
         // Settings 中 lead minutes 改变时 re-schedule。SettingsViewModel 的字段是
         // @Observable 属性 —— `.onChange(of:)` 能追踪到。
+        // W2：systemBannerEnabled OFF 时不重排（总闸门关着，调度无意义）。
         .onChange(of: settings.headsUpLeadMinutes) { _, newValue in
+            guard settings.systemBannerEnabled else { return }
             Task {
                 await NotificationService().scheduleAll(events: allEvents, leadMinutes: newValue)
             }
@@ -133,12 +155,15 @@ struct RootWindow: View {
         // 注意：[Date] 是 Equatable & Hashable 可被 onChange 追踪。每次任意事件 start
         // 改变都会触发 re-schedule，这是预期行为（NotificationService.scheduleAll 内部
         // 也是全量 removeAll + add）。
+        // W2：同样受 systemBannerEnabled 总闸门约束。
         .onChange(of: allEvents.count) { _, _ in
+            guard settings.systemBannerEnabled else { return }
             Task {
                 await NotificationService().scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
             }
         }
         .onChange(of: allEvents.map(\.start)) { _, _ in
+            guard settings.systemBannerEnabled else { return }
             Task {
                 await NotificationService().scheduleAll(events: allEvents, leadMinutes: settings.headsUpLeadMinutes)
             }

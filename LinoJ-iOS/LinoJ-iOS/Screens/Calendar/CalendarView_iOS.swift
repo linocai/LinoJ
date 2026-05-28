@@ -30,6 +30,10 @@ struct CalendarView_iOS: View {
 
     @State private var vm: CalendarViewModel?
 
+    /// W2：本屏自有 SettingsViewModel，用于读 `yesterdayMissedReminderEnabled` 注入到
+    /// CalendarViewModel（gate「From yesterday」box 显示）。
+    @State private var settings = SettingsViewModel()
+
     var body: some View {
         Group {
             if let vm {
@@ -40,20 +44,45 @@ struct CalendarView_iOS: View {
         }
         .task {
             if vm == nil {
-                vm = CalendarViewModel(
-                    context: modelContext,
-                    yesterdayMissedService: services.yesterdayMissed
-                )
+                vm = makeVM()
             }
         }
         .onChange(of: services.yesterdayMissed == nil) { _, _ in
-            vm = CalendarViewModel(
-                context: modelContext,
-                yesterdayMissedService: services.yesterdayMissed
-            )
+            vm = makeVM()
+        }
+        // W2：Settings 改 yesterdayMissedReminderEnabled → 注入 + refresh（box 即时显隐）。
+        .onChange(of: settings.yesterdayMissedReminderEnabled) { _, newValue in
+            vm?.showYesterdayMissed = newValue
+            vm?.refresh()
         }
         .onChange(of: events.count) { _, _ in vm?.refresh() }
         .onChange(of: events.map(\.attendedConfirmed)) { _, _ in vm?.refresh() }
+        // W3：Search 选中 event → 定位到那天（移动窗口 + 设 selectedDay）后清回 nil。
+        .onChange(of: router.pendingEventDate) { _, newValue in
+            consumePendingEventDate(newValue)
+        }
+        .onAppear {
+            consumePendingEventDate(router.pendingEventDate)
+        }
+    }
+
+    /// W3：消费 router.pendingEventDate —— 把 CalendarViewModel 定位到该天后清回 nil。
+    /// pendingEventID 预留高亮，本期 CalendarViewModel 无承载字段，不做高亮（仅定位那天）。
+    private func consumePendingEventDate(_ date: Date?) {
+        guard let date, let vm else { return }
+        vm.focus(on: date)
+        router.pendingEventDate = nil
+        router.pendingEventID = nil
+    }
+
+    /// 构造 CalendarViewModel 并注入当前 service 引用 + W2 的 yesterdayMissed 显示开关。
+    private func makeVM() -> CalendarViewModel {
+        let model = CalendarViewModel(
+            context: modelContext,
+            yesterdayMissedService: services.yesterdayMissed
+        )
+        model.showYesterdayMissed = settings.yesterdayMissedReminderEnabled
+        return model
     }
 
     // MARK: - Layout

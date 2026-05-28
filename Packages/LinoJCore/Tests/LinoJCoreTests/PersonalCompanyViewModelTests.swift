@@ -205,4 +205,40 @@ struct PersonalCompanyViewModelTests {
         // 但整体 todosCount / projectsCount 不受 filter 影响。
         #expect(vm.projectsCount == 3)
     }
+
+    // MARK: - W2: includeCompletedInCounts
+
+    @Test("W2: Personal openCount includes done when includeCompletedInCounts == true")
+    func personalOpenCountIncludesCompletedWhenFlagOn() throws {
+        let context = try makeSeededContext()
+        let vm = PersonalViewModel(context: context)
+        // 默认 false。seed personal: urgent open 2 + normal open N + 1 done。
+        #expect(vm.includeCompletedInCounts == false)
+        let openOnly = vm.openCount
+        let doneCount = vm.doneCount
+        #expect(doneCount == 1)
+        vm.includeCompletedInCounts = true
+        // 含 done → 比仅未完成多出 doneCount。
+        #expect(vm.openCount == openOnly + doneCount)
+        vm.includeCompletedInCounts = false
+        #expect(vm.openCount == openOnly)
+    }
+
+    @Test("W2: Company todosCount includes done when includeCompletedInCounts == true")
+    func companyTodosCountIncludesCompletedWhenFlagOn() throws {
+        let context = try makeSeededContext()
+        let vm = CompanyViewModel(context: context)
+        #expect(vm.includeCompletedInCounts == false)
+        let openOnly = vm.todosCount
+        // seed company todos 含 1 done（"Draft Q3 OKR doc"）。
+        vm.includeCompletedInCounts = true
+        #expect(vm.todosCount > openOnly)
+        let withDone = vm.todosCount
+        // 差额应等于 company done 数（seed = 1）。
+        #expect(withDone - openOnly == 1)
+        // 切回 false 恢复，且不被 chip filter 影响。
+        vm.includeCompletedInCounts = false
+        vm.setFilter(.standalone)
+        #expect(vm.todosCount == openOnly)
+    }
 }

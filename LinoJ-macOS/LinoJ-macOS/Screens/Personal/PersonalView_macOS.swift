@@ -15,27 +15,62 @@ import LinoJCore
 struct PersonalView_macOS: View {
 
     @Environment(\.modelContext) private var modelContext
+    /// W3：Search 选中 personal todo → scrollTo 到该 bubble，需监听 router.pendingTodoID。
+    @Environment(TabRouter.self) private var router
 
     @Query private var todos: [Todo]
 
     @State private var vm: PersonalViewModel?
 
+    /// W2：本屏自有 SettingsViewModel，用于读 `showCompletedInCounts` 注入到 PersonalViewModel
+    /// （影响 "X open" 计数）。
+    @State private var settings = SettingsViewModel()
+
     var body: some View {
         Group {
             if let vm {
-                content(vm: vm)
+                // W3：ScrollViewReader 让 pendingTodoID 能 scrollTo 到具体 bubble。
+                ScrollViewReader { proxy in
+                    content(vm: vm)
+                        .onChange(of: router.pendingTodoID) { _, newValue in
+                            consumePendingTodo(newValue, proxy: proxy)
+                        }
+                        .onAppear {
+                            consumePendingTodo(router.pendingTodoID, proxy: proxy)
+                        }
+                }
             } else {
                 Color.lj.bg.ignoresSafeArea()
             }
         }
         .task {
             if vm == nil {
-                vm = PersonalViewModel(context: modelContext)
+                let model = PersonalViewModel(context: modelContext)
+                model.includeCompletedInCounts = settings.showCompletedInCounts
+                vm = model
             }
+        }
+        // W2：Settings 改 showCompletedInCounts → 注入新值 + refresh（计数即时切换）。
+        .onChange(of: settings.showCompletedInCounts) { _, newValue in
+            vm?.includeCompletedInCounts = newValue
+            vm?.refresh()
         }
         .onChange(of: todos.count) { _, _ in vm?.refresh() }
         .onChange(of: todos.map(\.done)) { _, _ in vm?.refresh() }
         .onChange(of: todos.map(\.urgencyRaw)) { _, _ in vm?.refresh() }
+    }
+
+    /// W3：消费 router.pendingTodoID —— 若目标 todo 属 personal scope，滚动到该 bubble 后清回 nil。
+    /// Personal 屏无 chip filter，无需重置 filter。
+    private func consumePendingTodo(_ id: UUID?, proxy: ScrollViewProxy) {
+        guard let id else { return }
+        guard let todo = todos.first(where: { $0.id == id }), todo.scope == .personal else { return }
+        DispatchQueue.main.async {
+            withAnimation(.easeInOut(duration: 0.25)) {
+                proxy.scrollTo(id, anchor: .center)
+            }
+            router.pendingTodoID = nil
+        }
     }
 
     @ViewBuilder
@@ -152,6 +187,7 @@ struct PersonalView_macOS: View {
                 VStack(spacing: LJSpacing.s8) {
                     ForEach(items, id: \.id) { todo in
                         TodoBubble(todo: todo, onToggleDone: { onToggle(todo) })
+                            .id(todo.id) // W3：ScrollViewReader 锚点（Search 定位用）。
                     }
                 }
             }

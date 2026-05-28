@@ -1243,6 +1243,420 @@ enum AppleIDKeychain {   // 内部
 
 ---
 
+## v1.0 收口 Phase 列表（W 组：公开上线前最后缺口补齐）
+
+> 本节由 2026-05-28「🚀 v1.0 公开上线剩余清单 ▸ 未实现的功能缺口」展开而成（用户已确认三块全做）。用 **W** 前缀编号（W1..W3），避免与 P0-P7 / V0-V7 混淆。施工原则同前：每个 Phase 内若涉及两端，**先 macOS 验收 → 再 iOS 验收**。本组三个 Phase 互相独立，可任意顺序，但都依赖 v0.9 + V5 已落地。
+>
+> **三条贯穿全 W 组的硬约束（builder 必须遵守，否则踩坑）：**
+> 1. **CloudKit 约束**：所有 `@Model` 关系（含 to-many）必须 optional 类型 `[X]?`（不是 `[X] = []`）；禁用 `@Attribute(.unique)`；去重靠 UUID/业务层。选人器落库**只走既有** `Project.members: [Person]?` / `Event.attendees: [Person]?` 关系，访问点一律 `(rel ?? [])` 兜底。**本组不新增任何 `@Model`、不改任何模型 schema**（避免触发 CloudKit 迁移；W 组纯 UI + VM + 既有字段读写）。
+> 2. **memberCount 冗余字段**：`Project.memberCount` 跨端 last-writer-wins，**每次编辑 members 后必须重算** `existing.memberCount = (members ?? []).count`。W1 的 Project 选人入口（含 V5 edit 路径）每次提交都要保证这点（V5 的 submit() 已重算，W1 复用同一 submit，不要新开旁路写 members）。
+> 3. **本地化双轨**：任何新 UI 文案禁止 raw String 字面量。新增 key 三步——① 编辑 `Localizable.xcstrings`（manual extractionState，中英双填）② `xcrun xcstringstool compile Packages/LinoJCore/Sources/LinoJCore/Resources/Localizable.xcstrings -o Packages/LinoJCore/Sources/LinoJCore/Resources/` 重生两 lproj ③ `Strings.swift` 加 `LJStrings` 静态成员。各 Phase「需新增的本地化 key」小节已逐条列出；漏第②步 `swift test` 的 LocalizationTests（zh≠en 断言）会挂。
+
+---
+
+### W1 — Quick Add 的 Attendees / Members 选人器  [全栈 / 共享 VM + 两端 UI]
+
+**范围（补 0.9.1 隐藏的最大缺口）：**
+- 0.9.1 把 Quick Add 的 Attendees「+ Add」/ Members「+ Invite」两个空 stub 按钮隐藏成「整节仅在数组非空时渲染」（恒空 = 整节隐藏），导致**建 Event 加不了参会人、建 Project 加不了成员**。W1 接真：提供「从已有 Person 记录里多选」的选人器 UI + 落库。
+- **作用域三处**：① Quick Add `.event` 表单的 Attendees 节；② Quick Add `.project` 表单的 Members 节；③ **复用同一选人器** 给 V5 Project edit 模式（edit 进来时 `projectMembers` 已预填既有 members，选人器要支持「在已选基础上增删」）。
+- **本期范围裁剪（明确决策，builder 不要自由发挥）：**
+  - **只做「从现有 Person 多选」**。是否「新建 Person」：**本期允许在选人器内「临时新建一个 Person」**（最小实现，下详），但**不做** Person 编辑 / 删除 / 头像 / 详情管理面板（v1.1+）。
+  - **不新增模型 / 不改 schema**：候选人来自既有 `Person` 表（`@Query` 全部 Person），落库走既有 `Event.attendees` / `Project.members` 关系，VM 既有 `eventAttendees: [Person]` / `projectMembers: [Person]` 数组已存在（见 `QuickAddViewModel`），W1 只是给它们接上「增删入口」。
+  - **去重**：选人列表内同一 Person 不可重复选（按 `Person.id` 去重）；「临时新建」时按 `name`（trim 后 case-insensitive）若已存在同名 Person 则复用既有那条、不再 insert（CloudKit 无唯一约束，靠此业务层去重避免重名 Person 堆积）。
+
+**技术选型 / 决策：**
+- **VM 落点**：在 `QuickAddViewModel` 上新增选人操作方法（见契约），**不新建独立 PeoplePickerViewModel**——选人状态（已选数组）本就是 QuickAddViewModel 的字段，加方法最内聚，且 V5 edit 路径已在该 VM 里。
+- **候选人来源**：两端选人 UI 用 `@Query(sort: \Person.name) private var allPeople: [Person]` 拉全部 Person（与 QuickAdd 拉 `projects` 同模式），传进选人器；VM 不持有 `@Query`（@Model 非 Sendable，VM 只收 `[Person]` 快照或具体 Person 引用做增删）。
+- **临时新建 Person**：选人器顶部一个搜索/输入框，输入 name 后若候选列表无匹配，提供一行「+ 新建『<name>』」。点击 → VM `addPerson(named:existing:target:)`：先按 trim+小写在传入的 allPeople 里查重名，命中则直接选中既有那条；否则 `Person(name:)` + `context.insert` + 立即选中（**不在此处 save**——随 Quick Add 整体 submit 一起 save）。
+  - ⚠️ **事务边界注意**：QuickAddViewModel 用的是注入的 `modelContext`（与 App 主 context 同一个）。`context.insert(Person)` 后若用户取消 Quick Add，该 Person 仍在内存 context 里。**决策：临时新建的 Person 在「选中后立即 insert」**，并在 `submit()` 成功时随整体 save 落库；若用户取消（dismiss 未 submit），W1 **不强制回滚**（个人级数据，残留一条无引用 Person 可接受，下一版 People 管理面板可清）。builder 若想更严谨可在 onDisappear 未 submit 时 `context.rollback()`，但需确认不影响其它未保存改动——**默认采用「不回滚」最小实现**，把此权衡写进变更日志。
+- **UI 形态**：
+  - **macOS**：选人器做成 Quick Add modal 内的**内联展开区**（点 Attendees/Members 节的「+ 选择」按钮，原地展开一个 max-height 限高的可滚动 Person 列表 + 顶部输入框 + 已选 AvatarStack）。不另开二级 sheet（macOS `.sheet` 套 `.sheet` 体验差）。复用既有 `chip` / `AvatarStack` 组件视觉。
+  - **iOS**：选人器做成从 Quick Add sheet **再 present 的二级 picker**（`.sheet` 叠 `.sheet` 在 iOS 26 可用，或用 `NavigationLink` push）。列表用原生 List 多选（每行 trailing checkmark），顶部 searchable 输入框 + 「+ 新建」行，右上「完成」回传已选。
+  - 两端选完后回到 Quick Add，Attendees/Members 节渲染已选 `AvatarStack`（**移除 0.9.1 的「仅非空才渲染整节」隐藏逻辑**，恢复为始终渲染该节 + 一个「+ 选择 / + 添加」入口按钮；空态显示入口按钮 + 占位提示文案）。
+
+**关键接口 / 类型契约：**
+```swift
+@Observable @MainActor public final class QuickAddViewModel {
+    // 既有字段（W1 复用，不改类型）：
+    //   public var eventAttendees: [Person] = []
+    //   public var projectMembers: [Person] = []
+
+    // W1 新增 —— Attendees（Event）增删：
+    /// 切换某 Person 的选中态（已选则移除、未选则加入），按 Person.id 去重。
+    public func toggleAttendee(_ person: Person)
+    /// 当前 Person 是否已在 eventAttendees 中（按 id）。
+    public func isAttendeeSelected(_ person: Person) -> Bool
+
+    // W1 新增 —— Members（Project）增删：
+    public func toggleMember(_ person: Person)
+    public func isMemberSelected(_ person: Person) -> Bool
+
+    // W1 新增 —— 临时新建 Person（在 existing 内查重名，命中则复用并选中）：
+    /// - Parameters:
+    ///   - name: 用户输入的名字（内部 trim；空白返回 nil 不创建）。
+    ///   - existing: 当前 @Query 拉到的全部 Person（用于查重名）。
+    ///   - target: 加到 attendees 还是 members。
+    /// - Returns: 选中的 Person（既有复用或新建），nil 表示 name 空白未创建。
+    @discardableResult
+    public func addPerson(named name: String, existing: [Person], target: PersonTarget) -> Person?
+
+    public enum PersonTarget: Sendable { case attendee, member }
+}
+```
+- **落库路径不变**：`submit()` 的 `.event` 分支已把 `attendees: eventAttendees` 传给 `Event(...)`；`.project` 分支（create + V5 edit）已把 `members: projectMembers` 写入并 `memberCount = projectMembers.count` 重算。W1 **不改 submit()**（除非临时新建 Person 的 insert 需要——insert 在 `addPerson` 内做，submit 仍只负责整体 save）。
+- **TabRouter / Person / Project / Event 模型：不改**。
+
+**需新增的本地化 key（中英双填）：**
+- `QuickAdd.attendeesAdd` = "+ Add attendee" / "+ 添加参会人"
+- `QuickAdd.membersAdd` = "+ Add member" / "+ 添加成员"
+- `QuickAdd.attendeesEmpty` = "No attendees yet" / "暂无参会人"
+- `QuickAdd.membersEmpty` = "No members yet" / "暂无成员"
+- `QuickAdd.peoplePickerTitle` = "Select people" / "选择人员"
+- `QuickAdd.peopleSearchPlaceholder` = "Search or type a name…" / "搜索或输入名字…"
+- `QuickAdd.peopleCreateNew` = "Create new person" / "新建人员"（实际行显示 "Create『<name>』"，name 由布局拼接，不进 key）
+- `QuickAdd.peopleDone` = "Done" / "完成"
+- `QuickAdd.peopleNoResults` = "No matching people" / "没有匹配的人员"
+
+**拆分（共享 / macOS / iOS）：**
+- **共享（先做）**：`QuickAddViewModel` 加 4 个 toggle/is 方法 + `addPerson` + `PersonTarget` 枚举；`LJStrings` 加上列 9 个 key + xcstrings 双填 + 重生 lproj。
+- **macOS（次做，先验收）**：`QuickAddModal_macOS.swift` 的 `eventForm` Attendees 节 + `projectForm` Members 节，去掉「仅非空才渲染」逻辑，加内联展开选人区（输入框 + 限高滚动 Person 列表 + 选中 chip 行 + 已选 AvatarStack）。
+- **iOS（末做，后验收）**：`QuickAddSheet_iOS.swift` 同两节，加二级 picker（List 多选 + searchable + 新建行 + 完成回传）。
+
+**验收标准：**
+- macOS：建 Event → 打开 Attendees 选人器 → 选 2 个既有 Person → 创建 → Calendar/Search 中该 event 显示 2 个 attendee 头像；建 Project → 选 3 个 Member → 创建 → ProjectDetail "X members" = 3 且 `Project.memberCount == 3`。
+- macOS：输入一个不存在的名字 → 点「+ 新建」→ 该 Person 被选中并落库；再次建另一个 Event 时该 Person 出现在候选列表（去重生效，无重复条目）。
+- macOS：V5 Edit project 进入 → Members 节预填既有成员 → 增删后 Save → `memberCount` 同步、ProjectDetail 数字正确、重启仍在。
+- iOS：上述同等行为全部通过（attendees / members / 临时新建 / edit 增删 / memberCount 重算）。
+- 取消 Quick Add（未 submit）后再建同类实体：上次选的人/输入不残留在表单（VM 随 sheet 重建）。
+- `LinoJCoreTests` 新增 `QuickAddPeoplePickerTests`：toggle 去重、isSelected、addPerson 查重名复用 vs 新建、addPerson 空白名返回 nil、memberCount 经 submit 后等于 members.count。
+- `swift test` 全绿（含 LocalizationTests zh≠en 对新 key）；`swift build -Xswiftc -warnings-as-errors` 0 warning；两端 build SUCCEEDED。
+
+**前置依赖：** v0.9 P3.5/P3.6 + V5（复用 QuickAddViewModel edit 路径与 memberCount 重算）。无付费能力依赖。
+
+---
+
+### W2 — Settings 占位开关逐项收口（消费 or 隐藏）  [全栈 / 共享 VM 消费点 + 两端 UI]
+
+**范围：** 当前一批 Settings 开关只写 UserDefaults、无任何消费方，UI 上标 "(coming later)"。W2 对每一项做明确决策——**能廉价真正接通的就接通并消费**，**依赖 EventKit 等重活的继续延后但明确隐藏**，避免上线像坏功能。
+
+**逐项决策（已敲定，builder 严格执行）：**
+
+| 字段 | 决策 | 做法 |
+|---|---|---|
+| `showCompletedInCounts` | ✅ **真接通并消费** | 计数受其影响（下详） |
+| `systemBannerEnabled` | ✅ **真接通并消费** | 作为 `NotificationService.scheduleAll` 的总开关（下详） |
+| `yesterdayMissedReminderEnabled` | ✅ **真接通并消费** | 作为 Main/Calendar「From yesterday」box 显示开关（下详） |
+| `headsUpLeadMinutes` | （已消费，不在 W2 范围） | NotificationService 已用，去掉它的 "(coming later)" hint |
+| `dailySummaryHour`（Daily summary） | ⏸ **延后 → 隐藏整行** | 需调度每日定时本地通知 + 内容聚合，重活，v1.1+。**从两端 Settings 隐藏该行**（连 Picker 一起），不留占位 |
+| `quietHoursStart/End`（Quiet hours） | ⏸ **延后 → 隐藏整行** | 需在所有 schedule 路径套静音窗口判断，跨多处，v1.1+。**隐藏整行** |
+| `calendarMirrorOn` / `remindersMirrorOn`（Apple Calendar/Reminders 镜像） | ⏸ **延后但保留并明确标注** | 依赖 EventKit（已是 V3 明确延后项，有 `Settings.eventKitLaterHint` = "(coming later)"）。**保留开关 + 保留 "(coming later)" hint** + **追加 `.disabled(true)`** 让 toggle 不可拨（写 UserDefaults 但无消费，可拨会误导用户以为生效）|
+
+**三项「真接通」的消费契约：**
+
+1. **`showCompletedInCounts`**——影响「计数」是否含已完成 todo：
+   - 受影响的计数（当前都只数 `!done`）：`MainViewModel.openCount`、`PersonalViewModel.openCount`、`CompanyViewModel.todosCount`、`ProjectDetailViewModel.openCount`。
+   - **决策**：当 `showCompletedInCounts == true`，这些「open 计数」改为「全部（含 done）」即 `.count`；false 时维持现状 `.filter { !$0.done }.count`。**urgentCount / doneCount / kanban 列内容不变**（urgent 永远只数未完成，done 列本就是 done；本开关只动「总数/open 计数」语义）。
+   - **VM 怎么拿到这个 bool**：各 ViewModel **新增一个 `includeCompletedInCounts: Bool = false` 存储属性**，由 View 在构造 / `refresh()` 时从 `SettingsViewModel.showCompletedInCounts` 注入（与现有 `headsUpLeadMinutes` 注入同模式）。VM 不直接读 UserDefaults（保持可测、注入式）。计数 getter 内按此 flag 分支。
+   - View 侧：Settings 改这个开关后，对应屏幕的计数需刷新——在各屏 `.onChange(of: settings.showCompletedInCounts)` 里调 `vm.includeCompletedInCounts = settings.showCompletedInCounts; vm.refresh()`（或重建 VM）。
+
+2. **`systemBannerEnabled`**——本地通知横幅总开关：
+   - **决策**：作为 `NotificationService.scheduleAll(...)` 的**前置闸门**。两端 RootWindow/RootTabView 现有「申请授权 + scheduleAll」与「headsUpLeadMinutes onChange 重排」逻辑，全部加判断：`systemBannerEnabled == false` → **不 scheduleAll 且 `cancelAll()` 清掉已排队的**；`true` → 维持现状调度。
+   - 新增 `.onChange(of: settings.systemBannerEnabled)`：true→重新 scheduleAll；false→`NotificationService().cancelAll()`。
+   - `NotificationService` 已有清空入口（`removeAllPendingNotificationRequests`，见现有代码），W2 不改 service，只在两端 App 壳层加闸门。
+
+3. **`yesterdayMissedReminderEnabled`**——「From yesterday」未确认 box 显示开关：
+   - **决策**：作为 Main / Calendar 的「From yesterday」dashed-border box 的**显示闸门**。当 false 时不渲染该 box（不影响数据，只是不催）。
+   - **怎么接**：`MainViewModel` / `CalendarViewModel` 新增 `showYesterdayMissed: Bool = true` 存储属性，View 从 `settings.yesterdayMissedReminderEnabled` 注入；VM 暴露的 `yesterdayMissed` 列表 getter 在 flag 为 false 时返回 `[]`（最省——下游渲染「非空才显示」逻辑不变，box 自然消失）。
+   - `.onChange(of: settings.yesterdayMissedReminderEnabled)` 注入新值 + `refresh()`。
+
+**技术选型 / 决策：**
+- **不改 `SettingsViewModel`**（字段、默认值、persist 全保留——SettingsPersistenceTests 仍断言这些字段存在）。W2 只在「消费方」接通三项 + UI 隐藏/禁用四项。dailySummary/quietHours 字段保留在 VM（仅 UI 不再展示），避免动测试与持久化。
+- **隐藏 ≠ 删字段**：dailySummary / quietHours 只从两端 Settings View 移除 UI 行，VM 字段 + UserDefaults key + 测试全留（向后兼容 + 不破坏 SettingsPersistenceTests）。
+- 各 ViewModel 加注入 bool 属性而非读 UserDefaults，保持单测注入式（现有测试模式）。
+
+**需新增 / 调整的本地化 key：**
+- 无需新增用户可见文案 key（接通三项不引入新文案；隐藏 dailySummary/quietHours 是删 UI，不加 key）。
+- **调整**：去掉 `showCompletedInCounts` / `systemBannerEnabled` / `yesterdayMissedReminderEnabled` 三行的 `Settings.v1OnlyHint`（"(coming later)"）展示（它们现在真生效了，挂 "(coming later)" 是错的）。`Settings.v1OnlyHint` key 本身保留（其它地方或未来用），仅这三行 UI 不再传 `v1Hint: true`。`headsUpLeadMinutes` 行若挂了该 hint 也一并去掉（它早已生效）。
+
+**拆分（共享 / macOS / iOS）：**
+- **共享（先做）**：`MainViewModel` / `PersonalViewModel` / `CompanyViewModel` / `ProjectDetailViewModel` 加 `includeCompletedInCounts` 并改对应 open 计数 getter；`MainViewModel` / `CalendarViewModel` 加 `showYesterdayMissed` 并让 `yesterdayMissed` getter 据此短路。
+- **macOS（次做，先验收）**：`SettingsView_macOS.swift` —— 三行去 "(coming later)"、`calendarMirrorOn/remindersMirrorOn` 两行 `.disabled(true)`、删 dailySummary + quietHours 两块 UI；`RootWindow.swift` —— scheduleAll 加 `systemBannerEnabled` 闸门 + onChange；各屏 View 注入 `includeCompletedInCounts` / `showYesterdayMissed` + onChange 刷新。
+- **iOS（末做，后验收）**：`SettingsSheet_iOS.swift` 同 macOS 的 UI 改动；`RootTabView.swift` 同 RootWindow 的闸门与 onChange；各屏 View 同注入。
+
+**验收标准：**
+- `showCompletedInCounts` ON：Main/Personal/Company/ProjectDetail 的「总数/open 计数」含已完成 todo（数字变大）；OFF：恢复只数未完成。切换即时反映（无需重启）。urgent 列计数与 kanban 内容不受影响。
+- `systemBannerEnabled` OFF：再建未来 Event 不再排本地通知（`UNUserNotificationCenter.getPendingNotificationRequests` 为空 / 不增）；ON：恢复调度。
+- `yesterdayMissedReminderEnabled` OFF：Main 与 Calendar 不再显示「From yesterday」box；ON：恢复显示。
+- 两端 Settings 中 **dailySummary / quietHours 行已消失**；`calendarMirrorOn`/`remindersMirrorOn` 仍在、带 "(coming later)"、且**不可拨动**（`.disabled`）。
+- 三个已接通开关行**不再显示 "(coming later)"**。
+- `LinoJCoreTests` 新增/扩充：各 ViewModel `includeCompletedInCounts` true/false 下计数差异；`MainViewModel`/`CalendarViewModel` `showYesterdayMissed=false` 时 `yesterdayMissed` 为空。SettingsPersistenceTests 不回归（字段全在）。
+- `swift test` 全绿；`swift build -Xswiftc -warnings-as-errors` 0 warning；两端 build SUCCEEDED。
+
+**前置依赖：** v0.9 P3.8（Settings）+ P4（通知 / YesterdayMissed 服务）+ V3（EventKit 镜像延后决策）。无付费能力依赖。
+
+---
+
+### W3 — ProjectDetail ⋯ 菜单 / Search 精确定位 / Settings About 链接 收口  [全栈]
+
+**范围：** 三个零散 no-op 收口，逐项实现或合理砍掉。
+
+**逐项决策：**
+
+1. **ProjectDetail ⋯ 菜单**：
+   - **现状**：iOS 的 `⋯` 已是 `Menu` 含「Edit project」（V5 已接，**不动**）；macOS 的 `⋯` 仍是空 `Button`（点击 no-op，0.9.1 占位）。
+   - **决策（macOS）**：把 macOS 的 `⋯` 空 Button **改为 SwiftUI `Menu`**，菜单项与 iOS 对齐：
+     - 「Edit project」→ `router.quickAddEditingProject = project; router.showQuickAdd = true`（复用 V5 路径，与 iOS 一致）。
+     - 「Delete project」→ 弹确认（macOS `.confirmationDialog` 或 alert），确认后删除 + 从 NavigationStack pop 回 Company（`navigationPath` 清空/removeLast）。Delete 是 W3 新增能力（两端都加，见下）。
+   - **决策（iOS）**：iOS 的 `⋯` Menu **追加「Delete project」项**（与 macOS 对齐），确认后删除 + pop。
+   - **删除语义**：`Project` 的 `todos`/`events` 反向关系 deleteRule 是 `.nullify`（删 Project 不级联删 Todo/Event，它们变 standalone——见 Project.swift）。W3 删除沿用此既有语义，**不改 deleteRule**，删完这些 todo/event 仍在（scope/standalone），符合既有设计。
+
+2. **Search 结果精确定位**：
+   - **现状**：`SearchViewModel.open(_:)` 对 todo/event/project 只切 tab（带 3 个 `TODO P3+ 跨视图`），不定位到具体 bubble/事件/项目详情。
+   - **决策（全部实现，按性价比分级）：**
+     - **project**：✅ **精确 push 到 ProjectDetail**。TabRouter 新增 `pendingProjectID: UUID?`；`open(.project(id))` 切 `.company` tab + 设 `pendingProjectID = id`。CompanyView 监听 `router.pendingProjectID`，非 nil 时把它 append 进 `navigationPath`（既有 NavigationStack path 是 `[UUID]`，destination 已按 UUID 解析 ProjectDetail——天然契合）+ 清回 nil。
+     - **event**：✅ **定位到事件那天**。TabRouter 新增 `pendingEventDate: Date?` + `pendingEventID: UUID?`；`open(.event(id))` 反查 event 拿 `start`，切 `.calendar` tab + 设 `pendingEventDate = startOfDay(start)`、`pendingEventID = id`。CalendarView 监听 `pendingEventDate`，非 nil 时把 `selectedDay`（CalendarViewModel 既有）设过去 + 清回 nil。**高亮具体事件卡**：本期**做到「定位到那天」即可**，事件卡高亮（闪一下/选中态）作为可选增强——若 CalendarViewModel 已有 `selectedEventID` 之类则接上，否则**砍掉高亮，只滚动/切到那天**（写进验收）。
+     - **todo**：✅ **定位到正确 tab + 滚动到该 bubble（尽力）**。TabRouter 新增 `pendingTodoID: UUID?`；`open(.todo(id))` 反查 scope 切 `.personal`/`.company` + 设 `pendingTodoID`。对应屏用 `ScrollViewReader` + `.id(todo.id)`，监听 `pendingTodoID` 非 nil 时 `proxy.scrollTo(id, anchor: .center)` + 清回 nil。**若该 todo 被当前 chip filter 隐藏**（如 Company 选了某 project chip 而 todo 属另一 project）：先把 filter 重置为「全部」再滚动（最小实现：切 tab 时一并重置该屏 filter 到 All）。bubble 高亮同 event——**有就接、没有就只滚动**。
+   - **统一清理**：`SearchViewModel.open` 在切 tab/设 pending 后仍 `router.showSearch = false`（不变）。移除三处 `TODO P3+` 注释，换成实现说明。
+
+3. **Settings About 链接**：
+   - **现状**：macOS `aboutLinkRow` / iOS About 行点击 no-op（0.9.1 占位）；含 Release notes / Feedback(email) / Privacy / Acknowledgements。
+   - **决策（逐条）：**
+     - **Feedback（email）**：✅ 实现——点击 `openURL(URL(string: "mailto:feedback@linoj.app")!)`（两端 `@Environment(\.openURL)`）。这是最有用且零成本的。
+     - **Privacy（隐私政策）**：✅ 实现——指向一个真实 URL。**决策：用户需提供隐私政策 URL**（上架 App Store 本就必须有隐私政策页）；builder 把 URL 设为 `LinoJCore` 里一个常量 `LinoJLinks.privacyPolicy`，**默认填占位 `https://linoj.app/privacy`**，并在变更日志标注「待用户替换为真实 URL」。点击 `openURL`。
+     - **Release notes**：⏸ **本期砍掉该行**（没有真实 release notes 页 / app 内更新日志体系，留个死链或假页更糟）。两端移除 Release notes 行。
+     - **Acknowledgements（致谢/开源许可）**：⏸ **本期砍掉该行**（无第三方依赖需致谢——项目纯 Apple SDK + 自有代码；放空页无意义）。两端移除该行。
+   - 结果：About 链接区**只剩 Feedback + Privacy 两行**，都真能点开。
+
+**技术选型 / 决策：**
+- **导航定位走 TabRouter 的 `pending*` 信号 + 各屏 onChange 消费**（与既有 `quickAddPrefilledProject` / `quickAddEditingProject` 同模式：router 设值 → 目标 View 监听消费后清回 nil）。**不引入新的全局 navigation 框架 / Coordinator**。
+- 高亮（bubble/event 选中闪烁）**列为可选**——builder 评估各 VM 是否已有承载字段；**无则本期不做高亮，只做滚动/切换定位**，把「未做高亮」写进变更日志，不算缺验收。
+- 链接常量集中到 `LinoJCore`：新增 `public enum LinoJLinks`（含 `feedbackEmail` / `privacyPolicy`，后者待用户替换真实 URL）。
+- Delete project 的确认对话框文案需本地化。
+
+**需新增的本地化 key（中英双填）：**
+- `ProjectDetail.delete` = "Delete project" / "删除项目"
+- `ProjectDetail.deleteConfirmTitle` = "Delete this project?" / "删除该项目？"
+- `ProjectDetail.deleteConfirmMessage` = "Its todos and events will become standalone. This can't be undone." / "其下的待办和事件将变为独立项。此操作无法撤销。"
+- `ProjectDetail.deleteConfirmConfirm` = "Delete" / "删除"
+- 取消按钮若已有通用 Cancel key（如 `quickAddCancel`）则复用，不重复加。
+- About 的 Feedback/Privacy 行 label 已有既有 key `aboutFeedback` / `aboutPrivacy`，不新增；移除 Release notes/Acknowledgements 行不需删 key，留着无害。
+
+**关键接口 / 类型契约：**
+```swift
+// TabRouter 新增（精确定位信号；目标 View 监听消费后清回 nil）
+@Observable @MainActor public final class TabRouter {
+    public var pendingProjectID: UUID? = nil   // CompanyView push ProjectDetail
+    public var pendingEventDate: Date? = nil    // CalendarView 设 selectedDay
+    public var pendingEventID: UUID? = nil      // 可选高亮（无承载字段则忽略）
+    public var pendingTodoID: UUID? = nil       // 目标屏 scrollTo
+}
+
+// LinoJCore 新增链接常量
+public enum LinoJLinks {
+    public static let feedbackEmail = "feedback@linoj.app"
+    public static let privacyPolicy = "https://linoj.app/privacy" // ⚠️ 待用户替换真实 URL
+}
+
+// SearchViewModel.open(_:) 改写三分支：切 tab 同时设 router.pending*；不再只切 tab。
+// ProjectDetailViewModel 新增 deleteProject()：context.delete(project) + try save()，供两端复用。
+```
+
+**拆分（共享 / macOS / iOS）：**
+- **共享（先做）**：`TabRouter` 加 4 个 `pending*`；`SearchViewModel.open` 三分支接 `pending*`（移除 TODO 注释）；`LinoJLinks` 常量；`ProjectDetailViewModel` 加 `deleteProject()`；`LJStrings` 加上列 delete 相关 key + xcstrings 双填 + 重生 lproj。
+- **macOS（次做，先验收）**：`ProjectDetailView_macOS.swift` 空 `⋯` Button → `Menu`（Edit + Delete + 确认弹窗 + pop）；`CompanyView_macOS.swift` 监听 `pendingProjectID` append path；`CalendarView_macOS.swift` 监听 `pendingEventDate` 设 selectedDay；Personal/Company/Main 屏接 `pendingTodoID` 滚动；`SettingsView_macOS.swift` About 区删 Release/Acks 两行、Feedback/Privacy 接 openURL。
+- **iOS（末做，后验收）**：`ProjectDetailView_iOS.swift` Menu 加 Delete 项 + 确认 + pop；`CompanyView_iOS.swift` / `CalendarView_iOS.swift` / 各屏同 macOS 监听 `pending*`；`SettingsSheet_iOS.swift` About 区同改。
+
+**验收标准：**
+- Search 选一个 project 结果 → 直接进入该 ProjectDetail 页（不是停在 Company 列表）。
+- Search 选一个 event 结果 → 切到 Calendar 且定位到该事件所在那天（selectedDay 正确）。
+- Search 选一个 todo 结果 → 切到正确 tab（personal/company）并滚动到该 bubble（若被 filter 隐藏则 filter 已重置为 All）。
+- macOS ProjectDetail `⋯` → 出现 Edit project + Delete project 菜单；Delete → 确认弹窗 → 确认后项目删除、回到 Company 列表、其 todos/events 变 standalone 仍存在。
+- iOS ProjectDetail `⋯` → Edit + Delete 两项，Delete 行为同 macOS。
+- Settings About：Feedback 点击拉起邮件 compose（mailto）；Privacy 点击打开浏览器到隐私 URL；**Release notes / Acknowledgements 两行已移除**。
+- `LinoJCoreTests`：`SearchViewModelTests` 扩充 open 设置正确的 `router.pending*`；`ProjectDetailViewModelTests` 加 `deleteProject()`（删除后 project 不在 context、其 todos.project == nil）。
+- `swift test` 全绿（含新 key LocalizationTests）；`swift build -Xswiftc -warnings-as-errors` 0 warning；两端 build SUCCEEDED。
+
+**前置依赖：** v0.9 P3.5/P3.7/P3.8 + V5（Edit project 路径）。无付费能力依赖。
+
+---
+
+## v1.0 真机问题修复 Phase 列表（W 组续：W4..W6）
+
+> 本节由 2026-05-28 用户在真机/桌面（**主用 macOS**）实际使用 0.9.1 后反馈的「不能操作」批量问题展开（主控已逐条定点到代码）。延续 **W** 前缀编号（W4..W6）。施工原则不变：每个 Phase 内涉及两端时**先 macOS 实现并验收 → 再 iOS**（用户优先 macOS）。三条贯穿全 W 组的硬约束（见上方 W1..W3 引言）**继续完全适用**，逐条复述供 W4..W6 直接对照：
+>
+> 1. **CloudKit 约束**：所有 `@Model` 关系（含 to-many）必须 optional `[X]?`；禁用 `@Attribute(.unique)`；去重靠 UUID/业务层。**本组不新增任何 `@Model`、不改任何模型 schema**——事件 CRUD 全部基于既有 `Event` 字段（`title/start/end/location/attendees?/project?/attendedConfirmed`）。访问关系一律 `(rel ?? [])` 兜底。
+> 2. **memberCount 冗余字段**：W4..W6 不触碰 `Project.members` 写入路径（事件编辑只动 `Event.attendees`，不动 Project；W5 接通 ProjectDetail 的 add-event/add-todo 也只是设 router 信号打开 QuickAdd，落库仍走既有 submit），故 memberCount 重算责任仍在 W1/V5 既有 submit 内，本组无新旁路。
+> 3. **本地化双轨**：任何新 UI 文案禁止 raw String 字面量。新增 key 三步——① 编辑 `Packages/LinoJCore/Sources/LinoJCore/Resources/Localizable.xcstrings`（manual extractionState，中英双填）② `xcrun xcstringstool compile Packages/LinoJCore/Sources/LinoJCore/Resources/Localizable.xcstrings -o Packages/LinoJCore/Sources/LinoJCore/Resources/` 重生两 lproj ③ `Strings.swift` 加 `LJStrings` 静态成员。各 Phase「需新增的本地化 key」小节已逐条列出；漏第②步 `swift test` 的 LocalizationTests（zh≠en 断言）会挂。
+>
+> **关于「已实现、仅需重新部署到 macOS 桌面验证」的两点澄清**（用户测的是旧 0.9.1 build，W1/V5/W3 尚未部署到他桌面上）：
+> - **问题②「项目删除 / ⋯」**：**已由 W3 实现**（两端 ProjectDetail 的 ⋯ 已接 Edit + Delete，`ProjectDetailView_macOS.swift:112`/`ProjectDetailView_iOS.swift:180` 一带）。用户旧版本看到的空 stub 是 0.9.1 占位。**无需新 Phase**，只需把 W3 build 重新部署到 macOS 桌面后实测「⋯ → Delete project → 确认 → pop 回 Company」即生效。
+> - **问题④的「成员选人器」部分**：编辑项目表单的「成员选人器」**已由 W1 实现**（`QuickAddModal_macOS.swift` projectForm Members 节内联展开选人区）。用户测的旧版本无选人器，**重新部署 W1 build 即恢复**，不需重新规划成员。④ 真正还需做的只剩下方 W6 的「编辑模式隐藏分段控件」小 UX 项。
+
+---
+
+### W4 — 事件可操作：编辑 / 删除 / 标记已出席  [全栈 / 共享 VM + 两端 UI]
+
+**范围（补真机反馈①——最重要、macOS 优先）：**
+- **现状定点**：`EventCard.swift` 四个 variant 全是纯展示，无任何点击/编辑/完成入口；事件卡在各屏裸渲染（macOS 周视图 `CalendarView_macOS.swift:495` `.macWeekGrid`、macOS Main 右栏 `MainView_macOS.swift:434` `.macRail`；iOS `CalendarView_iOS.swift:342` `.iosFull`、iOS Main `.iosMini`），均未套点击。全工程无任何「事件编辑」路径（`QuickAddViewModel` 只有 `editingProjectID`，事件仅能新建）。「完成」语义 = `Event.attendedConfirmed`，VM/Service 已有 `confirmAttended(_:)`（`CalendarViewModel:197`/`MainViewModel:218`/`YesterdayMissedService:59`），但只接在「From yesterday」漏确认 box（`CalendarView_iOS.swift:368` / `MainView_macOS.swift:388`），正常事件卡上无完成入口。
+- W4 接真，给事件补齐三类操作：**编辑**（改 title/时间/location/attendees/project）、**删除**、**标记已出席**（attendedConfirmed）。复用 V5「Project 编辑」成熟模式，给 `QuickAddViewModel` 增 event edit 模式。
+
+**「完成」语义最终决策（最小合理实现，不过度设计）：**
+- 事件「完成」= `attendedConfirmed = true`，语义为「我参加了这个事件」。对日历 app，这只对**已结束的事件**（`event.end <= now`）有意义——给未来事件标「已出席」无逻辑。**决策**：
+  - **「标记已出席 / Mark attended」操作仅在事件已结束（`end <= 现在时间，DEBUG 走 LinoJTime.today()`）时出现**；未来 / 进行中事件不显示该操作（避免无意义勾选）。
+  - 已 `attendedConfirmed == true` 的过去事件，该操作翻转为「取消已出席 / Unmark attended」（调 VM 把 `attendedConfirmed` 设回 false），保证可逆、不卡死。
+  - 编辑 / 删除两个操作**不分过去未来，恒可用**（编辑和删除覆盖了用户绝大多数「操作不了」的诉求；标记已出席只是补「过去事件」这一窄场景）。
+
+**技术选型 / 决策：**
+- **事件编辑落点（复用 V5 模式，不新建 VM）**：`QuickAddViewModel` 新增 event edit 模式，与既有 `editingProject` 完全对称：
+  - init 新增可选参 `editingEvent: Event?`；非 nil → 强制 `kind = .event`（无视 defaultKind），把既有 event 的 title/start/end/location/attendees/project 预填进 `eventTitle`/`eventDate`/`eventStart`/`eventEnd`/`eventLocation`/`eventAttendees`/`eventProject`，记录 `editingEventID: UUID?`。
+  - **时间拆装**：现有 VM 把 event 时间拆成 `eventDate`(y/m/d) + `eventStart`/`eventEnd`(h/m)，submit 时 `compose` 回单一 Date。预填时把 `editing.start` 同时灌进 `eventDate`（取日期）与 `eventStart`（取时分）、`editing.end` 灌进 `eventEnd`。
+  - `isEditingEvent: Bool { editingEventID != nil }`；既有 `isEditing` 维持「= 是否 project edit」语义不变（避免改动 V5 既有判断），W4 另引入 `isEditingEvent` 与（可选）一个聚合 `isEditingAny`（见契约）。
+  - `submit()` 的 `.event` 分支：`editingEventID` 非 nil 时按 ID `#Predicate` fetch 既有 event，原地回写 title/start/end/location/attendees/project（`attendees` 直接赋 `eventAttendees`，类型 `[Person]?` 兜底）、`context.save()`、返回原 id；fetch 不到（极端：edit 期间被删/跨端同步删除）回退为创建，避免静默丢输入（与 V5 project edit 完全同构）。**不改 memberCount**（事件编辑不动 Project.members）。
+- **删除事件落点**：复用既有 VM 上事件删除能力——`CalendarViewModel` / `MainViewModel` 各新增 `deleteEvent(_ event: Event)`：`context.delete(event)` + `try? context.save()` + `refresh()`（与既有 `confirmAttended` 同模式、同 VM）。
+- **标记已出席落点**：复用既有 `confirmAttended(_:)`；新增对称的 `unconfirmAttended(_ event: Event)`（`attendedConfirmed = false` + save + refresh），供「取消已出席」用。两端 Main/Calendar 屏已持有对应 VM。
+- **事件卡如何变可操作（UI 形态）——`EventCard` 本身保持纯展示（不在组件内塞回调，避免污染四 variant 的纯渲染语义），由各屏在外层套交互：**
+  - **macOS（先做先验收，用户优先）**：
+    - 周视图卡（`.macWeekGrid`）：外层套 `.onTapGesture` 打开**事件编辑**（设 `router` 信号打开 QuickAdd edit-event 模式，见下「编辑入口走 router」）；同时套 `.contextMenu`（右键菜单）含 Edit / Mark attended(过去且未确认) or Unmark attended(过去且已确认) / Delete（带二次确认）三项。macOS 右键菜单是桌面用户最自然的多操作入口。
+    - Main 右栏 row（`.macRail`）：同样套 `.onTapGesture` 打开编辑 + `.contextMenu` 同上。
+  - **iOS（后做后验收）**：
+    - Calendar 大卡（`.iosFull`）：外层套 `.onTapGesture` 打开编辑 + `.contextMenu`（长按菜单）同上三项。
+    - Main mini 卡（`.iosMini`）：套 `.onTapGesture` 打开编辑 + `.contextMenu`。
+  - 删除确认：macOS 用 `.confirmationDialog`/alert，iOS 用 `.confirmationDialog`（文案见本地化 key）。
+- **编辑入口走 router（与 V5 quickAddEditingProject 同模式）**：`TabRouter` 新增 `quickAddEditingEvent: Event? = nil`。事件卡点击 / 菜单 Edit → `router.quickAddEditingEvent = event; router.showQuickAdd = true`。两端 QuickAdd sheet 在构造 VM 时传 `editingEvent: router.quickAddEditingEvent`；sheet `onDisappear` 清回 nil（与 `quickAddEditingProject` 完全同模式，两个 editing 字段互斥——同一时刻只设一个）。
+- **不改 schema、不新增 @Model**：事件 CRUD 全部基于既有 `Event` 字段；`attendees` 编辑回写走 W1 既有选人器（QuickAdd 事件表单 Attendees 节已有，edit 模式预填既有 attendees 后可增删）。
+
+**关键接口 / 类型契约：**
+```swift
+@Observable @MainActor public final class QuickAddViewModel {
+    // 既有：editingProjectID / isEditing（= project edit）保持不变。
+
+    // W4 新增 —— Event edit 模式：
+    public private(set) var editingEventID: UUID?
+    /// 是否处于 Event edit 模式。
+    public var isEditingEvent: Bool { editingEventID != nil }
+    /// 是否处于任一 edit 模式（project 或 event）。UI 用它统一判断「标题/按钮文案切 Edit/Save」+「隐藏/锁分段控件」。
+    public var isEditingAny: Bool { isEditing || isEditingEvent }
+
+    // init 新增参数（与 editingProject 对称，二者互斥；都为 nil 则 create 模式）：
+    public init(context: ModelContext,
+                defaultKind: Kind = .todo,
+                prefilledProject: Project? = nil,
+                defaultScope: Scope = .personal,
+                editingProject: Project? = nil,
+                editingEvent: Event? = nil)   // 新增：非 nil → Event edit 模式（强制 kind=.event，预填字段）
+    // submit() 的 .event 分支：editingEventID 非 nil 时 fetch 既有 event 回写 + save 返回原 id；
+    //                          fetch 不到回退创建；editingEventID == nil 时维持既有 insert 新 Event。
+}
+
+@Observable @MainActor public final class TabRouter {
+    // W4 新增（与 quickAddEditingProject 同模式：入口设值 → sheet onDisappear 清回 nil）：
+    public var quickAddEditingEvent: Event? = nil
+}
+
+// CalendarViewModel / MainViewModel 各新增（与既有 confirmAttended 同 VM、同 save+refresh 模式）：
+public func deleteEvent(_ event: Event)        // context.delete + save + refresh
+public func unconfirmAttended(_ event: Event)  // attendedConfirmed = false + save + refresh
+// 既有 confirmAttended(_:) 复用为「标记已出席」。
+```
+
+**需新增的本地化 key（中英双填）：**
+- `Event.edit` = "Edit event" / "编辑事件"
+- `Event.delete` = "Delete event" / "删除事件"
+- `Event.markAttended` = "Mark attended" / "标记已出席"
+- `Event.unmarkAttended` = "Unmark attended" / "取消已出席"
+- `Event.deleteConfirmTitle` = "Delete this event?" / "删除该事件？"
+- `Event.deleteConfirmMessage` = "This can't be undone." / "此操作无法撤销。"
+- `Event.deleteConfirmConfirm` = "Delete" / "删除"
+- `QuickAdd.editEventTitle` = "Edit event" / "编辑事件"
+- 取消按钮复用既有 `QuickAdd.cancel`（`quickAddCancel`），不重复加；Save 复用既有 `QuickAdd.save`（`quickAddSave`）。
+
+**拆分（共享 / macOS / iOS）：**
+- **共享（先做）**：`QuickAddViewModel` 加 `editingEvent` init 参 + `editingEventID` + `isEditingEvent` + `isEditingAny` + submit `.event` edit 分支 + 预填逻辑；`TabRouter` 加 `quickAddEditingEvent`；`CalendarViewModel` / `MainViewModel` 加 `deleteEvent` + `unconfirmAttended`；`Strings.swift` 加上列 8 key + xcstrings 双填 + 重生两 lproj。`EventCard.swift` **不改**（保持纯展示）。
+- **macOS（次做，先验收）**：`CalendarView_macOS.swift`（周视图 `.macWeekGrid` 套 onTap + contextMenu）；`MainView_macOS.swift`（`.macRail` row 套 onTap + contextMenu）；`QuickAddModal_macOS.swift`（VM 构造传 `editingEvent: router.quickAddEditingEvent`、标题/按钮 edit-event 文案、onDisappear 清 `quickAddEditingEvent`、edit-event 模式不显未来事件的标记已出席）；删除确认弹窗。两屏需 `@Environment(TabRouter.self)`（核对是否已有）。
+- **iOS（末做，后验收）**：`CalendarView_iOS.swift`（`.iosFull` 套 onTap + contextMenu + 删除确认）；`MainView_iOS.swift`（`.iosMini` 同）；`QuickAddSheet_iOS.swift`（同 macOS 的 VM 构造 / 文案 / onDisappear）。
+
+**验收标准：**
+- macOS：周视图点事件卡 → 打开 QuickAdd（事件编辑模式，标题「编辑事件」、按钮「保存」），title/时间/location/attendees/project 已预填既有值；改 title 后保存 → 周视图该卡标题立即更新、SwiftData 持久化、重启仍在。
+- macOS：周视图右键事件卡 → 出现 Edit / Delete（+ 过去事件出现 Mark/Unmark attended）；Delete → 确认弹窗 → 确认后该事件从周视图消失、重启不复现。
+- macOS：对一个**已结束**事件右键 → 出现「标记已出席」，点击后 `attendedConfirmed = true`（再次右键变「取消已出席」，可逆）；对一个**未来**事件右键 → **不出现**标记已出席项（只有 Edit / Delete）。
+- macOS Main 右栏 row 同样可点编辑、右键删除/标记。
+- iOS：Calendar `.iosFull` 与 Main `.iosMini` 点击进编辑、长按菜单 Edit/Delete/Mark(过去)，行为与 macOS 一致。
+- 编辑事件改 attendees（经 W1 选人器增删）后保存 → 该事件 attendee 头像数正确、重启仍在。
+- 取消 QuickAdd（未 submit）后再点同一事件：表单仍正确预填该事件既有值（VM 随 sheet 重建、router 信号未清前提下）。
+- `LinoJCoreTests` 新增 `QuickAddViewModelEventEditTests`（event edit 模式预填字段、submit 走 update 而非新建、fetch 不到回退创建、attendees 回写）+ `CalendarViewModelTests`/`MainViewModelTests` 扩 `deleteEvent`（删后 event 不在 context）/ `unconfirmAttended`（true→false）；`LocalizationTests` 加 W4 8 key 的 zh≠en 断言。
+- `swift test` 全绿；`swift build -Xswiftc -warnings-as-errors` 0 warning；两端 build SUCCEEDED。
+
+**前置依赖：** v0.9 P3.2/P3.3/P3.6 + W1（事件 Attendees 选人器，edit 模式增删 attendees 复用它）+ V5（QuickAddViewModel edit 模式与 router editing 字段同模式）。无付费能力依赖。
+
+---
+
+### W5 — ProjectDetail「关联事件 + 添加」/「添加待办」接通  [全栈]
+
+**范围（补真机反馈③）：**
+- **现状定点**：ProjectDetail 的「+ 添加事件」按钮（`ProjectDetailView_macOS.swift:438` / `ProjectDetailView_iOS.swift:420`）是空 stub（注释「0.9.1：add event 尚未接通」），**且文案误用了 `LJStrings.addTodo`**（应是「添加事件」）；同屏的「+ 添加待办」按钮（`ProjectDetailView_macOS.swift:325`）同为空 stub。W5 接通这两个按钮 + 修正误用文案。
+- **不在范围**：ProjectDetail 内的事件卡 / 待办 bubble 的点击编辑——若 W4（事件可操作）已落地，ProjectDetail 内若也裸渲事件卡可顺带复用 W4 的 onTap（builder 评估，**非 W5 必做**，写进验收为可选）。W5 只确保「+ 添加事件 / + 添加待办」两个入口能打开预填了该 project 的 QuickAdd。
+
+**技术选型 / 决策：**
+- **接通方式（复用既有 `prefilledProject` 能力，无新逻辑）**：`QuickAddViewModel` 既有 `prefilledProject` 已支持 `.event`（设 `eventProject = p`）与 `.todo`（设 `todoScope = .company` + `todoProject = p`）。所以接通 = 按钮 action 设 `router.quickAddPrefilledProject = project` + `router.quickAddDefaultKind = .event`（或 `.todo`）+ `router.showQuickAdd = true`（三字段名已存在于 `TabRouter`，无需新增）。
+  - 「+ 添加事件」→ `quickAddDefaultKind = .event`。
+  - 「+ 添加待办」→ `quickAddDefaultKind = .todo`。
+- **sheet onDisappear 清理**：两端 QuickAdd sheet 既有 onDisappear 已把 `quickAddDefaultKind` 复位 `.todo`、清 `quickAddEditingProject`；W5 需确认 `quickAddPrefilledProject` 也在 onDisappear 清回 nil（核对：若 V5/W1 未清则补上，避免下次打开 QuickAdd 残留预填 project）。
+- **文案修正**：「+ 添加事件」按钮的 label 从误用的 `LJStrings.addTodo` 改为新增 `LJStrings.addEvent`（`Project.addEvent`）；「+ 添加待办」按钮维持 `LJStrings.addTodo`（语义正确）。
+- ProjectDetail 两端是否已 `@Environment(TabRouter.self)`：V5/W3 已为「Edit project」入口加过 router env（`ProjectDetailView_macOS.swift:114` 已用 `router.quickAddEditingProject`），W5 直接复用同一 router 引用，无需新加注入。
+
+**需新增的本地化 key（中英双填）：**
+- `Project.addEvent` = "+ Add event" / "+ 添加事件"
+- 「+ 添加待办」复用既有 `Project.addTodo`（`addTodo`），不新增。
+
+**关键接口 / 类型契约：** 无新增类型。复用 `TabRouter.quickAddPrefilledProject` / `quickAddDefaultKind` / `showQuickAdd`（均已存在）+ `QuickAddViewModel.prefilledProject` 既有分支（init 已实现 `.event`/`.todo` 预填）。
+
+**拆分（共享 / macOS / iOS）：**
+- **共享（先做）**：`Strings.swift` 加 `addEvent`（`Project.addEvent`）+ xcstrings 双填 + 重生两 lproj。`TabRouter` / `QuickAddViewModel` **不改**（复用既有字段与分支）。若 `quickAddPrefilledProject` 的 onDisappear 清理缺失，归到对应端 UI 修。
+- **macOS（次做，先验收）**：`ProjectDetailView_macOS.swift` —— 「+ 添加待办」按钮（:325）action 接 `router.quickAddPrefilledProject = project; quickAddDefaultKind = .todo; showQuickAdd = true`；「+ 添加事件」按钮（:438）action 同上但 `.event`，并把 label `LJStrings.addTodo` 改 `LJStrings.addEvent`。
+- **iOS（末做，后验收）**：`ProjectDetailView_iOS.swift` —— 「+ 添加事件」按钮（:420）同 macOS（接通 + 改 label 为 `addEvent`）；核对 iOS 是否也有独立「+ 添加待办」入口，有则一并接通 `.todo`。
+
+**验收标准：**
+- macOS：ProjectDetail 点「+ 添加待办」→ 打开 QuickAdd，kind 预选 Todo、scope 预选 Company、Project chip 已预填为当前 project；创建后该 todo 出现在此 ProjectDetail 的待办列。
+- macOS：ProjectDetail 点「+ 添加事件」→ 打开 QuickAdd，kind 预选 Event、Project 预填为当前 project；创建后该事件出现在此 ProjectDetail 的「关联事件」列、`linkedEventsCount` +1。
+- 「+ 添加事件」按钮**文案显示「+ 添加事件 / + Add event」**（不再错显「添加待办」）。
+- 关闭 QuickAdd 后再从顶栏 `+ New` 打开：不残留上次预填的 project（`quickAddPrefilledProject` 已清回 nil）。
+- iOS：上述同等行为通过。
+- `LinoJCoreTests`：`LocalizationTests` 加 `addEvent` 的 zh≠en 断言（无新 VM 逻辑需测——复用既有 prefilledProject 分支，QuickAddViewModelTests 既有 prefill 测试已覆盖）。
+- `swift test` 全绿；`swift build -Xswiftc -warnings-as-errors` 0 warning；两端 build SUCCEEDED。
+
+**前置依赖：** v0.9 P3.5（ProjectDetail）+ P3.6（QuickAdd prefilledProject 已实现）+ V5/W3（ProjectDetail 已注入 TabRouter）。无付费能力依赖。
+
+---
+
+### W6 — 编辑模式隐藏分段控件（小 UX 收口）  [前端 / 两端 UI]
+
+**范围（补真机反馈④的「待办按钮灰着像坏功能」）：**
+- **现状定点**：编辑模式下 QuickAdd 的 todo/event/project 三段分段控件被 `.disabled(vm.isEditing)` 锁死灰显（`QuickAddModal_macOS.swift:160` / `QuickAddSheet_iOS.swift:171`）——这是 V5 有意为之（编辑态 kind 已固定），但「灰着一排」像功能坏了。用户反馈「待办按钮是灰的、只能改描述」即源于此。
+- W6 决策：**编辑模式下直接隐藏整个分段控件**（不再灰显），只显示「编辑项目 / 编辑事件」标题——比灰一排干净。create 模式照常显示三段控件不变。
+
+**技术选型 / 决策：**
+- 两端 header 里把分段 `Picker` 从「`.disabled(vm.isEditing)`」改为「仅在非编辑模式渲染」：`if !vm.isEditingAny { Picker(...) }`（用 W4 引入的聚合 `isEditingAny`，覆盖 project edit 与 event edit 两种编辑态；若 W4 未先落地则退化用 `vm.isEditing`，但 W4/W6 同属本组、建议 W4 先做）。
+- 标题文案：保持既有 `vm.isEditing ? quickAddEditProjectTitle : quickAddNew`，W4 落地后扩为 `isEditingEvent ? quickAddEditEventTitle : (isEditing ? quickAddEditProjectTitle : quickAddNew)`（W6 与 W4 共同维护此三态标题；若 W6 在 W4 之后做，直接用三态）。
+- **不新增本地化 key**（标题 key 已由 V5 + W4 提供：`quickAddEditProjectTitle` / `quickAddEditEventTitle` / `quickAddNew`）。
+- 隐藏分段控件后，header 的 layout（标题 + Spacer + 原 Picker 位置）需保证编辑态不留空洞——builder 让 Picker 整块条件渲染即可（SwiftUI 自动收拢布局）。
+
+**关键接口 / 类型契约：** 无新增类型。复用 `QuickAddViewModel.isEditing` / `isEditingEvent` / `isEditingAny`（W4 提供）。
+
+**拆分（共享 / macOS / iOS）：**
+- **共享**：无（仅消费 W4 已加的 `isEditingAny`；若 W6 早于 W4 落地则临时用 `isEditing`）。
+- **macOS（次做，先验收）**：`QuickAddModal_macOS.swift` header 把 `Picker(...).disabled(vm.isEditing)` 改为 `if !vm.isEditingAny { Picker(...) }`。
+- **iOS（末做，后验收）**：`QuickAddSheet_iOS.swift` 同改。
+
+**验收标准：**
+- macOS / iOS：从 ProjectDetail「编辑项目」进入 QuickAdd → 顶部**不再显示**灰色三段分段控件，只显示「编辑项目」标题 + 表单。
+- W4 落地后：从事件卡「编辑事件」进入 → 同样不显示分段控件，标题显示「编辑事件」。
+- create 模式（顶栏 `+ New` / ⌘N）→ 三段分段控件正常显示可切，无回归。
+- `swift build -Xswiftc -warnings-as-errors` 0 warning；两端 build SUCCEEDED。（W6 纯 UI，无新增单测；`swift test` 不回归。）
+
+**前置依赖：** V5（project edit 模式）+ **建议 W4 先做**（提供 `isEditingEvent` / `isEditingAny` 与事件编辑标题；W6 与 W4 协同维护三态 header）。无付费能力依赖。
+
+---
+
 ## 用户需在网页端手动操作的清单（v1.0）
 
 > 以下操作 Claude / builder **无法代做**（涉及 Apple 网页控制台 / 账号交互）。请用户在对应 Phase **施工前**完成（尤其 V0 前置的 App ID + Container）。每项标注「Xcode 能否自动建」以免白点。
@@ -1643,6 +2057,95 @@ enum AppleIDKeychain {   // 内部
 
 **当前状态（0.9.1）**：133 测试全绿；两端 Debug + macOS Release build 通过；iOS 真机部署跑通、CloudKit 跨设备同步**实测可用**；桌面 `~/Desktop/LinoJ.app`（Apple Development 签名，dev 环境，个人可用约 1 年）。**个人使用已落地**。
 
+### [2026-05-28] v1.0 收口规划：扩充 W 组三个 Phase（W1/W2/W3）
+
+- **动机**：v1.0 公开上线前的三块功能缺口，用户已确认全做。在上半部分生效 plan 的 V7 之后新增「v1.0 收口 Phase 列表（W 组）」，并把「🚀 v1.0 公开上线剩余清单」里的三条缺口指向对应 W Phase。本次仅改 plan，不动任何 App 源码 / 测试。
+- **涉及 Phase（新增）**：W1 / W2 / W3，均 [全栈]，无付费能力依赖，互相独立、可任意顺序，但都依赖 v0.9 + V5。
+- **W1（Quick Add 选人器）决策**：从既有 Person 多选 + **允许临时新建 Person**（按 name 去重，命中复用既有；不做 Person 管理面板）。落库**只走既有** `Event.attendees` / `Project.members` 关系，**不新增 @Model、不改 schema**。VM 落点选 `QuickAddViewModel` 加 `toggleAttendee/Member`、`isXSelected`、`addPerson(named:existing:target:)` + `PersonTarget` 枚举，复用 V5 的 submit（含 memberCount 重算）。macOS 内联展开选人区、iOS 二级 picker。临时新建 Person「选中即 insert、随 submit save、取消不强制回滚」（权衡写明）。
+- **W2（Settings 占位开关）逐项决策**：✅真接通——`showCompletedInCounts`（影响 Main/Personal/Company/ProjectDetail 的 open 计数，VM 加注入式 `includeCompletedInCounts`）、`systemBannerEnabled`（作 scheduleAll 总闸门）、`yesterdayMissedReminderEnabled`（作「From yesterday」box 显示闸门，VM 加 `showYesterdayMissed`）。⏸隐藏整行——`dailySummaryHour` / `quietHours`（重活延后，仅删 UI，VM 字段 + UserDefaults + 测试全留）。⏸保留但禁用——`calendarMirrorOn` / `remindersMirrorOn`（EventKit 路线图项，保留 "(coming later)" + `.disabled(true)`）。三个已接通行去掉 "(coming later)"。**不改 SettingsViewModel**（不破坏 SettingsPersistenceTests）。
+- **W3（⋯ 菜单 / Search 定位 / About 链接）逐项决策**：① macOS ⋯ 空 Button → `Menu`（Edit project 复用 V5 + 新增 Delete project 带确认弹窗 + pop；iOS ⋯ 追加 Delete）；删除沿用 `.nullify`（todos/events 变 standalone）。② Search 三类结果**全部精确定位**——project push 到 ProjectDetail、event 切 Calendar 定位到那天、todo 切对应 tab + scrollTo bubble（被 filter 隐藏则先重置 filter）；走 TabRouter 新增 `pending*` 信号 + 各屏 onChange 消费；事件/bubble 高亮列为可选（无承载字段则只滚动）。③ About 链接：✅Feedback（mailto）、✅Privacy（`LinoJLinks.privacyPolicy` 占位 URL，**待用户替换真实隐私政策 URL**）；⏸砍掉 Release notes + Acknowledgements 两行。新增 `LinoJLinks` 常量 + `ProjectDetailViewModel.deleteProject()`。
+- **三条贯穿约束已写进 W 组开头**：CloudKit 关系 optional + 不改 schema；memberCount 每次编辑重算；本地化双轨三步（xcstrings → xcstringstool compile → Strings.swift），各 Phase 列了需新增的 key 清单。
+- **影响范围（待 builder 施工）**：共享 `QuickAddViewModel` / `MainViewModel` / `PersonalViewModel` / `CompanyViewModel` / `ProjectDetailViewModel` / `CalendarViewModel` / `SearchViewModel` / `TabRouter` / 新增 `LinoJLinks` / `Strings.swift` + `Localizable.xcstrings` + 两 lproj；两端 `QuickAdd*` / `Settings*` / `ProjectDetailView*` / `CompanyView*` / `CalendarView*` / `RootWindow.swift` / `RootTabView.swift`。本次规划阶段**零源码改动**。
+
+### [2026-05-28] W1 施工：Quick Add 选人器接真（Attendees / Members）
+
+- **变更内容**：按 W1 plan 施工。
+  - **共享**：`QuickAddViewModel` 新增 `PersonTarget` 枚举 + `toggleAttendee/isAttendeeSelected` + `toggleMember/isMemberSelected` + `addPerson(named:existing:target:)`（trim → 空白返回 nil；按 name trim+小写查重名，命中复用既有、未命中 `Person(name:)`+`context.insert`，立即选中、**不在此 save**，随 submit 落库）。submit() 与 V5 路径不改，memberCount 仍由既有 submit 重算。`Strings.swift` 加 9 个 `LJStrings` 成员；`Localizable.xcstrings` 双填 9 key 并 `xcstringstool compile` 重生两 lproj。新增 `QuickAddPeoplePickerTests`（7 测试：toggle 去重、isSelected、addPerson 复用 vs 新建、空白名 nil、create Project memberCount==members.count、Event attendees 落库）；`LocalizationTests` 加 W1 9 key 的 zh≠en 断言。
+  - **macOS**（`QuickAddModal_macOS.swift`）：Attendees/Members 两节去掉「仅非空才渲染」逻辑，改始终渲染（标题 + 入口按钮 + 已选 AvatarStack 或空态提示）；点入口内联展开限高 160pt 可滚动 Person 列表（顶部输入框 + checkmark 行 toggle + 「+ 新建『<name>』」行）。新增 `@Query(sort:\Person.name) allPeople` + 展开态/搜索 State，随 onDisappear 复位。
+  - **iOS**（`QuickAddSheet_iOS.swift`）：两节同样始终渲染 + 入口按钮 present 二级 `PeoplePickerSheet_iOS`（NavigationStack + List checkmark 多选 + `.searchable` + 「+ 新建」行 + 右上「完成」回传）；`.sheet(item:)` 叠在 Quick Add sheet 上。新增 `@Query allPeople` + `peoplePickerTarget` State，随 onDisappear 复位。
+- **变更原因**：补 0.9.1 隐藏的最大缺口（建 Event 加不了参会人 / 建 Project 加不了成员）。
+- **影响范围**：Phase W1。共享 `QuickAddViewModel.swift` / `Strings.swift` / `Localizable.xcstrings` + `en.lproj` + `zh-Hans.lproj` / 新增 `QuickAddPeoplePickerTests.swift` / `LocalizationTests.swift`；macOS `QuickAddModal_macOS.swift`；iOS `QuickAddSheet_iOS.swift`。**未新增 @Model、未改 schema**。
+- **偏离说明（按 plan 契约执行）**：
+  - 临时新建 Person 用户取消时**不强制回滚**（采纳 plan 默认最小实现，残留无引用 Person 可接受，下一版 People 面板清理）。
+  - `addPerson` 选中时用「未选才 append」而非 `toggle`，避免「复用既有且恰已选」被反选——符合「新建/选中」语义（plan 契约也提示了此权衡）。
+  - 新增 key 命名/文案全部照 plan「需新增的本地化 key」清单，无偏离。
+- **验收**：`swift test --package-path Packages/LinoJCore` **141 测试全绿**（含新增 7 picker + W1 本地化断言）；`swift build -Xswiftc -warnings-as-errors` **0 warning**；macOS `CODE_SIGNING_ALLOWED=NO build` **BUILD SUCCEEDED**（唯一 warning 在 `RootWindow.swift:379 reposition()`，W1 前既有、与本期无关）；iOS Simulator（iPhone 17 Pro）`build` **BUILD SUCCEEDED** 0 代码 warning。⚠️ headless 无法验真实 UI 渲染 / 真实 CloudKit 容器落库——选人交互、临时新建落库、V5 edit 增删、memberCount 跨端同步、重启留存**需用户真机验收**（plan W1「验收标准」全部条目）。
+
+---
+
+### [2026-05-28] W2 施工：Settings 占位开关逐项收口（消费 or 隐藏）
+- **变更内容**：按 W2 plan 施工。**不改 `SettingsViewModel`**（字段 / 默认值 / persist / 测试全保留）。
+  - **共享（各 VM 加注入式 bool，VM 不读 UserDefaults）**：
+    - `MainViewModel` + `includeCompletedInCounts`（true → `openCount` 含 done = `.count`；false 维持仅未完成）+ `showYesterdayMissed`（false → `yesterdayMissed` getter 短路 `[]`，含 service 路径）；新增 `allTodos()` 助手。
+    - `PersonalViewModel` / `CompanyViewModel` / `ProjectDetailViewModel` + `includeCompletedInCounts`（分别改 `openCount` / `todosCount` / `openCount` getter）。
+    - `CalendarViewModel` + `showYesterdayMissed`（短路 `yesterdayMissed`，含 service 路径）。
+    - 测试扩充（+8，141→149）：`MainViewModelTests` 加 openCount 14↔16 差异 + showYesterdayMissed gate（fallback + service）；`PersonalCompanyViewModelTests` 加 Personal/Company 含 done 计数差异；`ProjectDetailViewModelTests` 加 openCount 含 done；`CalendarViewModelTests` 加 showYesterdayMissed gate（fallback + service）。`SettingsPersistenceTests` 无回归。
+  - **三项真接通的消费契约**：
+    - `showCompletedInCounts` → Main/Personal/Company/ProjectDetail 的 open/todos 计数（urgent / kanban 内容不变）；各屏 View 注入 + `.onChange` 即时刷新。
+    - `systemBannerEnabled` → `NotificationService.scheduleAll` 总闸门：两端 `RootWindow`/`RootTabView` 的首次调度 + lead/Event onChange 全部加 `guard systemBannerEnabled`；新增 `.onChange(of: systemBannerEnabled)`（ON→requestAuthorization+scheduleAll，OFF→`await cancelAll()`）。
+    - `yesterdayMissedReminderEnabled` → Main/Calendar 「From yesterday」box 显示闸门（靠 VM getter 短路，下游「非空才渲染」逻辑不变）。
+  - **四项隐藏 / 禁用**：`dailySummaryHour` / `quietHoursStart/End` 两端 Settings **删 UI 行**（VM 字段/key/测试全留）；`calendarMirrorOn` / `remindersMirrorOn` 保留 + 保留 "(coming later)" + 追加 `.disabled(true)`。
+  - **去 "(coming later)"**：`showCompletedInCounts` / `systemBannerEnabled` / `yesterdayMissedReminderEnabled` 三行不再传 v1 hint（headsUpLeadMinutes 早已是普通 row）。两端删去因隐藏行而变死的助手：macOS 删 `rowWithV1Hint` + `formatHour`；iOS 删 `quietHoursRow` + `formatHour`（`toggleRow`/`pickerRowRawValue` 的 `v1Hint` 能力保留作通用 primitive）。`Settings.v1OnlyHint` 本地化 key 保留（iOS row primitive 仍引用）。
+- **变更原因**：占位开关只写 UserDefaults 无消费方、UI 标 "(coming later)"，上线像坏功能。能廉价接通的接通，依赖 EventKit / 定时调度的重活继续延后但隐藏 / 禁用。
+- **有无新增本地化 key**：**无**（接通是删 hint、隐藏是删 UI；未引入新文案）。
+- **偏离 plan**：无。严格按逐项决策表 + 三项消费契约 + 注入式 bool（同 `headsUpLeadMinutes` 模式）执行。补充说明：macOS Calendar 本就未渲染 yesterday box，gate 仍注入到 VM getter（逻辑一致、与 iOS 对称），实际显隐影响落在 Main（两端）+ iOS Calendar。
+- **影响范围**：Phase W2。共享 `MainViewModel.swift` / `PersonalViewModel.swift` / `CompanyViewModel.swift` / `ProjectDetailViewModel.swift` / `CalendarViewModel.swift` + 测试 4 文件；macOS `SettingsView_macOS.swift` / `RootWindow.swift` / `MainView_macOS.swift` / `PersonalView_macOS.swift` / `CompanyView_macOS.swift` / `ProjectDetailView_macOS.swift` / `CalendarView_macOS.swift`；iOS `SettingsSheet_iOS.swift` / `RootTabView.swift` / `MainView_iOS.swift` / `PersonalView_iOS.swift` / `CompanyView_iOS.swift` / `ProjectDetailView_iOS.swift` / `CalendarView_iOS.swift`。**未改 `SettingsViewModel`、未新增 @Model、未改 schema、未新增本地化 key**。
+- **验收**：`swift test --package-path Packages/LinoJCore` **149 测试全绿**（141 + 8 W2）；`swift build -Xswiftc -warnings-as-errors` **0 warning**；macOS `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build` **BUILD SUCCEEDED** 0 代码 warning；iOS Simulator（iPhone 17 Pro）`build` **BUILD SUCCEEDED** 0 代码 warning。⚠️ headless 无法验真实通知调度 / UI——**需用户真机验收**：① systemBanner OFF 后建未来 Event 不再排本地通知（pending 为空 / 不增）、ON 恢复；② showCompletedInCounts 切换计数即时变大 / 变小（urgent 列 + kanban 内容不变）；③ yesterdayMissed OFF 后 Main / Calendar 「From yesterday」box 消失、ON 恢复；④ dailySummary / quietHours 行已消失、Calendar/Reminders 镜像置灰不可拨。
+
+### [2026-05-28] W3 施工：ProjectDetail ⋯ 菜单 / Search 精确定位 / Settings About 链接 收口
+- **变更内容**：按 W3 plan 三块逐项实现。**不新增 @Model、不改 schema、不引入新 navigation 框架**（仅 TabRouter `pending*` + 各屏 onChange 消费）。
+  - **共享（先做）**：
+    - `TabRouter` 加 4 个精确定位信号 `pendingProjectID` / `pendingEventDate` / `pendingEventID` / `pendingTodoID`（目标 View 监听消费后清回 nil，与既有 `quickAddEditingProject` 同模式）。
+    - `LinoJCore.swift` 加 `public enum LinoJLinks`（`feedbackEmail = "feedback@linoj.app"`、`privacyPolicy = "https://linoj.app/privacy"` ⚠️ 占位待用户替换）。
+    - `ProjectDetailViewModel` 加 `deleteProject()`（`context.delete(project)` + `try? save()`，沿用既有 `.nullify` deleteRule，两端复用）。
+    - `CalendarViewModel` 加 `focus(on:)`（同时移动 7 天窗口 `weekStart` 让任意日期落入窗口 + 设 `selectedDay`，比既有 `selectDay` 多移窗口）。
+    - `SearchViewModel.open` 三分支接 `pending*`：todo → 切 personal/company + `pendingTodoID`；event → 反查 start 切 calendar + `pendingEventDate`（startOfDay）+ `pendingEventID`；project → 切 company + `pendingProjectID`。移除三处 `TODO P3+` 注释换成实现说明。
+    - 新增 4 个本地化 key（中英双填 + 重生 lproj + `LJStrings` 成员）：`ProjectDetail.delete` / `ProjectDetail.deleteConfirmTitle` / `ProjectDetail.deleteConfirmMessage` / `ProjectDetail.deleteConfirmConfirm`（Cancel 复用既有 `QuickAdd.cancel`，不重复加）。
+    - 测试扩充（+2，149→151）：`SearchViewModelTests` 断言 open 三类设置正确的 `router.pending*`；`ProjectDetailViewModelTests` 加 `deleteProject()`（删除后 project 不在 context、其原 todos 仍存在但 `project == nil`）；`LocalizationTests` 加 4 个新 key zh≠en 断言。
+  - **macOS（次做，先验收）**：`ProjectDetailView_macOS` 空 ⋯ Button → `Menu`（Edit project 复用 V5 路径 + Delete project，`.confirmationDialog` 确认后 `deleteProject()` + `dismiss()` pop）；`CompanyView_macOS` 监听 `pendingProjectID` append `navigationPath` + 监听 `pendingTodoID`（重置 filter 为 All 后 `ScrollViewReader.scrollTo`，bubble 加 `.id`）；`CalendarView_macOS` 监听 `pendingEventDate` 调 `vm.focus(on:)`；`PersonalView_macOS` 监听 `pendingTodoID` 滚动（加 router env + `.id`）；`SettingsView_macOS` About 区删 Release notes/Acknowledgements 两行、Feedback/Privacy 接 `@Environment(\.openURL)`（AboutLink 加 `destination` URL）。
+  - **iOS（末做，后验收）**：`ProjectDetailView_iOS` Menu 加 Delete 项 + `.confirmationDialog` + pop；`CompanyView_iOS` 同 macOS 监听 `pendingProjectID` / `pendingTodoID`（加 router env + urgent/normal bubble `.id` + 预览注入 TabRouter）；`CalendarView_iOS` 监听 `pendingEventDate`；`PersonalView_iOS` 监听 `pendingTodoID`（加 router env + `.id` + 预览注入 TabRouter）；`SettingsSheet_iOS` About 区删两行、Feedback/Privacy 接 `openURL`。
+- **变更原因**：三个零散 no-op 占位（macOS ⋯ 空 Button、Search 只切 tab 不定位、About 链接死点）上线像坏功能；逐项实现或合理砍掉。
+- **有无新增本地化 key**：新增 4 个 `ProjectDetail.*`（delete 菜单 + 确认对话框标题/正文/确认按钮）；Cancel 复用 `QuickAdd.cancel`。About 砍掉的 Release notes/Acknowledgements 行未删既有 key（留着无害）。
+- **偏离 plan（含可选项决策）**：
+  - **高亮（可选项）**：**本期不做** bubble/event 选中闪烁高亮。评估后各 VM 均无承载字段（CalendarViewModel 无 `selectedEventID`、TodoBubble/EventCard 无高亮入参），plan 明确「无承载字段则本期不做高亮、只做滚动/切换定位」。`pendingEventID` 信号已埋好但目标 View 仅消费 `pendingEventDate`（仅定位那天），`pendingEventID` 当场清回 nil 不使用——为将来加高亮预留。
+  - **Main 屏不消费 `pendingTodoID`**：`SearchViewModel.open(.todo)` 只路由到 `.personal` / `.company`（todo 找不到时 fallback `.main` 但不设 pendingTodoID），**Search 永远不会把 todo 定位到 Main**；且 Main 左列是两个独立内层 ScrollView（单锚点 scroll 不可靠）。故 Main 不接 `pendingTodoID`（接了也永不触发），plan「Personal/Company/Main 屏接」的 Main 项按实际路由语义合理省略。
+  - **砍行**：About 区按 plan 砍掉 Release notes + Acknowledgements，只留 Feedback + Privacy 两行（都真能点开）。
+  - ⚠️ **`LinoJLinks.privacyPolicy` 是占位 URL `https://linoj.app/privacy`，待用户替换为真实隐私政策 URL**（上架 App Store 必须有真实隐私政策页）。
+- **影响范围**：Phase W3。共享 `TabRouter.swift` / `LinoJCore.swift` / `ProjectDetailViewModel.swift` / `CalendarViewModel.swift` / `SearchViewModel.swift` / `Strings.swift` / `Localizable.xcstrings` + 2 lproj + 测试 3 文件（`SearchViewModelTests` / `ProjectDetailViewModelTests` / `LocalizationTests`）；macOS `ProjectDetailView_macOS.swift` / `CompanyView_macOS.swift` / `CalendarView_macOS.swift` / `PersonalView_macOS.swift` / `SettingsView_macOS.swift`；iOS `ProjectDetailView_iOS.swift` / `CompanyView_iOS.swift` / `CalendarView_iOS.swift` / `PersonalView_iOS.swift` / `SettingsSheet_iOS.swift`。
+- **验收**：`swift test --package-path Packages/LinoJCore` **151 测试全绿**（149 + 2 W3）；`swift build -Xswiftc -warnings-as-errors` **0 warning**；macOS `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build` **BUILD SUCCEEDED** 0 代码 warning；iOS Simulator（iPhone 17 Pro）`build` **BUILD SUCCEEDED** 0 代码 warning（已知 `RootWindow.swift:379 reposition()` 既有无关 warning，未新增其它）。⚠️ headless 无法验真实导航 / 邮件 / 浏览器——**需用户真机验收**：① Search 选 project → 直接进该 ProjectDetail（非停在列表）；② Search 选 event → 切 Calendar 且定位到该事件那天（selectedDay 正确）；③ Search 选 todo → 切正确 tab 并滚到该 bubble（被 filter 隐藏则 filter 已重置为 All）；④ 两端 ProjectDetail ⋯ → Edit + Delete；Delete → 确认弹窗 → 删除 + pop 回 Company、其 todos/events 变 standalone 仍存在；⑤ Settings About → Feedback 拉起邮件 compose、Privacy 打开浏览器、Release notes/Acknowledgements 两行已移除。
+
+### [2026-05-28] W1-W3 审查（@reviewer）+ 收尾跟进
+- **审查结论**：@reviewer 以外部审计员视角对照 plan 逐项核对 W1/W2/W3 —— **无致命、无重要问题**，仅 3 条建议。CloudKit 约束（不新增 @Model / 关系兜底）、memberCount 重算（create + V5 edit 共用 submit 无旁路）、本地化双轨（xcstrings / 两 lproj / Strings.swift 三处一致）、W2 注入式可测 + SettingsViewModel 零改动、W3 pending* 信号 onChange 消费后清 nil 均验证通过。独立复核 `swift test` 151 全绿、`swift build -Xswiftc -warnings-as-errors` 0 warning。结论「可进入发版准备」。
+- **跟进①（已做）**：补 `QuickAddPeoplePickerTests.editProjectResyncsMemberCount` —— V5 edit 路径删减 members 后 submit，断言 memberCount 经 submit 重算（3→2，而非沿用旧值），堵 reviewer 指出的「edit 路径 memberCount 仅间接覆盖」缺口。测试数 151 → **152 全绿**。
+- **跟进②（已记）已知边界**：Search 定位到一个**已完成（done）的 todo** 时，目标屏只渲染 open bubbles，`.id(todo.id)` 不存在 → `scrollTo` 静默 no-op（plan W3 已将 todo 定位定义为 best-effort，符合验收，此处仅明确记录该边界）。
+- **跟进③（待用户）硬阻塞**：`LinoJLinks.privacyPolicy = "https://linoj.app/privacy"` 是占位 URL，**上架前必须替换为真实可访问的隐私政策页**（App Store 审核会因死链被拒）。
+
+### [2026-05-28] 为真机/桌面反馈扩充修复 Phase（W4 / W5 / W6）
+
+- **背景**：用户在真机/桌面（主用 macOS）实测 **旧 0.9.1 build**（W1/W2/W3/V5 尚未部署到他桌面）后反馈一批「不能操作」问题。主控已逐条定点到代码，本次 @planner 把其中「真实缺口」补成新修复 Phase，延续 W 组编号与施工纪律（先 macOS 验收 → 再 iOS）。**本次规划阶段零源码改动，仅编辑 PROJECT_PLAN.md。**
+- **新增 Phase（均无付费能力依赖、延续三条 W 组硬约束）：**
+  - **W4 — 事件可操作：编辑 / 删除 / 标记已出席 [全栈]**（最重要，macOS 优先）。定点：`EventCard.swift` 四 variant 全纯展示无交互；全工程无事件编辑路径（`QuickAddViewModel` 只有 `editingProjectID`）；`confirmAttended` 已存在但只接在 yesterday-missed box。**方案**：复用 V5「Project 编辑」模式给 `QuickAddViewModel` 加 `editingEvent` 模式（init 预填 + submit `.event` update 分支 + fetch 不到回退创建）；`TabRouter` 加 `quickAddEditingEvent`（与 `quickAddEditingProject` 同模式）；`CalendarViewModel`/`MainViewModel` 加 `deleteEvent` + `unconfirmAttended`（复用既有 `confirmAttended`）；`EventCard` **保持纯展示不改**，由各屏外层套 `onTapGesture`（打开编辑）+ `contextMenu`（macOS 右键 / iOS 长按：Edit / Mark/Unmark attended / Delete）；attendees 编辑回写复用 W1 选人器。
+  - **W5 — ProjectDetail「+ 添加事件」/「+ 添加待办」接通 [全栈]**。定点：两按钮空 stub（`ProjectDetailView_macOS.swift:438`/`:325`、`ProjectDetailView_iOS.swift:420`），且「+ 添加事件」**文案误用 `LJStrings.addTodo`**。**方案**：复用既有 `QuickAddViewModel.prefilledProject`（已支持 `.event` 设 eventProject、`.todo` 设 company+todoProject），接通 = 按钮设 `router.quickAddPrefilledProject = project` + `quickAddDefaultKind = .event/.todo` + `showQuickAdd = true`（三字段已存在，VM/Router 不改）；新增 `Project.addEvent` key 修正误用文案。
+  - **W6 — 编辑模式隐藏分段控件（小 UX）[前端]**。定点：编辑态分段控件 `.disabled(vm.isEditing)` 灰显（`QuickAddModal_macOS.swift:160`/`QuickAddSheet_iOS.swift:171`）像坏功能。**方案**：编辑态改为 `if !vm.isEditingAny { Picker(...) }` 直接隐藏整条分段控件，只显示「编辑项目/编辑事件」标题；无新增 key。
+- **「事件完成」语义最终决策（W4）**：`attendedConfirmed = true` = 「我参加了」。**「标记已出席」操作仅对已结束事件（`end <= now`）出现**（未来/进行中事件不显示，避免无意义勾选）；已确认的过去事件该项翻转为「取消已出席」（可逆）；编辑/删除两操作不分过去未来恒可用（覆盖绝大多数「操作不了」诉求）。最小合理实现，不上「完成 checkbox / 重复事件」等过度设计。
+- **标注为「已实现、仅需重新部署到 macOS 桌面验证」（不新规划）：**
+  - **问题②「项目删除 / ⋯」→ 已由 W3 实现**（两端 ⋯ 已接 Edit+Delete）。用户旧版看到空 stub 是 0.9.1 占位，重新部署 W3 build 即生效。
+  - **问题④的「成员选人器」→ 已由 W1 实现**（编辑项目表单 Members 节内联选人器）。用户旧版无选人器，重新部署 W1 build 即恢复，不重新规划成员；④ 真正剩余只有 W6 的「编辑模式隐藏分段控件」UX 项。
+- **范围纪律**：仅规划①③④三块；EventKit / 提醒细化等仍延后，未顺手扩张。**不新增 @Model、不改 schema**（事件 CRUD 全走既有 `Event` 字段）。
+- **影响范围（待 builder 施工）**：共享 `QuickAddViewModel` / `CalendarViewModel` / `MainViewModel` / `TabRouter` / `Strings.swift` + `Localizable.xcstrings` + 两 lproj + 测试；macOS `CalendarView_macOS` / `MainView_macOS` / `QuickAddModal_macOS` / `ProjectDetailView_macOS`；iOS `CalendarView_iOS` / `MainView_iOS` / `QuickAddSheet_iOS` / `ProjectDetailView_iOS`。`EventCard.swift` 不改。
+- **新增本地化 key**：W4 8 个（`Event.edit/delete/markAttended/unmarkAttended/deleteConfirmTitle/deleteConfirmMessage/deleteConfirmConfirm` + `QuickAdd.editEventTitle`）；W5 1 个（`Project.addEvent`）；W6 0 个。均走双轨三步。
+- **涉及 Phase（新增）**：W4 / W5 / W6，均无付费能力依赖，依赖 v0.9 + V5 + W1。W6 建议在 W4 之后做（消费 W4 的 `isEditingAny`）。
+
 ---
 
 ## 🚀 v1.0 公开上线剩余清单（新会话从这里接）
@@ -1653,10 +2156,10 @@ enum AppleIDKeychain {   // 内部
 3. **iOS Archive → 上传 App Store Connect**：Xcode Organizer ▸ Distribute（自动签名用付费 team 分发证书）。版本已是 0.9.1 / build 2（再传需 +build）。
 4. **App Store Connect**：App Privacy 问卷（口径与 PrivacyInfo.xcprivacy 一致：私有 CloudKit 数据不算 collected、SIWA name/email 仅本地 Keychain）、TestFlight 测试信息。export compliance 已设 `ITSAppUsesNonExemptEncryption=false`，免问卷。
 
-**未实现的功能缺口（上线前决定做或砍）**
-- Quick Add 的 **Attendees / Members 选人器**：当前是**隐藏的 stub**（建 Event 加不了参会人、建 Project 加不了成员）。
-- Settings 标 "(coming later)" 的占位开关：showCompletedInCounts / 通知细项（systemBanner / yesterdayMissedReminder / dailySummary / quietHours）/ Apple Calendar/Reminders 镜像 —— 均写 UserDefaults 但未消费。
-- ProjectDetail 的 ⋯ 菜单、Search 结果精确定位到具体 bubble/事件、Settings About 链接 —— 部分仍 no-op。
+**未实现的功能缺口（上线前决定做或砍）—— 已于 2026-05-28 展开为 W 组 Phase（用户确认三块全做），详见上方「v1.0 收口 Phase 列表（W 组）」：**
+- Quick Add 的 **Attendees / Members 选人器** → **W1**（从现有 Person 多选 + 允许临时新建；落库走既有关系；memberCount 重算）。
+- Settings 标 "(coming later)" 的占位开关 → **W2**（showCompletedInCounts / systemBanner / yesterdayMissedReminder 真接通；dailySummary / quietHours 隐藏；Calendar/Reminders 镜像保留并 disable）。
+- ProjectDetail ⋯ 菜单 / Search 精确定位 / Settings About 链接 → **W3**（macOS ⋯ 接 Edit+Delete；Search 三类结果精确定位；About 留 Feedback+Privacy、砍 Release notes/Acks）。
 
 **v1.1+ 已明确延后**（见上方「v1.0 待办」节）：EventKit 真镜像、Widget（out of scope）、macOS 公开分发（Developer ID 公证 / MAS，本轮只做了 dev 签名桌面包）、远程推送服务端（当前是 CloudKit 订阅静默推送，无自建 APNs）。
 

@@ -156,6 +156,10 @@ struct SearchViewModelTests {
         vm.open(personalItem)
         #expect(router.current == .personal)
         #expect(router.showSearch == false)
+        // W3：pendingTodoID 被设为命中的 todo.id。
+        if case .todo(let id) = personalItem {
+            #expect(router.pendingTodoID == id)
+        }
 
         // 命中一个 company todo（"sidebar" 属 company scope）→ 切 Company。
         vm.query = "sidebar"
@@ -168,6 +172,9 @@ struct SearchViewModelTests {
         vm.open(companyItem)
         #expect(router.current == .company)
         #expect(router.showSearch == false)
+        if case .todo(let id) = companyItem {
+            #expect(router.pendingTodoID == id)
+        }
     }
 
     // MARK: 7. open(.event) → Calendar，open(.project) → Company
@@ -189,6 +196,16 @@ struct SearchViewModelTests {
         vm.open(eventItem)
         #expect(router.current == .calendar)
         #expect(router.showSearch == false)
+        // W3：pendingEventDate / pendingEventID 被设为命中 event 的那天 / id。
+        if case .event(let id) = eventItem {
+            let descriptor = FetchDescriptor<Event>(predicate: #Predicate { $0.id == id })
+            if let event = try context.fetch(descriptor).first {
+                #expect(router.pendingEventDate == Calendar.current.startOfDay(for: event.start))
+                #expect(router.pendingEventID == id)
+            } else {
+                Issue.record("could not refetch the matched event by id")
+            }
+        }
 
         // Project：seed 有 "LinoJ for macOS v1"。
         vm.query = "LinoJ"
@@ -202,6 +219,10 @@ struct SearchViewModelTests {
         vm.open(projectItem)
         #expect(router.current == .company)
         #expect(router.showSearch == false)
+        // W3：pendingProjectID 被设为命中 project 的 id（CompanyView push ProjectDetail）。
+        if case .project(let id) = projectItem {
+            #expect(router.pendingProjectID == id)
+        }
     }
 
     // MARK: 8. Quick actions: newEvent / newProject / jumpTo 全分支

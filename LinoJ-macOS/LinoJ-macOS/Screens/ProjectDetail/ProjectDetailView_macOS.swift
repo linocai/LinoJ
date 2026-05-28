@@ -33,6 +33,13 @@ struct ProjectDetailView_macOS: View {
 
     @State private var vm: ProjectDetailViewModel?
 
+    /// W2：本屏自有 SettingsViewModel，用于读 `showCompletedInCounts` 注入到 ProjectDetailViewModel
+    /// （影响 meta row / 左列 header 的 open 计数）。
+    @State private var settings = SettingsViewModel()
+
+    /// W3：⋯ 菜单「Delete project」的确认对话框开关。
+    @State private var showDeleteConfirm = false
+
     var body: some View {
         Group {
             if let vm {
@@ -43,8 +50,15 @@ struct ProjectDetailView_macOS: View {
         }
         .task {
             if vm == nil {
-                vm = ProjectDetailViewModel(project: project, context: modelContext)
+                let model = ProjectDetailViewModel(project: project, context: modelContext)
+                model.includeCompletedInCounts = settings.showCompletedInCounts
+                vm = model
             }
+        }
+        // W2：Settings 改 showCompletedInCounts → 注入 + refresh（计数即时切换）。
+        .onChange(of: settings.showCompletedInCounts) { _, newValue in
+            vm?.includeCompletedInCounts = newValue
+            vm?.refresh()
         }
         // 任何 todo / event 写入都让 vm 重算（done flag / project 重指 / 新增等）。
         .onChange(of: todos.count) { _, _ in vm?.refresh() }
@@ -94,8 +108,20 @@ struct ProjectDetailView_macOS: View {
                 .font(.system(size: 12.5, weight: .semibold))
                 .foregroundStyle(Color.lj.ink)
             Spacer()
-            Button {
-                // 0.9.1：⋯ 菜单尚未接通（占位）。去掉 print，beta 可接受点击静默无反应。
+            // W3：空 Button → Menu（Edit project 复用 V5 路径 + Delete project 弹确认）。
+            Menu {
+                Button {
+                    router.quickAddEditingProject = project
+                    router.showQuickAdd = true
+                } label: {
+                    Label(String(localized: LJStrings.editProject), systemImage: "pencil")
+                }
+                Divider()
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    Label(String(localized: LJStrings.projectDetailDelete), systemImage: "trash")
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 12, weight: .semibold))
@@ -108,6 +134,27 @@ struct ProjectDetailView_macOS: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel(Text(LJStrings.projectMore))
+            // W3：Delete 确认对话框 —— 确认后删除 project 并 pop 回 Company。
+            .confirmationDialog(
+                Text(LJStrings.projectDetailDeleteConfirmTitle),
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button(role: .destructive) {
+                    vm?.deleteProject()
+                    dismiss()
+                } label: {
+                    Text(LJStrings.projectDetailDeleteConfirmConfirm)
+                }
+                Button(role: .cancel) {} label: {
+                    Text(LJStrings.quickAddCancel)
+                }
+            } message: {
+                Text(LJStrings.projectDetailDeleteConfirmMessage)
+            }
         }
         .padding(.top, LJSpacing.s14)
         .padding(.horizontal, LJSpacing.s28)

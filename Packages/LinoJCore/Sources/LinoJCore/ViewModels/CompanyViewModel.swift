@@ -35,6 +35,10 @@ public final class CompanyViewModel {
     /// 当前 chip 过滤模式。默认 `.allWork`。
     public var filter: ScopeFilter = .allWork
 
+    /// W2：Settings 的 `showCompletedInCounts` 注入值。为 true 时 `todosCount` 改为
+    /// 「全部 company todo（含 done）」计数；false 维持「仅未完成」。注入式（VM 不读 UserDefaults）。
+    public var includeCompletedInCounts: Bool = false
+
     // MARK: Init
 
     public init(context: ModelContext) {
@@ -86,8 +90,12 @@ public final class CompanyViewModel {
 
     /// 统计区显示的 todos count —— 全部 company 的 open todos，不被 chip filter 影响。
     /// 这与设计稿一致（"X todos · Y projects" 是站在 Company 整体维度）。
+    /// W2：`includeCompletedInCounts == true` 时改为「全部 company todo（含 done）」计数。
     public var todosCount: Int {
         _ = tick
+        if includeCompletedInCounts {
+            return workTodos().count
+        }
         return workTodos().filter { !$0.done }.count
     }
 

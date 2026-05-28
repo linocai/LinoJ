@@ -14,3 +14,13 @@ public enum LinoJCore {
     /// 与 App 显示的 "LinoJ <version>" 一致；升级时同步更新。
     public static let version: String = "0.9.0"
 }
+
+/// W3：Settings About 区的外链常量。集中放在 Core，两端 Settings View 共用。
+public enum LinoJLinks {
+    /// Feedback 行的收件邮箱（两端 About 行点击 `mailto:` 拉起邮件 compose）。
+    public static let feedbackEmail = "feedback@linoj.app"
+
+    /// 隐私政策页 URL（两端 About 行点击 `openURL` 打开浏览器）。
+    /// ⚠️ 占位值，待用户替换为真实隐私政策 URL（上架 App Store 必须有真实隐私政策页）。
+    public static let privacyPolicy = "https://linoj.app/privacy"
+}

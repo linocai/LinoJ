@@ -36,6 +36,10 @@ public final class ProjectDetailViewModel {
     /// Refresh tick —— 任意写入都让 Observation 把所有 computed property 标记为脏。
     private var tick: Int = 0
 
+    /// W2：Settings 的 `showCompletedInCounts` 注入值。为 true 时 `openCount` 改为
+    /// 「本 project 全部 todo（含 done）」计数；false 维持「仅未完成」。注入式（VM 不读 UserDefaults）。
+    public var includeCompletedInCounts: Bool = false
+
     // MARK: Init
 
     public init(project: Project, context: ModelContext) {
@@ -89,8 +93,12 @@ public final class ProjectDetailViewModel {
     }
 
     /// open todos 数量（urgent + normal）。
+    /// W2：`includeCompletedInCounts == true` 时改为「本 project 全部 todo（含 done）」计数。
     public var openCount: Int {
         _ = tick
+        if includeCompletedInCounts {
+            return projectTodos().count
+        }
         return projectTodos().filter { !$0.done }.count
     }
 
@@ -169,6 +177,15 @@ public final class ProjectDetailViewModel {
         context.delete(todo)
         try? context.save()
         refresh()
+    }
+
+    /// W3：删除整个 Project。两端 ⋯ 菜单的「Delete project」确认后调用。
+    /// 沿用既有 `.nullify` deleteRule —— 删 Project 不级联删 todos/events，
+    /// 它们的 `.project` 被置 nil 变 standalone 仍存在（见 Project.swift）。
+    /// 调用方负责删除后从 NavigationStack pop 回 Company。
+    public func deleteProject() {
+        context.delete(project)
+        try? context.save()
     }
 
     // MARK: - Statics

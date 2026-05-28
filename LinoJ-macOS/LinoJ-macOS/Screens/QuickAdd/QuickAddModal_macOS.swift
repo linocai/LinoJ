@@ -33,6 +33,19 @@ struct QuickAddModal_macOS: View {
     /// 项目列表用 `@Query` 拉，给 Todo / Event 表单的 Project chip row 用。
     @Query(sort: \Project.createdAt, order: .forward) private var projects: [Project]
 
+    /// W1：选人器候选来源 —— 全部 Person，按 name 排序（与 projects 拉法同模式）。
+    /// VM 不持有 @Query（@Model 非 Sendable），由 View 拉快照传进 VM 的增删方法。
+    @Query(sort: \Person.name, order: .forward) private var allPeople: [Person]
+
+    /// W1：当前内联展开的选人器（nil 表示都收起）。同时只展开一个。
+    @State private var expandedPicker: PersonTargetUI?
+
+    /// W1：选人器顶部搜索/输入框内容（attendees 与 members 复用同一个 —— 同时只展开一个）。
+    @State private var peopleSearch: String = ""
+
+    /// W1：标识当前展开哪个选人器（与 VM 的 PersonTarget 区分；UI 层枚举）。
+    private enum PersonTargetUI { case attendee, member }
+
     /// I5：Settings VM 用于读 defaultTodoScope —— Quick Add Todo 表单的默认 scope。
     /// 与 SettingsView 各自 own 一个 VM，反正都从 .standard UserDefaults 读，值同步。
     @State private var settings = SettingsViewModel()
@@ -68,6 +81,9 @@ struct QuickAddModal_macOS: View {
             router.quickAddEditingProject = nil
             // S11：vm = nil 让下次打开 sheet 重建，避免上次输入污染。
             vm = nil
+            // W1：选人器展开态 + 搜索框随 sheet 关闭复位。
+            expandedPicker = nil
+            peopleSearch = ""
         }
     }
 
@@ -362,20 +378,15 @@ struct QuickAddModal_macOS: View {
                     )
             }
 
-            // Attendees：AvatarStack（已选）。
-            // 0.9.1 TestFlight：attendee 选择器仍是 stub（无真实选择能力），隐藏 "+ Add" 死按钮，
-            // 避免测试者点了没反应。提交 Event 仍正常（只是不带 attendees）。选择器后续版本接通后恢复按钮。
-            // eventAttendees 当前恒为空（无添加入口），故整节仅在非空时渲染。
-            if !vm.eventAttendees.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(LJStrings.quickAddLabelAttendees)
-                        .font(.system(size: 11, weight: .semibold))
-                        .kerning(0.66)
-                        .foregroundStyle(Color.lj.inkMute)
-
-                    AvatarStack(people: vm.eventAttendees, max: 5)
-                }
-            }
+            // Attendees：W1 始终渲染该节 —— 标题 + 已选 AvatarStack/空态提示 + 入口按钮 + 内联选人区。
+            peopleSection(
+                vm: vm,
+                target: .attendee,
+                sectionLabel: LJStrings.quickAddLabelAttendees,
+                addLabel: LJStrings.quickAddAttendeesAdd,
+                emptyLabel: LJStrings.quickAddAttendeesEmpty,
+                selected: vm.eventAttendees
+            )
 
             // Optional Link to project
             VStack(alignment: .leading, spacing: 6) {
@@ -487,19 +498,206 @@ struct QuickAddModal_macOS: View {
                     .foregroundStyle(Color.lj.inkMute)
             }
 
-            // Members：AvatarStack（已选）。
-            // 0.9.1 TestFlight：member picker 仍是 stub，隐藏 "+ Invite" 死按钮。提交 Project 仍正常
-            // （只是不带 members）。projectMembers 当前恒为空（无添加入口），故整节仅在非空时渲染。
-            if !vm.projectMembers.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(LJStrings.quickAddLabelMembers)
-                        .font(.system(size: 11, weight: .semibold))
-                        .kerning(0.66)
-                        .foregroundStyle(Color.lj.inkMute)
-                    AvatarStack(people: vm.projectMembers, max: 5)
+            // Members：W1 始终渲染该节 —— 标题 + 已选 AvatarStack/空态提示 + 入口按钮 + 内联选人区。
+            // V5 edit 模式 projectMembers 已预填既有成员，选人区支持在已选基础上增删。
+            peopleSection(
+                vm: vm,
+                target: .member,
+                sectionLabel: LJStrings.quickAddLabelMembers,
+                addLabel: LJStrings.quickAddMembersAdd,
+                emptyLabel: LJStrings.quickAddMembersEmpty,
+                selected: vm.projectMembers
+            )
+        }
+    }
+
+    // MARK: - People picker (W1)
+
+    /// W1：Attendees / Members 节统一布局 —— 标题 + 已选 AvatarStack（或空态提示）+ 入口按钮 +
+    /// 内联展开的可滚动 Person 列表（点入口按钮原地展开/收起，不另开二级 sheet）。
+    @ViewBuilder
+    private func peopleSection(
+        vm: QuickAddViewModel,
+        target: PersonTargetUI,
+        sectionLabel: LocalizedStringResource,
+        addLabel: LocalizedStringResource,
+        emptyLabel: LocalizedStringResource,
+        selected: [Person]
+    ) -> some View {
+        let isExpanded = (expandedPicker == target)
+
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: LJSpacing.s8) {
+                Text(sectionLabel)
+                    .font(.system(size: 11, weight: .semibold))
+                    .kerning(0.66)
+                    .foregroundStyle(Color.lj.inkMute)
+
+                Spacer(minLength: 0)
+
+                // 入口按钮：展开/收起内联选人区。
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        if isExpanded {
+                            expandedPicker = nil
+                        } else {
+                            expandedPicker = target
+                            peopleSearch = ""
+                        }
+                    }
+                } label: {
+                    Text(addLabel)
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(Color.lj.blueInk)
                 }
+                .buttonStyle(.plain)
+            }
+
+            // 已选展示 / 空态。
+            if selected.isEmpty {
+                Text(emptyLabel)
+                    .font(.system(size: 11.5, weight: .medium))
+                    .foregroundStyle(Color.lj.inkMute)
+            } else {
+                AvatarStack(people: selected, max: 5)
+            }
+
+            // 内联展开的选人区。
+            if isExpanded {
+                inlinePicker(vm: vm, target: target)
             }
         }
+    }
+
+    /// W1：内联选人区 —— 顶部输入框（搜索 / 新建）+ 限高可滚动 Person 列表 + 「新建」行。
+    @ViewBuilder
+    private func inlinePicker(vm: QuickAddViewModel, target: PersonTargetUI) -> some View {
+        let trimmed = peopleSearch.trimmingCharacters(in: .whitespacesAndNewlines)
+        let filtered: [Person] = trimmed.isEmpty
+            ? allPeople
+            : allPeople.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+        // 是否已存在同名（trim + 小写）—— 决定要不要显示「新建」行。
+        let exactExists = allPeople.contains {
+            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == trimmed.lowercased()
+        }
+
+        VStack(alignment: .leading, spacing: 6) {
+            // 顶部输入框。
+            TextField(text: $peopleSearch) {
+                Text(LJStrings.quickAddPeopleSearchPlaceholder)
+            }
+                .textFieldStyle(.plain)
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(Color.lj.ink)
+                .padding(.horizontal, LJSpacing.s8)
+                .padding(.vertical, 6)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(Color.lj.chip)
+                )
+
+            // 限高可滚动列表。
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    if filtered.isEmpty && (trimmed.isEmpty || exactExists) {
+                        Text(LJStrings.quickAddPeopleNoResults)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(Color.lj.inkMute)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, LJSpacing.s8)
+                    }
+                    ForEach(filtered) { person in
+                        personRow(vm: vm, target: target, person: person)
+                    }
+                    // 「+ 新建『<name>』」行：仅当有输入且无完全同名时显示。
+                    if !trimmed.isEmpty && !exactExists {
+                        createPersonRow(vm: vm, target: target, name: trimmed)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            .frame(maxHeight: 160)
+        }
+        .padding(LJSpacing.s8)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.lj.bgSoft)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(Color.lj.border, lineWidth: 0.5)
+        )
+    }
+
+    /// W1：选人列表单行 —— avatar + name + trailing checkmark（已选）。点击 toggle。
+    @ViewBuilder
+    private func personRow(vm: QuickAddViewModel, target: PersonTargetUI, person: Person) -> some View {
+        let isSelected = (target == .attendee)
+            ? vm.isAttendeeSelected(person)
+            : vm.isMemberSelected(person)
+
+        Button {
+            switch target {
+            case .attendee: vm.toggleAttendee(person)
+            case .member:   vm.toggleMember(person)
+            }
+        } label: {
+            HStack(spacing: LJSpacing.s8) {
+                Text(person.initial)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.lj.ink)
+                    .frame(width: 22, height: 22)
+                    .background { Circle().fill(Color.lj.chip) }
+                    .overlay { Circle().strokeBorder(Color.lj.border, lineWidth: 0.5) }
+
+                Text(person.name)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(Color.lj.ink)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Color.lj.blueInk)
+                }
+            }
+            .padding(.horizontal, LJSpacing.s8)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(isSelected ? Color.lj.chip : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// W1：「+ 新建『<name>』」行 —— 点击经 VM addPerson 复用/新建并选中，然后清空输入框。
+    @ViewBuilder
+    private func createPersonRow(vm: QuickAddViewModel, target: PersonTargetUI, name: String) -> some View {
+        Button {
+            let vmTarget: QuickAddViewModel.PersonTarget = (target == .attendee) ? .attendee : .member
+            _ = vm.addPerson(named: name, existing: allPeople, target: vmTarget)
+            peopleSearch = ""
+        } label: {
+            HStack(spacing: LJSpacing.s8) {
+                Image(systemName: "plus.circle")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.lj.blueInk)
+                // "Create『<name>』" —— name 由布局拼接，不进本地化 key。
+                Text("\(String(localized: LJStrings.quickAddPeopleCreateNew))『\(name)』")
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(Color.lj.blueInk)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, LJSpacing.s8)
+            .padding(.vertical, 5)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Chips

@@ -57,6 +57,15 @@ public final class MainViewModel {
     /// （与 P3.2 行为一致）。
     private let yesterdayMissedService: YesterdayMissedService?
 
+    /// W2：Settings 的 `showCompletedInCounts` 注入值（View 在构造 / onChange 时灌入）。
+    /// 为 true 时 `openCount` 改为「全部 todo（含 done）」计数；false 维持「仅未完成」。
+    /// 注入式而非读 UserDefaults，保持 VM 可测（与 `headsUpLeadMinutes` 注入同模式）。
+    public var includeCompletedInCounts: Bool = false
+
+    /// W2：Settings 的 `yesterdayMissedReminderEnabled` 注入值（View 灌入）。
+    /// 为 false 时 `yesterdayMissed` getter 短路返回 `[]`，从而「From yesterday」box 不渲染。
+    public var showYesterdayMissed: Bool = true
+
     // MARK: Init
 
     public init(
@@ -81,9 +90,14 @@ public final class MainViewModel {
 
     // MARK: - Derived data (computed)
 
-    /// 全部 open（done == false）todos 的实时计数。
+    /// open todos 的实时计数。
+    /// W2：`includeCompletedInCounts == true` 时改为「全部 todo（含 done）」计数；
+    /// false 时维持「仅未完成」（done == false）。
     public var openCount: Int {
         _ = tick
+        if includeCompletedInCounts {
+            return allTodos().count
+        }
         return openTodos().count
     }
 
@@ -159,6 +173,8 @@ public final class MainViewModel {
     /// seed 事件被识别。
     public var yesterdayMissed: [Event] {
         _ = tick
+        // W2：Settings 关掉「yesterday missed」提醒时短路返回空（box 自然不渲染）。
+        guard showYesterdayMissed else { return [] }
         if let service = yesterdayMissedService {
             // 显式传 LinoJTime.today()：DEBUG 下用 2026-05-27 让 seed 的 yesterday=05-26
             // 事件能被识别为「昨天」；Release 下与真实 now 等价。
@@ -224,6 +240,11 @@ public final class MainViewModel {
     private func openTodos() -> [Todo] {
         let descriptor = FetchDescriptor<Todo>(predicate: #Predicate<Todo> { $0.done == false })
         return (try? context.fetch(descriptor)) ?? []
+    }
+
+    /// 拉全部 todo（含已完成）。W2 的 `includeCompletedInCounts == true` 计数路径用。
+    private func allTodos() -> [Todo] {
+        (try? context.fetch(FetchDescriptor<Todo>())) ?? []
     }
 
     /// 拉全部事件。failure 静默退回空数组（UI 上表现为「没东西」，不崩）。

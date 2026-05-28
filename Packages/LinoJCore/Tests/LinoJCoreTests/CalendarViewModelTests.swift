@@ -159,6 +159,31 @@ struct CalendarViewModelTests {
         #expect(vm.yesterdayMissed.count == 1)
     }
 
+    // MARK: - W2: showYesterdayMissed gate
+
+    @Test("W2: showYesterdayMissed == false 时 yesterdayMissed 短路为空（fallback 路径）")
+    func yesterdayMissedGatedOffFallback() throws {
+        let (vm, _) = try makeSeededVM()
+        #expect(vm.showYesterdayMissed == true)
+        #expect(vm.yesterdayMissed.count == 2)
+        vm.showYesterdayMissed = false
+        #expect(vm.yesterdayMissed.isEmpty)
+        vm.showYesterdayMissed = true
+        #expect(vm.yesterdayMissed.count == 2)
+    }
+
+    @Test("W2: showYesterdayMissed gate 也短路 service-backed 路径")
+    func yesterdayMissedGatedOffWithService() throws {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        try SeedData.seedIfEmpty(context)
+        let service = YesterdayMissedService(context: context)
+        let vm = CalendarViewModel(context: context, yesterdayMissedService: service)
+        #expect(vm.yesterdayMissed.count == 2)
+        vm.showYesterdayMissed = false
+        #expect(vm.yesterdayMissed.isEmpty)
+    }
+
     // MARK: - weekTotal
 
     @Test("weekTotal == 16（窗口 May 27-Jun 2 含全部 16 个 seed 事件；y1/y2 yesterday 在窗口外）")
