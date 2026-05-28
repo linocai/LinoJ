@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LinoJ — macOS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+  #root { width: 100%; height: 100vh; }
+  @keyframes a-pulse {
+    0%, 100% { opacity: 0.9; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script src="data.js"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="direction-a.jsx"></script>
+<script type="text/babel" src="direction-a-detail.jsx"></script>
+<script type="text/babel" src="ios-main.jsx"></script>
+<script type="text/babel" src="ios-detail.jsx"></script>
+<script type="text/babel" src="macos-overlays.jsx"></script>
+<script type="text/babel" src="ios-overlays.jsx"></script>
+<script type="text/babel" src="macos-project-detail.jsx"></script>
+<script type="text/babel" src="ios-project-detail.jsx"></script>
+<script type="text/babel" src="macos-settings.jsx"></script>
+<script type="text/babel" src="ios-settings.jsx"></script>
+<script type="text/babel" src="empty-states.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+function App() {
+  return (
+    <DesignCanvas
+      title="LinoJ"
+      subtitle="Todos are the hero. Time only lives in Calendar — except for a soft heads-up when an event is imminent today. Two platforms, one mental model."
+    >
+      <DCSection
+        id="app"
+        title="macOS screens"
+        subtitle="Main · Personal · Company · Calendar — same window, four tabs."
+      >
+        <DCArtboard id="main-light" label="Main · light" width={1440} height={900}>
+          <AWindow mode="light" active="main">
+            <AMainView mode="light"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="main-dark" label="Main · dark" width={1440} height={900}>
+          <AWindow mode="dark" active="main">
+            <AMainView mode="dark"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="personal" label="Personal" width={1440} height={900}>
+          <AWindow mode="light" active="personal">
+            <APersonalView mode="light"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="company" label="Company" width={1440} height={900}>
+          <AWindow mode="light" active="company">
+            <ACompanyView mode="light"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="calendar" label="Calendar" width={1440} height={900}>
+          <AWindow mode="light" active="calendar">
+            <ACalendarView mode="light"/>
+          </AWindow>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="ios"
+        title="iOS screens"
+        subtitle="Same data, same logic — iPhone form factor with bottom tab bar."
+      >
+        <DCArtboard id="ios-main-light" label="Main · light" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosMainView mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-main-dark" label="Main · dark" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874} dark>
+              <IosMainView mode="dark"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-personal" label="Personal" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosPersonalView mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-company" label="Company" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosCompanyView mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-calendar" label="Calendar" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosCalendarView mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="overlays"
+        title="New · Search — landing states"
+        subtitle="What you see when you hit + or ⌘K / 🔍 on either platform."
+      >
+        <DCArtboard id="mac-new-project" label="macOS · New · Project" width={1440} height={900}>
+          <div style={{ position: 'relative' }}>
+            <AWindow mode="light" active="company">
+              <ACompanyView mode="light"/>
+            </AWindow>
+            <ANewModal mode="light" kind="project"/>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="mac-new-todo" label="macOS · New · Todo" width={1440} height={900}>
+          <div style={{ position: 'relative' }}>
+            <AWindow mode="light" active="main">
+              <AMainView mode="light"/>
+            </AWindow>
+            <ANewModal mode="light" kind="todo"/>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="mac-search" label="macOS · Search (⌘K)" width={1440} height={900}>
+          <div style={{ position: 'relative' }}>
+            <AWindow mode="light" active="main">
+              <AMainView mode="light"/>
+            </AWindow>
+            <ASearchPalette mode="light"/>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-new-sheet" label="iOS · New · Project" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosMainView mode="light"/>
+              <IosNewSheet mode="light" kind="project"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-new-todo" label="iOS · New · Todo" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosMainView mode="light"/>
+              <IosNewSheet mode="light" kind="todo"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-search" label="iOS · Search" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosMainView mode="light"/>
+              <IosSearchScreen mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="project-detail"
+        title="Project detail"
+        subtitle="What you see when you tap into a project. Everything about one bucket of work, in one screen."
+      >
+        <DCArtboard id="mac-project" label="macOS · LinoJ for macOS v1" width={1440} height={900}>
+          <AWindow mode="light" active="company">
+            <AProjectDetailView projectId="linoj" mode="light"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="mac-project-dark" label="macOS · dark" width={1440} height={900}>
+          <AWindow mode="dark" active="company">
+            <AProjectDetailView projectId="linoj" mode="dark"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="ios-project" label="iOS · LinoJ for macOS v1" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosProjectDetailView projectId="linoj" mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="settings"
+        title="Settings"
+        subtitle="Generic preferences. Appearance is locked to System on both platforms."
+      >
+        <DCArtboard id="mac-settings-general" label="macOS · General" width={1440} height={900}>
+          <div style={{ position: 'relative' }}>
+            <AWindow mode="light" active="main">
+              <AMainView mode="light"/>
+            </AWindow>
+            <ASettingsView mode="light" section="general"/>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="mac-settings-notifications" label="macOS · Notifications" width={1440} height={900}>
+          <div style={{ position: 'relative' }}>
+            <AWindow mode="light" active="main">
+              <AMainView mode="light"/>
+            </AWindow>
+            <ASettingsView mode="light" section="notifications"/>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="mac-settings-shortcuts" label="macOS · Shortcuts" width={1440} height={900}>
+          <div style={{ position: 'relative' }}>
+            <AWindow mode="light" active="main">
+              <AMainView mode="light"/>
+            </AWindow>
+            <ASettingsView mode="light" section="shortcuts"/>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-settings" label="iOS · Settings" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosSettingsView mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection
+        id="empty"
+        title="Empty states"
+        subtitle="First run, inbox zero, a quiet week, no search results — the negative spaces."
+      >
+        <DCArtboard id="mac-empty-main" label="macOS · Main · Inbox zero" width={1440} height={900}>
+          <AWindow mode="light" active="main">
+            <AMainViewEmpty mode="light"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="mac-empty-personal" label="macOS · Personal · no urgent" width={1440} height={900}>
+          <AWindow mode="light" active="personal">
+            <APersonalViewEmpty mode="light"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="mac-empty-calendar" label="macOS · Calendar · clear week" width={1440} height={900}>
+          <AWindow mode="light" active="calendar">
+            <ACalendarViewEmpty mode="light"/>
+          </AWindow>
+        </DCArtboard>
+        <DCArtboard id="mac-empty-search" label="macOS · Search · no results" width={1440} height={900}>
+          <div style={{ position: 'relative' }}>
+            <AWindow mode="light" active="main">
+              <AMainView mode="light"/>
+            </AWindow>
+            <ASearchPaletteEmpty mode="light"/>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-empty-main" label="iOS · Main · caught up" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosMainViewEmpty mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-empty-calendar" label="iOS · Calendar · clear week" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosCalendarViewEmpty mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+        <DCArtboard id="ios-empty-search" label="iOS · Search · no results" width={440} height={920}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
+            <IOSDevice width={402} height={874}>
+              <IosMainView mode="light"/>
+              <IosSearchScreenEmpty mode="light"/>
+            </IOSDevice>
+          </div>
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

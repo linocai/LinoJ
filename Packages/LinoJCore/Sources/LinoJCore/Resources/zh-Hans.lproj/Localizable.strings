@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>A11y.quickAdd</key>
+	<string>快速添加</string>
+	<key>A11y.search</key>
+	<string>搜索</string>
+	<key>A11y.settings</key>
+	<string>设置</string>
+	<key>About.acknowledgements</key>
+	<string>致谢</string>
+	<key>About.acknowledgements.hint</key>
+	<string>贡献者与开源项目。</string>
+	<key>About.appName</key>
+	<string>LinoJ</string>
+	<key>About.feedback</key>
+	<string>发送反馈</string>
+	<key>About.privacy</key>
+	<string>隐私政策</string>
+	<key>About.privacy.hint</key>
+	<string>LinoJ 如何处理你的数据。</string>
+	<key>About.releaseNotes</key>
+	<string>更新说明</string>
+	<key>About.releaseNotes.hint</key>
+	<string>查看更新内容。</string>
+	<key>About.tagline</key>
+	<string>从容规划 · 各归其位。</string>
+	<key>About.version</key>
+	<string>版本</string>
+	<key>Accessibility.completedSuffix</key>
+	<string>已完成</string>
+	<key>Accessibility.openSuffix</key>
+	<string>未完成</string>
+	<key>Calendar.jumpToday</key>
+	<string>跳到今天</string>
+	<key>Calendar.newEvent</key>
+	<string>+ 新建事件</string>
+	<key>Calendar.newEventAcc</key>
+	<string>新建事件</string>
+	<key>Calendar.nextWeek</key>
+	<string>下一周</string>
+	<key>Calendar.previousWeek</key>
+	<string>上一周</string>
+	<key>Calendar.tapToConfirm</key>
+	<string>点按以确认</string>
+	<key>Calendar.today</key>
+	<string>今天</string>
+	<key>Common.done</key>
+	<string>完成</string>
+	<key>Counts.eventCount.one</key>
+	<string>1 场事件</string>
+	<key>Counts.eventsCount</key>
+	<string>%d 场事件</string>
+	<key>Counts.eventsNext7Days</key>
+	<string>未来 7 天 %d 场事件</string>
+	<key>Counts.eventsThisWeek</key>
+	<string>本周 %d 场事件</string>
+	<key>Counts.member.one</key>
+	<string>1 位成员</string>
+	<key>Counts.members</key>
+	<string>%d 位成员</string>
+	<key>Counts.moreEvents</key>
+	<string>+%d 项</string>
+	<key>Counts.openDone</key>
+	<string>%1$d 项待办 · %2$d 项已完成</string>
+	<key>Counts.openTodos</key>
+	<string>%1$d 项待办 · %2$d 项已完成</string>
+	<key>Counts.openUrgent</key>
+	<string>%1$d 项待办 · %2$d 项紧急</string>
+	<key>Counts.openUrgentEvents</key>
+	<string>%1$d 项待办 · %2$d 项紧急 · 今日 %3$d 场事件</string>
+	<key>Counts.projectsActive</key>
+	<string>工作 tab · %d 个进行中</string>
+	<key>Counts.resultIn</key>
+	<string>%1$d 项结果 · %2$d 毫秒</string>
+	<key>Counts.resultsIn</key>
+	<string>%1$d 项结果 · %2$d 毫秒</string>
+	<key>Counts.todosProjects</key>
+	<string>%1$d 项待办 · %2$d 个项目</string>
+	<key>Day.today</key>
+	<string>今天</string>
+	<key>Day.todayUpper</key>
+	<string>今天</string>
+	<key>Day.tomorrow</key>
+	<string>明天</string>
+	<key>Done.suffix</key>
+	<string>· 已完成</string>
+	<key>Empty.clearWeek.cta</key>
+	<string>+ 新建事件</string>
+	<key>Empty.clearWeek.subtitle</key>
+	<string>没有会议、没有预约。当事情需要时间、地点和人时，再排个事件。</string>
+	<key>Empty.clearWeek.title</key>
+	<string>一周清净。</string>
+	<key>Empty.completedUntilCrossOff</key>
+	<string>划掉一项后这里就会显示。</string>
+	<key>Empty.inboxZero.cta</key>
+	<string>+ 新建待办</string>
+	<key>Empty.inboxZero.subtitle</key>
+	<string>没有紧急或常规的待办。新建一项 —— 或者放松一下。</string>
+	<key>Empty.inboxZero.title</key>
+	<string>全部清空。</string>
+	<key>Empty.noResults.subtitle</key>
+	<string>试试更短的关键词，或浏览 个人 / 工作 / 日历。</string>
+	<key>Empty.noResults.title</key>
+	<string>没有匹配 "%@"</string>
+	<key>Empty.nothingFinishedYet</key>
+	<string>尚未完成任何项。划掉一项后这里就会显示。</string>
+	<key>Empty.nothingHere</key>
+	<string>暂无内容。</string>
+	<key>Empty.nothingInNormal</key>
+	<string>常规列暂无内容。</string>
+	<key>Empty.nothingOnBooks</key>
+	<string>今日无事</string>
+	<key>Empty.nothingOnBooksDot</key>
+	<string>今日无事。</string>
+	<key>Empty.nothingUrgentNice</key>
+	<string>没有紧急 · 干得好。</string>
+	<key>Empty.urgentEmpty.subtitle</key>
+	<string>干得好。</string>
+	<key>Empty.urgentEmpty.title</key>
+	<string>没有紧急。</string>
+	<key>Filter.allWork</key>
+	<string>全部工作</string>
+	<key>Filter.standalone</key>
+	<string>独立项</string>
+	<key>HeadsUp.inMinutes</key>
+	<string>%d 分钟后</string>
+	<key>HeadsUp.open</key>
+	<string>打开</string>
+	<key>HeadsUp.snooze</key>
+	<string>稍后提醒</string>
+	<key>HeadsUp.title</key>
+	<string>即将开始</string>
+	<key>Main.title</key>
+	<string>待办</string>
+	<key>Menu.navigate</key>
+	<string>导航</string>
+	<key>Project.addTodo</key>
+	<string>+ 添加</string>
+	<key>Project.allBuckets</key>
+	<string>你的全部工作项目</string>
+	<key>Project.backToCompany</key>
+	<string>返回 工作</string>
+	<key>Project.editProject</key>
+	<string>编辑项目</string>
+	<key>Project.more</key>
+	<string>更多</string>
+	<key>Project.notFound</key>
+	<string>未找到该项目</string>
+	<key>ProjectCard.eventsSuffix</key>
+	<string>%d 场事件</string>
+	<key>ProjectCard.todosSuffix</key>
+	<string>%d 待办</string>
+	<key>ProjectCard.urgentSuffix</key>
+	<string>%d 紧急</string>
+	<key>QuickAdd.cancel</key>
+	<string>取消</string>
+	<key>QuickAdd.cancelHint</key>
+	<string>取消</string>
+	<key>QuickAdd.chip.add</key>
+	<string>+ 添加</string>
+	<key>QuickAdd.chip.invite</key>
+	<string>+ 邀请</string>
+	<key>QuickAdd.chip.none</key>
+	<string>无</string>
+	<key>QuickAdd.create</key>
+	<string>创建</string>
+	<key>QuickAdd.createEvent</key>
+	<string>创建事件</string>
+	<key>QuickAdd.createHint</key>
+	<string>创建</string>
+	<key>QuickAdd.createProject</key>
+	<string>创建项目</string>
+	<key>QuickAdd.createTodo</key>
+	<string>创建待办</string>
+	<key>QuickAdd.editProjectTitle</key>
+	<string>编辑项目</string>
+	<key>QuickAdd.event.date</key>
+	<string>日期</string>
+	<key>QuickAdd.event.dateRow</key>
+	<string>日期</string>
+	<key>QuickAdd.event.end</key>
+	<string>结束</string>
+	<key>QuickAdd.event.endsRow</key>
+	<string>结束</string>
+	<key>QuickAdd.event.placeholder</key>
+	<string>事件名称</string>
+	<key>QuickAdd.event.start</key>
+	<string>开始</string>
+	<key>QuickAdd.event.startsRow</key>
+	<string>开始</string>
+	<key>QuickAdd.kind.event</key>
+	<string>事件</string>
+	<key>QuickAdd.kind.project</key>
+	<string>项目</string>
+	<key>QuickAdd.kind.todo</key>
+	<string>待办</string>
+	<key>QuickAdd.label.attendees</key>
+	<string>参与者</string>
+	<key>QuickAdd.label.description</key>
+	<string>描述</string>
+	<key>QuickAdd.label.linkProject</key>
+	<string>关联项目</string>
+	<key>QuickAdd.label.location</key>
+	<string>地点</string>
+	<key>QuickAdd.label.members</key>
+	<string>成员</string>
+	<key>QuickAdd.label.project</key>
+	<string>项目</string>
+	<key>QuickAdd.label.scope</key>
+	<string>归属</string>
+	<key>QuickAdd.label.tag</key>
+	<string>标签</string>
+	<key>QuickAdd.label.urgency</key>
+	<string>紧急度</string>
+	<key>QuickAdd.location.placeholder</key>
+	<string>会议室 A / Zoom / ...</string>
+	<key>QuickAdd.new</key>
+	<string>新建</string>
+	<key>QuickAdd.optional</key>
+	<string>· 可选</string>
+	<key>QuickAdd.project.placeholder</key>
+	<string>项目名称</string>
+	<key>QuickAdd.save</key>
+	<string>保存</string>
+	<key>QuickAdd.tag.hint</key>
+	<string>自由格式状态标签</string>
+	<key>QuickAdd.tag.hintShort</key>
+	<string>自由格式状态</string>
+	<key>QuickAdd.tag.placeholder</key>
+	<string>六月发布 / 评审中 / ...</string>
+	<key>QuickAdd.todo.placeholder</key>
+	<string>要做什么？</string>
+	<key>Scope.company</key>
+	<string>工作</string>
+	<key>Scope.personal</key>
+	<string>个人</string>
+	<key>Search.clear</key>
+	<string>清除</string>
+	<key>Search.navigate</key>
+	<string>导航</string>
+	<key>Search.noMatchesShort</key>
+	<string>没有匹配 "%@"</string>
+	<key>Search.open</key>
+	<string>打开</string>
+	<key>Search.placeholder</key>
+	<string>搜索待办、事件、项目…</string>
+	<key>Search.scope.all</key>
+	<string>全部</string>
+	<key>Search.scope.events</key>
+	<string>事件</string>
+	<key>Search.scope.projects</key>
+	<string>项目</string>
+	<key>Search.scope.todos</key>
+	<string>待办</string>
+	<key>Search.verb.open</key>
+	<string>打开</string>
+	<key>Search.verb.run</key>
+	<string>执行</string>
+	<key>Section.completed</key>
+	<string>已完成 (%d)</string>
+	<key>Section.fromYesterday</key>
+	<string>昨日未确认</string>
+	<key>Section.linkedEvents</key>
+	<string>关联事件</string>
+	<key>Section.next7Days</key>
+	<string>未来 7 天</string>
+	<key>Section.normal</key>
+	<string>常规</string>
+	<key>Section.notes</key>
+	<string>笔记</string>
+	<key>Section.projects</key>
+	<string>项目</string>
+	<key>Section.todos</key>
+	<string>待办</string>
+	<key>Section.upcomingToday</key>
+	<string>今日即将开始</string>
+	<key>Section.urgent</key>
+	<string>紧急</string>
+	<key>Settings.account</key>
+	<string>账户</string>
+	<key>Settings.account.notSignedIn</key>
+	<string>未登录</string>
+	<key>Settings.account.signedOutHint</key>
+	<string>登录以显示你的身份</string>
+	<key>Settings.appearance</key>
+	<string>外观</string>
+	<key>Settings.appearance.hint</key>
+	<string>跟随系统外观。在 macOS 设置中切换。</string>
+	<key>Settings.appearance.hintIOS</key>
+	<string>跟随 iPhone 显示设置。</string>
+	<key>Settings.appearance.locked</key>
+	<string>锁定</string>
+	<key>Settings.appearance.value</key>
+	<string>跟随系统</string>
+	<key>Settings.appleAccount</key>
+	<string>Apple 账户</string>
+	<key>Settings.appleCalendar</key>
+	<string>同步到 Apple 日历</string>
+	<key>Settings.appleCalendar.hint</key>
+	<string>将 LinoJ 事件镜像为日历 App 中的独立日历。</string>
+	<key>Settings.appleCalendarShort</key>
+	<string>Apple 日历</string>
+	<key>Settings.appleCalendarShort.hint</key>
+	<string>将 LinoJ 事件镜像到日历 App。</string>
+	<key>Settings.appleReminders</key>
+	<string>同步到 Apple 提醒事项</string>
+	<key>Settings.appleReminders.hint</key>
+	<string>将待办镜像为提醒事项 App 中的独立列表。</string>
+	<key>Settings.appleRemindersShort</key>
+	<string>Apple 提醒事项</string>
+	<key>Settings.appleRemindersShort.hint</key>
+	<string>将待办镜像到提醒事项 App。</string>
+	<key>Settings.dailySummary</key>
+	<string>每日摘要</string>
+	<key>Settings.dailySummary.hint</key>
+	<string>每天早上快速查看今日内容。</string>
+	<key>Settings.defaultScope</key>
+	<string>新待办的默认归属</string>
+	<key>Settings.defaultScope.hint</key>
+	<string>个人或工作 —— 每条待办可单独修改。</string>
+	<key>Settings.defaultTab</key>
+	<string>启动时默认标签</string>
+	<key>Settings.defaultTab.hint</key>
+	<string>启动 LinoJ 时打开哪个标签页。</string>
+	<key>Settings.eventKitLaterHint</key>
+	<string>(后续版本)</string>
+	<key>Settings.general.hint</key>
+	<string>基础设置。</string>
+	<key>Settings.headsUp</key>
+	<string>每个事件的提前提醒</string>
+	<key>Settings.headsUp.hint</key>
+	<string>在事件开始前此时长，主页顶部会出现温和提示。</string>
+	<key>Settings.headsUpShort</key>
+	<string>事件前提醒</string>
+	<key>Settings.iCloudSync</key>
+	<string>iCloud 同步</string>
+	<key>Settings.iCloudSync.hint</key>
+	<string>若你同时在 iPhone 使用 LinoJ 需开启。</string>
+	<key>Settings.iCloudSync.hintShort</key>
+	<string>在 iPhone 与 Mac 间同步需开启。</string>
+	<key>Settings.icloudRestartHint</key>
+	<string>重启后生效</string>
+	<key>Settings.lastSyncedPlaceholder</key>
+	<string>刚刚已同步 · 占位</string>
+	<key>Settings.notifications.hint</key>
+	<string>事件提前提醒。待办永远不会按时间打扰你。</string>
+	<key>Settings.quietHours</key>
+	<string>免打扰时段</string>
+	<key>Settings.quietHours.hint</key>
+	<string>在此时段不弹出提醒。</string>
+	<key>Settings.section.about</key>
+	<string>关于</string>
+	<key>Settings.section.account</key>
+	<string>账户</string>
+	<key>Settings.section.general</key>
+	<string>通用</string>
+	<key>Settings.section.notifications</key>
+	<string>通知</string>
+	<key>Settings.section.shortcuts</key>
+	<string>快捷键</string>
+	<key>Settings.section.sync</key>
+	<string>同步</string>
+	<key>Settings.section.syncOtherApps</key>
+	<string>同步到其它应用</string>
+	<key>Settings.shortcuts.create</key>
+	<string>创建</string>
+	<key>Settings.shortcuts.hint</key>
+	<string>速查表。下个版本将可自定义。</string>
+	<key>Settings.shortcuts.navigation</key>
+	<string>导航</string>
+	<key>Settings.shortcuts.onTodo</key>
+	<string>对待办</string>
+	<key>Settings.showCompleted</key>
+	<string>已完成项计入总数</string>
+	<key>Settings.showCompleted.hint</key>
+	<string>已完成项是否仍计入待办总数。</string>
+	<key>Settings.signInWithApple</key>
+	<string>通过 Apple 登录</string>
+	<key>Settings.signOut</key>
+	<string>退出登录</string>
+	<key>Settings.startWeek</key>
+	<string>一周开始于</string>
+	<key>Settings.startWeek.hint</key>
+	<string>日历周视图的起始日。</string>
+	<key>Settings.sync.hint</key>
+	<string>在你的设备间保持 LinoJ 同步。</string>
+	<key>Settings.syncLocalOnly</key>
+	<string>仅本地</string>
+	<key>Settings.syncPaused</key>
+	<string>同步已暂停</string>
+	<key>Settings.syncedJustNow</key>
+	<string>刚刚已同步</string>
+	<key>Settings.syncing</key>
+	<string>正在同步…</string>
+	<key>Settings.systemBanner</key>
+	<string>也发送系统通知</string>
+	<key>Settings.systemBanner.hint</key>
+	<string>除应用内提示外，同时发送到 macOS 通知中心。</string>
+	<key>Settings.systemBannerShort</key>
+	<string>同时发系统通知</string>
+	<key>Settings.title</key>
+	<string>设置</string>
+	<key>Settings.v1OnlyHint</key>
+	<string>（后续版本）</string>
+	<key>Settings.yesterdayMissed</key>
+	<string>昨日漏掉的事件</string>
+	<key>Settings.yesterdayMissed.hint</key>
+	<string>在主页显示小卡片“昨日未确认”以确认出席。</string>
+	<key>Shortcut.delete</key>
+	<string>删除</string>
+	<key>Shortcut.newDefault</key>
+	<string>新建（默认为待办）</string>
+	<key>Shortcut.newEvent</key>
+	<string>新建事件</string>
+	<key>Shortcut.newProject</key>
+	<string>新建项目</string>
+	<key>Shortcut.newTodo</key>
+	<string>新建待办</string>
+	<key>Shortcut.openSearch</key>
+	<string>打开搜索 / 跳转</string>
+	<key>Shortcut.openSettings</key>
+	<string>打开设置</string>
+	<key>Shortcut.toggleDone</key>
+	<string>切换完成</string>
+	<key>Shortcut.toggleUrgent</key>
+	<string>切换紧急 / 常规</string>
+	<key>Stat.created</key>
+	<string>创建于</string>
+	<key>Stat.done</key>
+	<string>已完成</string>
+	<key>Stat.events</key>
+	<string>事件</string>
+	<key>Stat.linkedEvents</key>
+	<string>关联事件</string>
+	<key>Stat.open</key>
+	<string>待办</string>
+	<key>Stat.openTodos</key>
+	<string>待办</string>
+	<key>Stat.urgent</key>
+	<string>紧急</string>
+	<key>Tab.calendar</key>
+	<string>日历</string>
+	<key>Tab.company</key>
+	<string>工作</string>
+	<key>Tab.main</key>
+	<string>主页</string>
+	<key>Tab.personal</key>
+	<string>个人</string>
+	<key>Toolbar.new</key>
+	<string>新建</string>
+	<key>Toolbar.searchOrJump</key>
+	<string>搜索或跳转</string>
+	<key>Urgency.normal</key>
+	<string>常规</string>
+	<key>Urgency.urgent</key>
+	<string>紧急</string>
+	<key>Weekday.monday</key>
+	<string>星期一</string>
+	<key>Weekday.sunday</key>
+	<string>星期日</string>
+</dict>
+</plist>

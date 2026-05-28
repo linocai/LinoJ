@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	V2：开启 Remote notifications 后台模式，让 CloudKit 下发的 content-available
+	静默推送能在后台唤醒 App，触发 SwiftData（NSPersistentCloudKitContainer）拉取变更。
+	该 key 是数组，INFOPLIST_KEY_UIBackgroundModes build setting 在 Xcode 26 的
+	GENERATE_INFOPLIST_FILE 机制下不映射到此数组 key（实测生成的 Info.plist 不含此项），
+	故改用本显式 Info.plist 作为「附加 Info.plist 内容」基底：工程仍 GENERATE_INFOPLIST_FILE=YES，
+	生成的标准 key（CFBundle*/UILaunchScreen 等）合并叠加在本文件之上。本文件只放 UIBackgroundModes。
+	放在 SRCROOT 根目录（与 .xcodeproj 同级、在 PBXFileSystemSynchronizedRootGroup 同步文件夹之外），
+	避免被同步文件夹自动加入 Copy Bundle Resources 造成 Info.plist duplicate-output 错误。
+	-->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<!--
+	0.9.1：声明 App 只用标准/豁免加密（HTTPS / CloudKit 标准传输加密），
+	无自研或非豁免加密算法，避免每次 TestFlight 上传弹出出口合规问卷。
+	-->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+</dict>
+</plist>

@@ -1,0 +1,464 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>A11y.quickAdd</key>
+	<string>Quick add</string>
+	<key>A11y.search</key>
+	<string>Search</string>
+	<key>A11y.settings</key>
+	<string>Settings</string>
+	<key>About.acknowledgements</key>
+	<string>Acknowledgements</string>
+	<key>About.acknowledgements.hint</key>
+	<string>People and open-source projects.</string>
+	<key>About.appName</key>
+	<string>LinoJ</string>
+	<key>About.feedback</key>
+	<string>Send feedback</string>
+	<key>About.privacy</key>
+	<string>Privacy policy</string>
+	<key>About.privacy.hint</key>
+	<string>How LinoJ handles your data.</string>
+	<key>About.releaseNotes</key>
+	<string>Release notes</string>
+	<key>About.releaseNotes.hint</key>
+	<string>See what changed.</string>
+	<key>About.tagline</key>
+	<string>Calm planning, separated.</string>
+	<key>About.version</key>
+	<string>Version</string>
+	<key>Accessibility.completedSuffix</key>
+	<string>Completed</string>
+	<key>Accessibility.openSuffix</key>
+	<string>Open</string>
+	<key>Calendar.jumpToday</key>
+	<string>Jump to today</string>
+	<key>Calendar.newEvent</key>
+	<string>+ New event</string>
+	<key>Calendar.newEventAcc</key>
+	<string>New event</string>
+	<key>Calendar.nextWeek</key>
+	<string>Next week</string>
+	<key>Calendar.previousWeek</key>
+	<string>Previous week</string>
+	<key>Calendar.tapToConfirm</key>
+	<string>tap to confirm</string>
+	<key>Calendar.today</key>
+	<string>TODAY</string>
+	<key>Common.done</key>
+	<string>Done</string>
+	<key>Counts.eventCount.one</key>
+	<string>1 event</string>
+	<key>Counts.eventsCount</key>
+	<string>%d events</string>
+	<key>Counts.eventsNext7Days</key>
+	<string>%d events · next 7 days</string>
+	<key>Counts.eventsThisWeek</key>
+	<string>%d events this week</string>
+	<key>Counts.member.one</key>
+	<string>1 member</string>
+	<key>Counts.members</key>
+	<string>%d members</string>
+	<key>Counts.moreEvents</key>
+	<string>+%d more</string>
+	<key>Counts.openDone</key>
+	<string>%1$d open · %2$d done</string>
+	<key>Counts.openTodos</key>
+	<string>%1$d open · %2$d done</string>
+	<key>Counts.openUrgent</key>
+	<string>%1$d open · %2$d urgent</string>
+	<key>Counts.openUrgentEvents</key>
+	<string>%1$d open · %2$d urgent · %3$d events today</string>
+	<key>Counts.projectsActive</key>
+	<string>live in Company · %d active</string>
+	<key>Counts.resultIn</key>
+	<string>%1$d result in %2$d ms</string>
+	<key>Counts.resultsIn</key>
+	<string>%1$d results in %2$d ms</string>
+	<key>Counts.todosProjects</key>
+	<string>%1$d todos · %2$d projects</string>
+	<key>Day.today</key>
+	<string>Today</string>
+	<key>Day.todayUpper</key>
+	<string>TODAY</string>
+	<key>Day.tomorrow</key>
+	<string>Tomorrow</string>
+	<key>Done.suffix</key>
+	<string>· done</string>
+	<key>Empty.clearWeek.cta</key>
+	<string>+ New event</string>
+	<key>Empty.clearWeek.subtitle</key>
+	<string>No meetings, no appointments. Block an event when something needs a time, place, and people.</string>
+	<key>Empty.clearWeek.title</key>
+	<string>A clear week.</string>
+	<key>Empty.completedUntilCrossOff</key>
+	<string>Empty until you cross something off.</string>
+	<key>Empty.inboxZero.cta</key>
+	<string>+ New todo</string>
+	<key>Empty.inboxZero.subtitle</key>
+	<string>No urgent or normal todos right now. Capture something new — or take a break.</string>
+	<key>Empty.inboxZero.title</key>
+	<string>Inbox zero.</string>
+	<key>Empty.noResults.subtitle</key>
+	<string>Try a shorter phrase, or browse Personal / Company / Calendar.</string>
+	<key>Empty.noResults.title</key>
+	<string>No matches for "%@"</string>
+	<key>Empty.nothingFinishedYet</key>
+	<string>Nothing finished yet. Empty until you cross something off.</string>
+	<key>Empty.nothingHere</key>
+	<string>Nothing here.</string>
+	<key>Empty.nothingInNormal</key>
+	<string>Nothing in normal.</string>
+	<key>Empty.nothingOnBooks</key>
+	<string>Nothing on the books</string>
+	<key>Empty.nothingOnBooksDot</key>
+	<string>Nothing on the books.</string>
+	<key>Empty.nothingUrgentNice</key>
+	<string>Nothing urgent. Nice.</string>
+	<key>Empty.urgentEmpty.subtitle</key>
+	<string>Nice.</string>
+	<key>Empty.urgentEmpty.title</key>
+	<string>Nothing urgent.</string>
+	<key>Filter.allWork</key>
+	<string>All work</string>
+	<key>Filter.standalone</key>
+	<string>Standalone</string>
+	<key>HeadsUp.inMinutes</key>
+	<string>in %d min</string>
+	<key>HeadsUp.open</key>
+	<string>Open</string>
+	<key>HeadsUp.snooze</key>
+	<string>Snooze</string>
+	<key>HeadsUp.title</key>
+	<string>Heads up</string>
+	<key>Main.title</key>
+	<string>To do</string>
+	<key>Menu.navigate</key>
+	<string>Navigate</string>
+	<key>Project.addTodo</key>
+	<string>+ Add</string>
+	<key>Project.allBuckets</key>
+	<string>all your buckets of work</string>
+	<key>Project.backToCompany</key>
+	<string>Back to Company</string>
+	<key>Project.editProject</key>
+	<string>Edit project</string>
+	<key>Project.more</key>
+	<string>More</string>
+	<key>Project.notFound</key>
+	<string>Project not found</string>
+	<key>ProjectCard.eventsSuffix</key>
+	<string>%d events</string>
+	<key>ProjectCard.todosSuffix</key>
+	<string>%d todos</string>
+	<key>ProjectCard.urgentSuffix</key>
+	<string>%d urgent</string>
+	<key>QuickAdd.cancel</key>
+	<string>Cancel</string>
+	<key>QuickAdd.cancelHint</key>
+	<string>cancel</string>
+	<key>QuickAdd.chip.add</key>
+	<string>+ Add</string>
+	<key>QuickAdd.chip.invite</key>
+	<string>+ Invite</string>
+	<key>QuickAdd.chip.none</key>
+	<string>None</string>
+	<key>QuickAdd.create</key>
+	<string>Create</string>
+	<key>QuickAdd.createEvent</key>
+	<string>Create event</string>
+	<key>QuickAdd.createHint</key>
+	<string>create</string>
+	<key>QuickAdd.createProject</key>
+	<string>Create project</string>
+	<key>QuickAdd.createTodo</key>
+	<string>Create todo</string>
+	<key>QuickAdd.editProjectTitle</key>
+	<string>Edit project</string>
+	<key>QuickAdd.event.date</key>
+	<string>DATE</string>
+	<key>QuickAdd.event.dateRow</key>
+	<string>Date</string>
+	<key>QuickAdd.event.end</key>
+	<string>END</string>
+	<key>QuickAdd.event.endsRow</key>
+	<string>Ends</string>
+	<key>QuickAdd.event.placeholder</key>
+	<string>Event name</string>
+	<key>QuickAdd.event.start</key>
+	<string>START</string>
+	<key>QuickAdd.event.startsRow</key>
+	<string>Starts</string>
+	<key>QuickAdd.kind.event</key>
+	<string>Event</string>
+	<key>QuickAdd.kind.project</key>
+	<string>Project</string>
+	<key>QuickAdd.kind.todo</key>
+	<string>Todo</string>
+	<key>QuickAdd.label.attendees</key>
+	<string>ATTENDEES</string>
+	<key>QuickAdd.label.description</key>
+	<string>DESCRIPTION</string>
+	<key>QuickAdd.label.linkProject</key>
+	<string>LINK TO PROJECT</string>
+	<key>QuickAdd.label.location</key>
+	<string>LOCATION</string>
+	<key>QuickAdd.label.members</key>
+	<string>MEMBERS</string>
+	<key>QuickAdd.label.project</key>
+	<string>PROJECT</string>
+	<key>QuickAdd.label.scope</key>
+	<string>SCOPE</string>
+	<key>QuickAdd.label.tag</key>
+	<string>TAG</string>
+	<key>QuickAdd.label.urgency</key>
+	<string>URGENCY</string>
+	<key>QuickAdd.location.placeholder</key>
+	<string>Conf Rm A / Zoom / ...</string>
+	<key>QuickAdd.new</key>
+	<string>New</string>
+	<key>QuickAdd.optional</key>
+	<string>· optional</string>
+	<key>QuickAdd.project.placeholder</key>
+	<string>Project name</string>
+	<key>QuickAdd.save</key>
+	<string>Save</string>
+	<key>QuickAdd.tag.hint</key>
+	<string>Free-form status label</string>
+	<key>QuickAdd.tag.hintShort</key>
+	<string>Free-form status</string>
+	<key>QuickAdd.tag.placeholder</key>
+	<string>Shipping June / In review / ...</string>
+	<key>QuickAdd.todo.placeholder</key>
+	<string>What needs to be done?</string>
+	<key>Scope.company</key>
+	<string>Company</string>
+	<key>Scope.personal</key>
+	<string>Personal</string>
+	<key>Search.clear</key>
+	<string>Clear</string>
+	<key>Search.navigate</key>
+	<string>navigate</string>
+	<key>Search.noMatchesShort</key>
+	<string>No matches for "%@"</string>
+	<key>Search.open</key>
+	<string>open</string>
+	<key>Search.placeholder</key>
+	<string>Search across todos, events, projects…</string>
+	<key>Search.scope.all</key>
+	<string>All</string>
+	<key>Search.scope.events</key>
+	<string>Events</string>
+	<key>Search.scope.projects</key>
+	<string>Projects</string>
+	<key>Search.scope.todos</key>
+	<string>Todos</string>
+	<key>Search.verb.open</key>
+	<string>Open</string>
+	<key>Search.verb.run</key>
+	<string>Run</string>
+	<key>Section.completed</key>
+	<string>Completed (%d)</string>
+	<key>Section.fromYesterday</key>
+	<string>From yesterday</string>
+	<key>Section.linkedEvents</key>
+	<string>Linked events</string>
+	<key>Section.next7Days</key>
+	<string>Next 7 days</string>
+	<key>Section.normal</key>
+	<string>Normal</string>
+	<key>Section.notes</key>
+	<string>Notes</string>
+	<key>Section.projects</key>
+	<string>Projects</string>
+	<key>Section.todos</key>
+	<string>Todos</string>
+	<key>Section.upcomingToday</key>
+	<string>Upcoming today</string>
+	<key>Section.urgent</key>
+	<string>Urgent</string>
+	<key>Settings.account</key>
+	<string>Account</string>
+	<key>Settings.account.notSignedIn</key>
+	<string>Not signed in</string>
+	<key>Settings.account.signedOutHint</key>
+	<string>Sign in to show your identity</string>
+	<key>Settings.appearance</key>
+	<string>Appearance</string>
+	<key>Settings.appearance.hint</key>
+	<string>Follows your system. Switch in macOS Settings to change.</string>
+	<key>Settings.appearance.hintIOS</key>
+	<string>Follows your iPhone display setting.</string>
+	<key>Settings.appearance.locked</key>
+	<string>locked</string>
+	<key>Settings.appearance.value</key>
+	<string>System</string>
+	<key>Settings.appleAccount</key>
+	<string>Apple Account</string>
+	<key>Settings.appleCalendar</key>
+	<string>Sync to Apple Calendar</string>
+	<key>Settings.appleCalendar.hint</key>
+	<string>Mirror LinoJ events as a separate calendar in Calendar.app.</string>
+	<key>Settings.appleCalendarShort</key>
+	<string>Apple Calendar</string>
+	<key>Settings.appleCalendarShort.hint</key>
+	<string>Mirror LinoJ events to Calendar.app.</string>
+	<key>Settings.appleReminders</key>
+	<string>Sync to Apple Reminders</string>
+	<key>Settings.appleReminders.hint</key>
+	<string>Mirror todos as a separate list in Reminders.app.</string>
+	<key>Settings.appleRemindersShort</key>
+	<string>Apple Reminders</string>
+	<key>Settings.appleRemindersShort.hint</key>
+	<string>Mirror todos to Reminders.app.</string>
+	<key>Settings.dailySummary</key>
+	<string>Daily summary</string>
+	<key>Settings.dailySummary.hint</key>
+	<string>A quick read of today's load, delivered each morning.</string>
+	<key>Settings.defaultScope</key>
+	<string>Default scope for new todos</string>
+	<key>Settings.defaultScope.hint</key>
+	<string>Personal or Company — you can change per item.</string>
+	<key>Settings.defaultTab</key>
+	<string>Default tab on launch</string>
+	<key>Settings.defaultTab.hint</key>
+	<string>Which board opens when you start LinoJ.</string>
+	<key>Settings.eventKitLaterHint</key>
+	<string>(coming later)</string>
+	<key>Settings.general.hint</key>
+	<string>The basics.</string>
+	<key>Settings.headsUp</key>
+	<string>Heads-up before each event</string>
+	<key>Settings.headsUp.hint</key>
+	<string>A soft banner appears on Main this far before an event starts.</string>
+	<key>Settings.headsUpShort</key>
+	<string>Heads-up before event</string>
+	<key>Settings.iCloudSync</key>
+	<string>iCloud sync</string>
+	<key>Settings.iCloudSync.hint</key>
+	<string>Required if you also use LinoJ on iPhone.</string>
+	<key>Settings.iCloudSync.hintShort</key>
+	<string>Required for iPhone + Mac in sync.</string>
+	<key>Settings.icloudRestartHint</key>
+	<string>Restart to apply</string>
+	<key>Settings.lastSyncedPlaceholder</key>
+	<string>Synced just now · placeholder</string>
+	<key>Settings.notifications.hint</key>
+	<string>Heads-ups about events. Todos never bug you on a clock.</string>
+	<key>Settings.quietHours</key>
+	<string>Quiet hours</string>
+	<key>Settings.quietHours.hint</key>
+	<string>Don't pop up between these times.</string>
+	<key>Settings.section.about</key>
+	<string>About</string>
+	<key>Settings.section.account</key>
+	<string>Account</string>
+	<key>Settings.section.general</key>
+	<string>General</string>
+	<key>Settings.section.notifications</key>
+	<string>Notifications</string>
+	<key>Settings.section.shortcuts</key>
+	<string>Shortcuts</string>
+	<key>Settings.section.sync</key>
+	<string>Sync</string>
+	<key>Settings.section.syncOtherApps</key>
+	<string>Sync to other apps</string>
+	<key>Settings.shortcuts.create</key>
+	<string>Create</string>
+	<key>Settings.shortcuts.hint</key>
+	<string>Cheat sheet. All editable in the next release.</string>
+	<key>Settings.shortcuts.navigation</key>
+	<string>Navigation</string>
+	<key>Settings.shortcuts.onTodo</key>
+	<string>On a todo</string>
+	<key>Settings.showCompleted</key>
+	<string>Show completed in counts</string>
+	<key>Settings.showCompleted.hint</key>
+	<string>Whether done items still count toward the open total.</string>
+	<key>Settings.signInWithApple</key>
+	<string>Sign in with Apple</string>
+	<key>Settings.signOut</key>
+	<string>Sign out</string>
+	<key>Settings.startWeek</key>
+	<string>Start week on</string>
+	<key>Settings.startWeek.hint</key>
+	<string>Calendar week-view origin.</string>
+	<key>Settings.sync.hint</key>
+	<string>Keep LinoJ in lockstep across your devices.</string>
+	<key>Settings.syncLocalOnly</key>
+	<string>Local only</string>
+	<key>Settings.syncPaused</key>
+	<string>Sync paused</string>
+	<key>Settings.syncedJustNow</key>
+	<string>Synced just now</string>
+	<key>Settings.syncing</key>
+	<string>Syncing…</string>
+	<key>Settings.systemBanner</key>
+	<string>System notification too</string>
+	<key>Settings.systemBanner.hint</key>
+	<string>In addition to the in-app banner, ping macOS Notification Center.</string>
+	<key>Settings.systemBannerShort</key>
+	<string>System banner too</string>
+	<key>Settings.title</key>
+	<string>Settings</string>
+	<key>Settings.v1OnlyHint</key>
+	<string>(coming later)</string>
+	<key>Settings.yesterdayMissed</key>
+	<string>Yesterday's missed events</string>
+	<key>Settings.yesterdayMissed.hint</key>
+	<string>Show a small “From yesterday” card on Main to confirm attendance.</string>
+	<key>Shortcut.delete</key>
+	<string>Delete</string>
+	<key>Shortcut.newDefault</key>
+	<string>New (defaults to Todo)</string>
+	<key>Shortcut.newEvent</key>
+	<string>New Event</string>
+	<key>Shortcut.newProject</key>
+	<string>New Project</string>
+	<key>Shortcut.newTodo</key>
+	<string>New Todo</string>
+	<key>Shortcut.openSearch</key>
+	<string>Open search / jump</string>
+	<key>Shortcut.openSettings</key>
+	<string>Open Settings</string>
+	<key>Shortcut.toggleDone</key>
+	<string>Toggle done</string>
+	<key>Shortcut.toggleUrgent</key>
+	<string>Toggle Urgent / Normal</string>
+	<key>Stat.created</key>
+	<string>Created</string>
+	<key>Stat.done</key>
+	<string>done</string>
+	<key>Stat.events</key>
+	<string>events</string>
+	<key>Stat.linkedEvents</key>
+	<string>Linked events</string>
+	<key>Stat.open</key>
+	<string>open</string>
+	<key>Stat.openTodos</key>
+	<string>Open todos</string>
+	<key>Stat.urgent</key>
+	<string>urgent</string>
+	<key>Tab.calendar</key>
+	<string>Calendar</string>
+	<key>Tab.company</key>
+	<string>Company</string>
+	<key>Tab.main</key>
+	<string>Main</string>
+	<key>Tab.personal</key>
+	<string>Personal</string>
+	<key>Toolbar.new</key>
+	<string>New</string>
+	<key>Toolbar.searchOrJump</key>
+	<string>Search or jump</string>
+	<key>Urgency.normal</key>
+	<string>Normal</string>
+	<key>Urgency.urgent</key>
+	<string>Urgent</string>
+	<key>Weekday.monday</key>
+	<string>Monday</string>
+	<key>Weekday.sunday</key>
+	<string>Sunday</string>
+</dict>
+</plist>

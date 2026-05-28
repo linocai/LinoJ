@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+   version = "1.0">
+   <FileRef
+      location = "group:LinoJ-macOS/LinoJ-macOS.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:LinoJ-iOS/LinoJ-iOS.xcodeproj">
+   </FileRef>
+   <FileRef
+      location = "group:Packages/LinoJCore">
+   </FileRef>
+</Workspace>
