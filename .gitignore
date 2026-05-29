@@ -27,3 +27,6 @@ build/
 # Logs / tmp
 *.log
 *.tmp
+
+# 项目本地记忆文件（项目特定经验/坑，不入库）
+CLAUDE.md

@@ -2302,6 +2302,12 @@ router.showQuickAdd = true
 - **验收**：`swift test --package-path Packages/LinoJCore` **164 全绿**（无新增/受影响测试，纯 UI 接线）；`swift build --package-path Packages/LinoJCore -Xswiftc -warnings-as-errors` **0 warning**；macOS Debug `build`（含签名版与 `CODE_SIGNING_ALLOWED=NO` 版）**BUILD SUCCEEDED**，**0 新增代码 warning**（唯一代码 warning 仍是 `RootWindow.swift reposition()` 在 nonisolated context 调用，W7 前既有、本期未新增）；iOS Simulator（iPhone 17 Pro）`build` **BUILD SUCCEEDED** 0 代码 warning。已出签名 macOS 包并 `open` 启新二进制确认进程在（PID 存活）。⚠️ headless 无法验真实点击/渲染——**需用户 macOS 真机验收**：① 搜索面板（⌘K）点右上「esc」徽章关闭、键盘 esc 仍可退；② ProjectDetail 右列「关联事件」点任一事件 → 打开 QuickAdd 事件编辑模式（标题「编辑事件」+ 预填）；iOS 同；③ **W7.3 顶栏红绿灯是否与 wordmark/tabs 同排齐平、最左竖线是否消失需用户截图确认**——本项 headless 不可判，若主假设未中按 plan 给可疑容器加临时彩色 border 迭代（连续未中再换备选 A/B）。
 - **影响范围**：Phase W7（macOS：W7.1/W7.3；macOS+iOS：W7.2）。
 
+### [2026-05-29] v1.0 版本号 bump（发版准备）
+- **变更内容**：W1-W7 全部落地 + 用户实测验收后定版 v1.0。统一版本标识：① 两端 `MARKETING_VERSION` `0.9.1 → 1.0`（各 Debug+Release）；② 两端 `CURRENT_PROJECT_VERSION`（build）`2 → 3`（单调递增，保险）；③ `LinoJCore.version`（App 内 Settings/About 显示的 "v<version>"，原一直停在 "0.9.0"）`→ "1.0"`；④ `LinoJCoreSmokeTests` 版本断言同步 `→ "1.0"`。历史变更日志里的 "0.9.1/v0.9" 注释为史实记录，不改写。
+- **变更原因**：用户决定直接发 v1.0，要求所有版本标识统一为 1.0。
+- **影响范围**：两端 `project.pbxproj` + `LinoJCore.swift` + `LinoJCoreSmokeTests.swift` + 本清单状态行。无功能改动。
+- **⚠️ 上架前仍存的硬阻塞（非本次能代办）**：`LinoJLinks.privacyPolicy` 仍是占位 `https://linoj.app/privacy`，App Store 审核会因死链拒——上传前必须换成**真实可访问的隐私政策页**。其余手动步骤见本节「必做」。
+
 ### [2026-05-28] W7.3 顶栏对齐 —— 截图定位迭代（真因修正）
 - **背景**：W7 出包后用户实测，W7.3「红绿灯对齐」**未生效**——红绿灯仍浮在顶栏带之上、交错。W7 builder 当时只动了 `TrafficLightConfigurator.reposition()`（移红绿灯），没解决真因。按全局经验「macOS 布局看不见就别盲猜」，主控直接做**调试边框定位迭代**（不再走 builder 盲改）。
 - **定位手段**：给 44pt 顶栏带临时加 `Color.red.opacity(0.22)` 底 + `Color.blue` 边框，出签名包让用户截图。截图实证：**顶栏带的上边缘没贴窗口顶**，红绿灯落在带「之上」的一条空白 strip 里——即顶栏 VStack 虽在 `.hiddenTitleBar` 下，仍**尊重顶部 title-bar 安全区**，整条 44pt 带被下推 ~28pt（title bar 高度），所以红绿灯（在 titlebar 区，约 22pt）与带内容（被推到 ~50pt 中线）错开 ~28pt。
@@ -2327,7 +2333,7 @@ router.showQuickAdd = true
 **必做（TestFlight / 上架前）**
 1. **清 CloudKit Development 重复数据**：icloud.developer.apple.com → container `iCloud.com.linocai.linoj` → Development → 删记录或 Reset Development Environment（都是 seed 垃圾，安全）。seed 竞态已修，清完不再产生新重复。
 2. **CloudKit schema deploy Development → Production**：TestFlight/Release 跑 production 环境，不部署测试者同步失败。
-3. **iOS Archive → 上传 App Store Connect**：Xcode Organizer ▸ Distribute（自动签名用付费 team 分发证书）。版本已是 0.9.1 / build 2（再传需 +build）。
+3. **iOS Archive → 上传 App Store Connect**：Xcode Organizer ▸ Distribute（自动签名用付费 team 分发证书）。版本已 bump 到 **1.0 / build 3**（再传需 +build）。
 4. **App Store Connect**：App Privacy 问卷（口径与 PrivacyInfo.xcprivacy 一致：私有 CloudKit 数据不算 collected、SIWA name/email 仅本地 Keychain）、TestFlight 测试信息。export compliance 已设 `ITSAppUsesNonExemptEncryption=false`，免问卷。
 
 **未实现的功能缺口（上线前决定做或砍）—— 已于 2026-05-28 展开为 W 组 Phase（用户确认三块全做），详见上方「v1.0 收口 Phase 列表（W 组）」：**

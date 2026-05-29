@@ -8,9 +8,9 @@ import Testing
 
 @Suite("LinoJCore smoke")
 struct LinoJCoreSmokeTests {
-    @Test("version is the P0 baseline")
+    @Test("version is the v1.0 release identifier")
     func versionMatchesBaseline() {
-        #expect(LinoJCore.version == "0.9.0")
+        #expect(LinoJCore.version == "1.0")
     }
 
     @Test("AppServices starts with all services nil and accepts injected instances")
