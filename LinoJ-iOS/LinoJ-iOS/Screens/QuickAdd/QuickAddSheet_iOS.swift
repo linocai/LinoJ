@@ -61,7 +61,9 @@ struct QuickAddSheet_iOS: View {
                     // I5：Settings 中的 defaultTodoScope。
                     defaultScope: settings.defaultTodoScope,
                     // V5：非 nil 则进入 Project edit 模式。
-                    editingProject: router.quickAddEditingProject
+                    editingProject: router.quickAddEditingProject,
+                    // W4：非 nil 则进入 Event edit 模式（预填字段 + submit 走 update）。
+                    editingEvent: router.quickAddEditingEvent
                 )
             }
         }
@@ -70,6 +72,8 @@ struct QuickAddSheet_iOS: View {
             router.quickAddDefaultKind = .todo
             // V5：清掉 edit 信号，下次打开恢复 create 模式。
             router.quickAddEditingProject = nil
+            // W4：清掉 event edit 信号，下次打开恢复 create 模式。
+            router.quickAddEditingEvent = nil
             // S11：清掉 vm，下次打开 sheet 重建，避免上次输入污染。
             vm = nil
             // W1：二级选人器目标随 sheet 关闭复位。
@@ -125,8 +129,8 @@ struct QuickAddSheet_iOS: View {
 
             Spacer()
 
-            // V5：edit 模式标题切「Edit project」。
-            Text(vm.isEditing ? LJStrings.quickAddEditProjectTitle : LJStrings.quickAddNew)
+            // V5/W4：edit 模式标题切「Edit project / Edit event」。
+            Text(headerTitle(vm: vm))
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.lj.ink)
 
@@ -135,8 +139,8 @@ struct QuickAddSheet_iOS: View {
             Button {
                 submit(vm: vm)
             } label: {
-                // V5：edit 模式提交按钮文案为「Save」。
-                Text(vm.isEditing ? LJStrings.quickAddSave : LJStrings.quickAddCreate)
+                // V5/W4：任一 edit 模式提交按钮文案为「Save」。
+                Text(vm.isEditingAny ? LJStrings.quickAddSave : LJStrings.quickAddCreate)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.lj.bg)
                     .padding(.horizontal, LJSpacing.s14)
@@ -154,21 +158,30 @@ struct QuickAddSheet_iOS: View {
         .padding(.bottom, LJSpacing.s12)
     }
 
+    /// V5/W4：header 标题 —— project edit → Edit project；event edit → Edit event；否则 New。
+    private func headerTitle(vm: QuickAddViewModel) -> LocalizedStringResource {
+        if vm.isEditing { return LJStrings.quickAddEditProjectTitle }
+        if vm.isEditingEvent { return LJStrings.quickAddEditEventTitle }
+        return LJStrings.quickAddNew
+    }
+
     // MARK: Segmented
 
     @ViewBuilder
     private func kindSegmented(vm: QuickAddViewModel) -> some View {
         @Bindable var vm = vm
 
-        Picker("", selection: $vm.kind) {
-            Text(LJStrings.quickAddKindTodo).tag(QuickAddViewModel.Kind.todo)
-            Text(LJStrings.quickAddKindEvent).tag(QuickAddViewModel.Kind.event)
-            Text(LJStrings.quickAddKindProject).tag(QuickAddViewModel.Kind.project)
+        // W6：任一 edit 模式（项目 / 事件）下整条分段控件直接隐藏（kind 已固定），
+        // 不再灰显——避免「灰着一排像功能坏了」。create 模式照常显示可切。
+        if !vm.isEditingAny {
+            Picker("", selection: $vm.kind) {
+                Text(LJStrings.quickAddKindTodo).tag(QuickAddViewModel.Kind.todo)
+                Text(LJStrings.quickAddKindEvent).tag(QuickAddViewModel.Kind.event)
+                Text(LJStrings.quickAddKindProject).tag(QuickAddViewModel.Kind.project)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        // V5：edit 模式锁死在 Project（整个 segmented disable —— kind 已固定为 .project）。
-        .disabled(vm.isEditing)
     }
 
     // MARK: Submit

@@ -323,7 +323,10 @@ struct ProjectDetailView_macOS: View {
                     .foregroundStyle(Color.lj.inkMute)
                 Spacer()
                 Button {
-                    // 0.9.1：add todo 尚未接通（占位）。去掉 print，beta 可接受点击静默无反应。
+                    // W5：接通「+ 添加待办」→ 打开 QuickAdd 并预填本项目（.todo 同时翻 scope=.company）。
+                    router.quickAddPrefilledProject = project
+                    router.quickAddDefaultKind = .todo
+                    router.showQuickAdd = true
                 } label: {
                     Text(LJStrings.addTodo)
                         .font(.system(size: 12, weight: .medium))
@@ -436,9 +439,12 @@ struct ProjectDetailView_macOS: View {
                         .foregroundStyle(Color.lj.inkMute)
                     Spacer()
                     Button {
-                        // 0.9.1：add event 尚未接通（占位）。去掉 print，beta 可接受点击静默无反应。
+                        // W5：接通「+ 添加事件」→ 打开 QuickAdd 并预填本项目（.event 设 eventProject）。
+                        router.quickAddPrefilledProject = project
+                        router.quickAddDefaultKind = .event
+                        router.showQuickAdd = true
                     } label: {
-                        Text(LJStrings.addTodo)
+                        Text(LJStrings.addEvent)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Color.lj.inkSoft)
                             .contentShape(Rectangle())
@@ -546,6 +552,12 @@ struct ProjectDetailView_macOS: View {
         .overlay {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .strokeBorder(Color.lj.border, lineWidth: 0.5)
+        }
+        // W7.2：整行可点 → 打开 QuickAdd 事件编辑模式（复用 W4 基建）。
+        .contentShape(Rectangle())
+        .onTapGesture {
+            router.quickAddEditingEvent = event
+            router.showQuickAdd = true
         }
     }
 

@@ -183,6 +183,7 @@ public enum LJStrings {
     public static let allBuckets: LocalizedStringResource = r("Project.allBuckets")
     public static let editProject: LocalizedStringResource = r("Project.editProject")
     public static let addTodo: LocalizedStringResource = r("Project.addTodo")
+    public static let addEvent: LocalizedStringResource = r("Project.addEvent")
     public static let backToCompany: LocalizedStringResource = r("Project.backToCompany")
     public static let projectMore: LocalizedStringResource = r("Project.more")
     public static let projectNotFound: LocalizedStringResource = r("Project.notFound")
@@ -198,6 +199,23 @@ public enum LJStrings {
     /// 删除确认对话框的破坏性确认按钮文案（"Delete"）。
     public static let projectDetailDeleteConfirmConfirm: LocalizedStringResource = r("ProjectDetail.deleteConfirmConfirm")
 
+    // MARK: - Event actions (W4)
+
+    /// 事件卡 contextMenu / 编辑入口「Edit event」文案。
+    public static let eventEdit: LocalizedStringResource = r("Event.edit")
+    /// 事件卡 contextMenu「Delete event」文案。
+    public static let eventDelete: LocalizedStringResource = r("Event.delete")
+    /// 事件卡 contextMenu「Mark attended」（仅已结束事件出现）。
+    public static let eventMarkAttended: LocalizedStringResource = r("Event.markAttended")
+    /// 事件卡 contextMenu「Unmark attended」（已结束且已确认事件，翻转回未出席）。
+    public static let eventUnmarkAttended: LocalizedStringResource = r("Event.unmarkAttended")
+    /// 删除事件确认对话框标题。
+    public static let eventDeleteConfirmTitle: LocalizedStringResource = r("Event.deleteConfirmTitle")
+    /// 删除事件确认对话框正文。
+    public static let eventDeleteConfirmMessage: LocalizedStringResource = r("Event.deleteConfirmMessage")
+    /// 删除事件确认对话框的破坏性确认按钮文案（"Delete"）。
+    public static let eventDeleteConfirmConfirm: LocalizedStringResource = r("Event.deleteConfirmConfirm")
+
     // MARK: - Filters
 
     public static let filterAllWork: LocalizedStringResource = r("Filter.allWork")
@@ -212,6 +230,8 @@ public enum LJStrings {
     public static let quickAddNew: LocalizedStringResource = r("QuickAdd.new")
     /// V5：edit 模式下 sheet 标题（取代 "New"）。
     public static let quickAddEditProjectTitle: LocalizedStringResource = r("QuickAdd.editProjectTitle")
+    /// W4：event edit 模式下 sheet 标题（取代 "New"）。
+    public static let quickAddEditEventTitle: LocalizedStringResource = r("QuickAdd.editEventTitle")
     /// V5：edit 模式下提交按钮文案（"Save" / "保存"，取代 "Create"）。
     public static let quickAddSave: LocalizedStringResource = r("QuickAdd.save")
     public static let quickAddCancel: LocalizedStringResource = r("QuickAdd.cancel")

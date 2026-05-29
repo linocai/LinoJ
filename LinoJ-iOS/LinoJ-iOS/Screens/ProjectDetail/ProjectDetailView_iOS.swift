@@ -417,9 +417,12 @@ struct ProjectDetailView_iOS: View {
                     .foregroundStyle(Color.lj.inkMute)
                 Spacer()
                 Button {
-                    // 0.9.1：add event 尚未接通（占位）。去掉 print，beta 可接受点击静默无反应。
+                    // W5：接通「+ 添加事件」→ 打开 QuickAdd 并预填本项目（.event 设 eventProject）。
+                    router.quickAddPrefilledProject = project
+                    router.quickAddDefaultKind = .event
+                    router.showQuickAdd = true
                 } label: {
-                    Text(LJStrings.addTodo)
+                    Text(LJStrings.addEvent)
                         .font(.system(size: 12.5, weight: .medium))
                         .foregroundStyle(Color.lj.inkSoft)
                         .contentShape(Rectangle())
@@ -504,6 +507,11 @@ struct ProjectDetailView_iOS: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .contentShape(Rectangle())
+        // W7.2：点击事件行 → 打开 QuickAdd 事件编辑模式（复用 W4 基建）。
+        .onTapGesture {
+            router.quickAddEditingEvent = event
+            router.showQuickAdd = true
+        }
     }
 
     // MARK: - Notes

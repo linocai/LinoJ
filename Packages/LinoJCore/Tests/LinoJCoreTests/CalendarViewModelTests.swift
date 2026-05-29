@@ -194,4 +194,40 @@ struct CalendarViewModelTests {
         let summed = vm.weekDays.reduce(0) { $0 + (vm.eventsByDay[$1]?.count ?? 0) }
         #expect(summed == vm.weekTotal)
     }
+
+    // MARK: - W4: deleteEvent / unconfirmAttended
+
+    @Test("W4: deleteEvent 后该 event 不在 context、weekTotal 递减")
+    func deleteEventRemovesFromContext() throws {
+        let (vm, context) = try makeSeededVM()
+        let before = vm.weekTotal
+        // 取窗口第一列（today，2026-05-27）的第一个事件删除。
+        guard let target = vm.eventsByDay[vm.weekStart]?.first else {
+            Issue.record("seed 应在 today 那天产生至少一个事件")
+            return
+        }
+        let targetID = target.id
+        vm.deleteEvent(target)
+
+        // 该 event 不在 context。
+        let remaining = try context.fetch(FetchDescriptor<Event>())
+        #expect(remaining.contains(where: { $0.id == targetID }) == false)
+        // weekTotal 递减 1。
+        #expect(vm.weekTotal == before - 1)
+    }
+
+    @Test("W4: confirmAttended → unconfirmAttended 翻转 attendedConfirmed（可逆）")
+    func unconfirmAttendedReverts() throws {
+        let (vm, _) = try makeSeededVM()
+        guard let target = vm.eventsByDay[vm.weekStart]?.first else {
+            Issue.record("seed 应在 today 那天产生至少一个事件")
+            return
+        }
+        #expect(target.attendedConfirmed == false)
+        vm.confirmAttended(target)
+        #expect(target.attendedConfirmed == true)
+        // W4：取消已出席翻回 false。
+        vm.unconfirmAttended(target)
+        #expect(target.attendedConfirmed == false)
+    }
 }

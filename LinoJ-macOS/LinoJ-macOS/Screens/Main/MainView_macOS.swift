@@ -43,6 +43,9 @@ struct MainView_macOS: View {
     /// 注入到 MainViewModel。与 RootWindow 各 own 一份同模式（VM 自带 UserDefaults 持久化）。
     @State private var settings = SettingsViewModel()
 
+    /// W4：当前待删除确认的事件（驱动 `.confirmationDialog`）。nil 表示无弹窗。
+    @State private var eventPendingDelete: Event?
+
     var body: some View {
         Group {
             if let vm {
@@ -80,6 +83,46 @@ struct MainView_macOS: View {
         .onChange(of: projects.count) { _, _ in vm?.refresh() }
         .onChange(of: todos.map(\.done)) { _, _ in vm?.refresh() }
         .onChange(of: events.map(\.attendedConfirmed)) { _, _ in vm?.refresh() }
+        // W4：删除事件确认对话框（macOS）。抽成单独 modifier 减轻 body 类型检查负担。
+        .modifier(EventDeleteConfirmModifier(
+            pending: $eventPendingDelete,
+            onConfirm: { vm?.deleteEvent($0) }
+        ))
+    }
+
+    // MARK: - W4 事件操作（onTap 编辑 / contextMenu）
+
+    /// 打开事件编辑：设 router 信号让 Quick Add modal 以 event edit 模式打开。
+    private func openEdit(_ event: Event) {
+        router.quickAddEditingEvent = event
+        router.showQuickAdd = true
+    }
+
+    /// 事件卡 contextMenu 内容：Edit / Mark|Unmark attended（仅已结束事件）/ Delete。
+    /// 「标记已出席」仅对已结束事件（end <= 现在）出现；已确认则翻转为「取消已出席」。
+    /// 「现在」用 `LinoJTime.today()`（DEBUG = 2026-05-27，与 MainViewModel 的 today 语义一致）。
+    @ViewBuilder
+    private func eventActions(for event: Event, vm: MainViewModel) -> some View {
+        Button { openEdit(event) } label: {
+            Text(LJStrings.eventEdit)
+        }
+        if event.end <= LinoJTime.today() {
+            if event.attendedConfirmed {
+                Button { vm.unconfirmAttended(event) } label: {
+                    Text(LJStrings.eventUnmarkAttended)
+                }
+            } else {
+                Button { vm.confirmAttended(event) } label: {
+                    Text(LJStrings.eventMarkAttended)
+                }
+            }
+        }
+        Divider()
+        Button(role: .destructive) {
+            eventPendingDelete = event
+        } label: {
+            Text(LJStrings.eventDelete)
+        }
     }
 
     /// 构造 MainViewModel 并注入当前 service 引用 + W2 的 Settings 派生开关。
@@ -378,7 +421,7 @@ struct MainView_macOS: View {
                 VStack(spacing: 0) {
                     ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
                         Rectangle().fill(Color.lj.border).frame(height: 0.5)
-                        dayRow(day: group.day, events: group.events)
+                        dayRow(vm: vm, day: group.day, events: group.events)
                     }
                 }
             }
@@ -394,7 +437,7 @@ struct MainView_macOS: View {
     }
 
     @ViewBuilder
-    private func dayRow(day: Date, events: [Event]) -> some View {
+    private func dayRow(vm: MainViewModel, day: Date, events: [Event]) -> some View {
         let label = dayLabel(for: day)
         let dateNumber = dayDateNumber(for: day)
         let isToday = Calendar.current.isDateInToday(day)
@@ -431,7 +474,11 @@ struct MainView_macOS: View {
                         .padding(.top, 3)
                 }
                 ForEach(events.prefix(3), id: \.id) { event in
+                    // W4：macRail row 外层套 onTap（打开编辑）+ contextMenu（Edit/Mark/Delete）。
                     EventCard(event: event, variant: .macRail)
+                        .contentShape(Rectangle())
+                        .onTapGesture { openEdit(event) }
+                        .contextMenu { eventActions(for: event, vm: vm) }
                 }
                 if events.count > 3 {
                     Text(String(localized: "Counts.moreEvents", defaultValue: "+\(events.count - 3) more", bundle: LinoJCoreBundle.bundle))
@@ -534,6 +581,41 @@ struct MainView_macOS: View {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
         return f.string(from: date)
+    }
+}
+
+// MARK: - W4 删除事件确认对话框 modifier
+
+/// 把 `.confirmationDialog` 抽成独立 modifier —— 直接挂在 MainView_macOS 的 body 长链上会触发
+/// Swift「unable to type-check this expression in reasonable time」。抽出后 body 链恢复简单。
+private struct EventDeleteConfirmModifier: ViewModifier {
+    @Binding var pending: Event?
+    let onConfirm: (Event) -> Void
+
+    func body(content: Content) -> some View {
+        content.confirmationDialog(
+            Text(LJStrings.eventDeleteConfirmTitle),
+            isPresented: Binding(
+                get: { pending != nil },
+                set: { if !$0 { pending = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pending
+        ) { event in
+            Button(role: .destructive) {
+                onConfirm(event)
+                pending = nil
+            } label: {
+                Text(LJStrings.eventDeleteConfirmConfirm)
+            }
+            Button(role: .cancel) {
+                pending = nil
+            } label: {
+                Text(LJStrings.quickAddCancel)
+            }
+        } message: { _ in
+            Text(LJStrings.eventDeleteConfirmMessage)
+        }
     }
 }
 

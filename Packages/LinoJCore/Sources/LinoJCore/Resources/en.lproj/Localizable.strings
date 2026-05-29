@@ -120,6 +120,20 @@
 	<string>Nice.</string>
 	<key>Empty.urgentEmpty.title</key>
 	<string>Nothing urgent.</string>
+	<key>Event.delete</key>
+	<string>Delete event</string>
+	<key>Event.deleteConfirmConfirm</key>
+	<string>Delete</string>
+	<key>Event.deleteConfirmMessage</key>
+	<string>This can't be undone.</string>
+	<key>Event.deleteConfirmTitle</key>
+	<string>Delete this event?</string>
+	<key>Event.edit</key>
+	<string>Edit event</string>
+	<key>Event.markAttended</key>
+	<string>Mark attended</string>
+	<key>Event.unmarkAttended</key>
+	<string>Unmark attended</string>
 	<key>Filter.allWork</key>
 	<string>All work</string>
 	<key>Filter.standalone</key>
@@ -136,6 +150,8 @@
 	<string>To do</string>
 	<key>Menu.navigate</key>
 	<string>Navigate</string>
+	<key>Project.addEvent</key>
+	<string>+ Add event</string>
 	<key>Project.addTodo</key>
 	<string>+ Add</string>
 	<key>Project.allBuckets</key>
@@ -186,6 +202,8 @@
 	<string>Create project</string>
 	<key>QuickAdd.createTodo</key>
 	<string>Create todo</string>
+	<key>QuickAdd.editEventTitle</key>
+	<string>Edit event</string>
 	<key>QuickAdd.editProjectTitle</key>
 	<string>Edit project</string>
 	<key>QuickAdd.event.date</key>

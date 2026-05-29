@@ -73,6 +73,10 @@ struct RootWindow: View {
                 }
             }
         }
+        // W7.3 迭代：顶栏 VStack 必须吃掉顶部 title-bar 安全区，让 44pt 顶栏带贴到窗口最顶。
+        // 否则即使 hiddenTitleBar，VStack 仍尊重顶部安全区 → 顶栏带被下推 ~28pt（title bar 高度），
+        // 红绿灯浮在带之上形成「交错」（调试边框截图实证）。吃掉后带 content 中线≈22pt 与红绿灯对齐。
+        .ignoresSafeArea(.container, edges: .top)
         // V4 修订：把系统红绿灯垂直居中到 44pt 顶栏中线（hiddenTitleBar 下默认偏上）。
         // 零尺寸 NSView accessor，clamp 保证最坏情况不把按钮挪出标题栏。
         .background(TrafficLightConfigurator(barHeight: 44))
@@ -396,6 +400,9 @@ private struct TrafficLightConfigurator: NSViewRepresentable {
                 tokens.forEach { NotificationCenter.default.removeObserver($0) }
                 tokens.removeAll()
                 self.window = window
+                // W7.3：消除窗口最左/顶部边缘的细线伪影 —— hiddenTitleBar 下 AppKit 仍可能在
+                // titlebar 容器与内容交界处绘制一条 separator/border。强制关闭 titlebar 分隔线。
+                window.titlebarSeparatorStyle = .none
                 let nc = NotificationCenter.default
                 for name in [NSWindow.didResizeNotification,
                              NSWindow.didEnterFullScreenNotification,
@@ -409,17 +416,27 @@ private struct TrafficLightConfigurator: NSViewRepresentable {
         }
 
         private func reposition() {
-            guard let window else { return }
+            guard let window, let contentView = window.contentView else { return }
             let types: [NSWindow.ButtonType] = [.closeButton, .miniaturizeButton, .zoomButton]
             let buttons = types.compactMap { window.standardWindowButton($0) }
             guard let container = buttons.first?.superview else { return }
+
+            // W7.3：以「窗口内容顶部」为基准把红绿灯中心对齐到 44pt 顶栏视觉中线（顶向下 barHeight/2），
+            // 而非相对红绿灯所在容器（系统 titlebar 容器，真实高 ≈28pt、与 44pt 顶栏顶部不重合）的中线居中。
+            // 旧实现用 container.bounds.height 当 44pt 顶栏高度 → 按钮被定位到系统标题栏中线（偏上、像两层交错）。
+            // contentView 在 hiddenTitleBar / fullSizeContentView 下铺满整窗，其 bounds 顶即窗口内容顶。
+            // AppKit 自下而上：view.frame.origin.y 是底边，center = origin.y + height/2，顶边 = bounds.maxY。
+            let contentTopY = contentView.bounds.maxY                 // 窗口内容顶部（contentView 坐标系）
+            let desiredCenterInContent = NSPoint(x: 0, y: contentTopY - barHeight / 2)
+            // 转换到红绿灯容器坐标系，逐枚把按钮垂直中心对齐到该点。
+            let desiredCenterInContainer = container.convert(desiredCenterInContent, from: contentView)
+
             for button in buttons {
                 let bh = button.frame.height
-                // AppKit 自下而上：容器顶部 = window 顶部。希望按钮顶距 window 顶 = (barHeight - bh)/2。
-                let topInset = (barHeight - bh) / 2
-                let raw = container.bounds.height - topInset - bh
-                // clamp：绝不把按钮挪出标题栏容器，最坏退化为贴底（≈现状或更低，不会异位）。
-                let newY = max(0, min(container.bounds.height - bh, raw))
+                let raw = desiredCenterInContainer.y - bh / 2
+                // clamp 放宽：仅防止把按钮挪到容器底之下（负值）或顶之上溢出；正常 22pt 中线落在容器内。
+                let upperBound = max(0, container.bounds.height - bh)
+                let newY = max(0, min(upperBound, raw))
                 if abs(button.frame.origin.y - newY) > 0.5 {
                     button.setFrameOrigin(NSPoint(x: button.frame.origin.x, y: newY))
                 }

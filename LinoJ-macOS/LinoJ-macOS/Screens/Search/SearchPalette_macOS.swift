@@ -137,7 +137,14 @@ struct SearchPalette_macOS: View {
                 scopeChip(label: LJStrings.searchScopeProjects, scope: .projects, vm: vm)
             }
 
-            kbd("esc")
+            Button {
+                dismiss()
+            } label: {
+                kbd("esc")
+            }
+            .buttonStyle(.plain)
+            .help(Text(LJStrings.quickAddCancel))
+            .accessibilityLabel(Text(LJStrings.quickAddCancel))
         }
         .padding(.horizontal, LJSpacing.s18)
         .padding(.vertical, LJSpacing.s14)

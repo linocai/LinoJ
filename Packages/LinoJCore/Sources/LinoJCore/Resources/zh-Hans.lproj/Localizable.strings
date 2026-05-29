@@ -120,6 +120,20 @@
 	<string>干得好。</string>
 	<key>Empty.urgentEmpty.title</key>
 	<string>没有紧急。</string>
+	<key>Event.delete</key>
+	<string>删除事件</string>
+	<key>Event.deleteConfirmConfirm</key>
+	<string>删除</string>
+	<key>Event.deleteConfirmMessage</key>
+	<string>此操作无法撤销。</string>
+	<key>Event.deleteConfirmTitle</key>
+	<string>删除该事件？</string>
+	<key>Event.edit</key>
+	<string>编辑事件</string>
+	<key>Event.markAttended</key>
+	<string>标记已出席</string>
+	<key>Event.unmarkAttended</key>
+	<string>取消已出席</string>
 	<key>Filter.allWork</key>
 	<string>全部工作</string>
 	<key>Filter.standalone</key>
@@ -136,6 +150,8 @@
 	<string>待办</string>
 	<key>Menu.navigate</key>
 	<string>导航</string>
+	<key>Project.addEvent</key>
+	<string>+ 添加事件</string>
 	<key>Project.addTodo</key>
 	<string>+ 添加</string>
 	<key>Project.allBuckets</key>
@@ -186,6 +202,8 @@
 	<string>创建项目</string>
 	<key>QuickAdd.createTodo</key>
 	<string>创建待办</string>
+	<key>QuickAdd.editEventTitle</key>
+	<string>编辑事件</string>
 	<key>QuickAdd.editProjectTitle</key>
 	<string>编辑项目</string>
 	<key>QuickAdd.event.date</key>

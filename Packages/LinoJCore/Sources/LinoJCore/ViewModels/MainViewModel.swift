@@ -214,9 +214,26 @@ public final class MainViewModel {
     }
 
     /// 把 yesterday-missed 中的事件标为「已参加」。
+    /// W4：复用为事件卡的「标记已出席」。
     /// P6：iOS 真机触发 light haptic。
     public func confirmAttended(_ event: Event) {
         event.attendedConfirmed = true
+        try? context.save()
+        LinoJHaptics.lightTap()
+        refresh()
+    }
+
+    /// W4：「取消已出席」—— 把 `attendedConfirmed` 翻回 false（可逆），与 confirmAttended 对称。
+    public func unconfirmAttended(_ event: Event) {
+        event.attendedConfirmed = false
+        try? context.save()
+        LinoJHaptics.lightTap()
+        refresh()
+    }
+
+    /// W4：删除事件。`context.delete` + save + refresh（与 confirmAttended 同 VM、同模式）。
+    public func deleteEvent(_ event: Event) {
+        context.delete(event)
         try? context.save()
         LinoJHaptics.lightTap()
         refresh()

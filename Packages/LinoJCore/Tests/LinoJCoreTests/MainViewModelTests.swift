@@ -145,4 +145,36 @@ struct MainViewModelTests {
         vm.showYesterdayMissed = false
         #expect(vm.yesterdayMissed.isEmpty)
     }
+
+    // MARK: - W4: deleteEvent / unconfirmAttended
+
+    @Test("W4: deleteEvent removes the event from context")
+    func deleteEventRemovesFromContext() throws {
+        let (vm, context) = try makeSeededVM()
+        guard let target = vm.todayEvents.first else {
+            Issue.record("seed should produce at least one event today")
+            return
+        }
+        let targetID = target.id
+        let before = vm.todayEventsCount
+        vm.deleteEvent(target)
+
+        let remaining = try context.fetch(FetchDescriptor<Event>())
+        #expect(remaining.contains(where: { $0.id == targetID }) == false)
+        #expect(vm.todayEventsCount == before - 1)
+    }
+
+    @Test("W4: confirmAttended → unconfirmAttended flips attendedConfirmed back")
+    func unconfirmAttendedReverts() throws {
+        let (vm, _) = try makeSeededVM()
+        guard let target = vm.todayEvents.first else {
+            Issue.record("seed should produce at least one event today")
+            return
+        }
+        #expect(target.attendedConfirmed == false)
+        vm.confirmAttended(target)
+        #expect(target.attendedConfirmed == true)
+        vm.unconfirmAttended(target)
+        #expect(target.attendedConfirmed == false)
+    }
 }

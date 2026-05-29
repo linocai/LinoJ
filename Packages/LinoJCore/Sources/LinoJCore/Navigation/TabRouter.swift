@@ -46,6 +46,12 @@ public final class TabRouter {
     /// "Edit project" / iOS `⋯`）打开 sheet 前设置 + `showQuickAdd = true`，sheet onDisappear 清回 nil。
     public var quickAddEditingProject: Project? = nil
 
+    /// W4：打开 Quick Add 时若非 nil，sheet 以 **Event edit 模式** 打开（预填该 event 字段，
+    /// submit 走 update 而非 insert）。与 quickAddEditingProject 完全同模式：事件卡点击 / contextMenu
+    /// 的 Edit → 设置该字段 + `showQuickAdd = true`，sheet onDisappear 清回 nil。
+    /// 与 quickAddEditingProject 互斥（同一时刻只设一个）。
+    public var quickAddEditingEvent: Event? = nil
+
     /// Settings 是否展示。P3.8 接通；当前 ⌘, 只翻这个 flag。
     public var showSettings: Bool = false
 

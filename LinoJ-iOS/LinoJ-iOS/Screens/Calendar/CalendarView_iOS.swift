@@ -34,6 +34,9 @@ struct CalendarView_iOS: View {
     /// CalendarViewModel（gate「From yesterday」box 显示）。
     @State private var settings = SettingsViewModel()
 
+    /// W4：当前待删除确认的事件（驱动 `.confirmationDialog`）。nil 表示无弹窗。
+    @State private var eventPendingDelete: Event?
+
     var body: some View {
         Group {
             if let vm {
@@ -64,6 +67,11 @@ struct CalendarView_iOS: View {
         .onAppear {
             consumePendingEventDate(router.pendingEventDate)
         }
+        // W4：删除事件确认对话框（iOS）。抽成单独 modifier 减轻 body 类型检查负担。
+        .modifier(CalendarEventDeleteConfirmModifier_iOS(
+            pending: $eventPendingDelete,
+            onConfirm: { vm?.deleteEvent($0) }
+        ))
     }
 
     /// W3：消费 router.pendingEventDate —— 把 CalendarViewModel 定位到该天后清回 nil。
@@ -73,6 +81,39 @@ struct CalendarView_iOS: View {
         vm.focus(on: date)
         router.pendingEventDate = nil
         router.pendingEventID = nil
+    }
+
+    // MARK: - W4 事件操作（onTap 编辑 / contextMenu）
+
+    /// 打开事件编辑：设 router 信号让 Quick Add sheet 以 event edit 模式打开。
+    private func openEdit(_ event: Event) {
+        router.quickAddEditingEvent = event
+        router.showQuickAdd = true
+    }
+
+    /// 事件卡 contextMenu（长按菜单）：Edit / Mark|Unmark attended（仅已结束事件）/ Delete。
+    /// 「标记已出席」仅对已结束事件（end <= vm.now）出现；已确认则翻转为「取消已出席」。
+    @ViewBuilder
+    private func eventActions(for event: Event, vm: CalendarViewModel) -> some View {
+        Button { openEdit(event) } label: {
+            Label { Text(LJStrings.eventEdit) } icon: { Image(systemName: "pencil") }
+        }
+        if event.end <= vm.now {
+            if event.attendedConfirmed {
+                Button { vm.unconfirmAttended(event) } label: {
+                    Label { Text(LJStrings.eventUnmarkAttended) } icon: { Image(systemName: "checkmark.circle.badge.xmark") }
+                }
+            } else {
+                Button { vm.confirmAttended(event) } label: {
+                    Label { Text(LJStrings.eventMarkAttended) } icon: { Image(systemName: "checkmark.circle") }
+                }
+            }
+        }
+        Button(role: .destructive) {
+            eventPendingDelete = event
+        } label: {
+            Label { Text(LJStrings.eventDelete) } icon: { Image(systemName: "trash") }
+        }
     }
 
     /// 构造 CalendarViewModel 并注入当前 service 引用 + W2 的 yesterdayMissed 显示开关。
@@ -339,7 +380,11 @@ struct CalendarView_iOS: View {
                     .padding(.vertical, 40)
             } else {
                 ForEach(dayEvents, id: \.id) { event in
+                    // W4：外层套 onTap（打开编辑）+ contextMenu（长按：Edit/Mark/Delete）。
                     EventCard(event: event, variant: .iosFull)
+                        .contentShape(Rectangle())
+                        .onTapGesture { openEdit(event) }
+                        .contextMenu { eventActions(for: event, vm: vm) }
                 }
             }
         }
@@ -421,5 +466,40 @@ struct CalendarView_iOS: View {
         let f = DateFormatter()
         f.dateFormat = "HH:mm"
         return f.string(from: date)
+    }
+}
+
+// MARK: - W4 删除事件确认对话框 modifier（iOS）
+
+/// 把 `.confirmationDialog` 抽成独立 modifier —— 直接挂在 CalendarView_iOS 的 body 长链上易触发
+/// Swift「unable to type-check this expression in reasonable time」。抽出后 body 链恢复简单。
+private struct CalendarEventDeleteConfirmModifier_iOS: ViewModifier {
+    @Binding var pending: Event?
+    let onConfirm: (Event) -> Void
+
+    func body(content: Content) -> some View {
+        content.confirmationDialog(
+            Text(LJStrings.eventDeleteConfirmTitle),
+            isPresented: Binding(
+                get: { pending != nil },
+                set: { if !$0 { pending = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pending
+        ) { event in
+            Button(role: .destructive) {
+                onConfirm(event)
+                pending = nil
+            } label: {
+                Text(LJStrings.eventDeleteConfirmConfirm)
+            }
+            Button(role: .cancel) {
+                pending = nil
+            } label: {
+                Text(LJStrings.quickAddCancel)
+            }
+        } message: { _ in
+            Text(LJStrings.eventDeleteConfirmMessage)
+        }
     }
 }

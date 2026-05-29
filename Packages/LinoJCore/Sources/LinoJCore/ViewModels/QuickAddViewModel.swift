@@ -26,6 +26,15 @@
 //         不创建新对象，返回原 project.id；
 //       * notes 字段当前 Project 表单没有输入（create 路径硬编码 ""），edit 模式同样不回写 notes，
 //         保留既有 notes 原值不动（见变更日志 V5）。
+//   - W4 Edit event 模式（editingEvent 非 nil）：与 editingProject 完全对称：
+//       * init 时强制 kind=.event（无视 defaultKind），把既有 event 的 title/start/end/location/
+//         attendees/project 预填进对应字段（start 同时灌 eventDate 取日期 + eventStart 取时分，
+//         end 灌 eventEnd），记录 editingEventID；与 editingProject 互斥（同一时刻只设一个）；
+//       * UI 通过 isEditingEvent / isEditingAny 锁/切标题与按钮文案（Edit event / Save）；
+//       * submit() 的 .event 分支：按 editingEventID 反查既有 event，原地回写
+//         title/start/end/location/attendees(类型 [Person]? 兜底)/project，不创建新对象，返回原 id；
+//         fetch 不到（极端：edit 期间被删/跨端同步删除）回退为创建，避免静默丢输入（与 project edit 同构）；
+//       * 不动 memberCount（事件编辑不触碰 Project.members）。
 
 import Foundation
 import Observation
@@ -93,8 +102,20 @@ public final class QuickAddViewModel {
     /// 存 ID 而非 Project 引用，submit() 时按 ID 反查 —— 与跨 actor / 持久化语义解耦。
     public private(set) var editingProjectID: UUID?
 
+    /// W4：非 nil 表示正在编辑既有 Event（edit 模式）；nil 表示 create 模式。
+    /// 与 editingProjectID 互斥（同一时刻只设一个）。存 ID 而非 Event 引用，submit() 时按 ID 反查。
+    public private(set) var editingEventID: UUID?
+
     /// 是否处于 Project edit 模式。UI 用它锁 segmented control + 切标题/按钮文案。
+    /// W4：语义保持不变（= project edit），避免改动 V5 既有判断。
     public var isEditing: Bool { editingProjectID != nil }
+
+    /// W4：是否处于 Event edit 模式。
+    public var isEditingEvent: Bool { editingEventID != nil }
+
+    /// W4：是否处于任一 edit 模式（project 或 event）。
+    /// UI 用它统一判断「标题/按钮文案切 Edit/Save」+「隐藏/锁分段控件」。
+    public var isEditingAny: Bool { isEditing || isEditingEvent }
 
     // MARK: - Init
 
@@ -103,11 +124,19 @@ public final class QuickAddViewModel {
         defaultKind: Kind = .todo,
         prefilledProject: Project? = nil,
         defaultScope: Scope = .personal,
-        editingProject: Project? = nil
+        editingProject: Project? = nil,
+        editingEvent: Event? = nil
     ) {
         self.context = context
-        // V5：edit 模式强制 kind=.project（无视 defaultKind）；否则用 defaultKind。
-        self.kind = editingProject == nil ? defaultKind : .project
+        // edit 模式强制 kind（无视 defaultKind）；否则用 defaultKind。
+        // V5：editingProject → .project；W4：editingEvent → .event（二者互斥）。
+        if editingProject != nil {
+            self.kind = .project
+        } else if editingEvent != nil {
+            self.kind = .event
+        } else {
+            self.kind = defaultKind
+        }
         // I5: 应用 Settings 中的 defaultTodoScope 默认值。
         // 注意：todoScope 的 didSet 在 `prefilledProject` 后会被覆盖（company + project），
         // 所以这里直接初始化 stored property，didSet 在 init 阶段不会触发。
@@ -150,6 +179,20 @@ public final class QuickAddViewModel {
             self.projectTag = editing.tag
             self.projectMembers = editing.members ?? []
         }
+
+        // W4：edit event 模式 —— 预填既有 Event 字段并记录 editingEventID。
+        // 时间拆装：start 同时灌 eventDate（取日期）+ eventStart（取时分）；end 灌 eventEnd（取时分）。
+        // attendees 为 [Person]?，`?? []` 兜底。
+        if let editing = editingEvent {
+            self.editingEventID = editing.id
+            self.eventTitle = editing.title
+            self.eventDate = editing.start
+            self.eventStart = editing.start
+            self.eventEnd = editing.end
+            self.eventLocation = editing.location
+            self.eventAttendees = editing.attendees ?? []
+            self.eventProject = editing.project
+        }
     }
 
     // MARK: - Validation
@@ -191,6 +234,42 @@ public final class QuickAddViewModel {
             return AnyHashable(todo.id)
 
         case .event:
+            // W4：edit 模式走 update 分支 —— 反查既有 event，原地回写字段而非 insert 新对象。
+            if let editingID = editingEventID {
+                let target = editingID
+                let descriptor = FetchDescriptor<Event>(
+                    predicate: #Predicate { $0.id == target }
+                )
+                guard let existing = try context.fetch(descriptor).first else {
+                    // 极端情况：edit 期间该 event 被删（如跨端同步删除）。
+                    // 回退为创建，避免静默丢用户输入（与 project edit 完全同构）。
+                    let event = Event(
+                        title: eventTitle.trimmingCharacters(in: .whitespacesAndNewlines),
+                        start: composedEventStart,
+                        end: composedEventEnd,
+                        location: eventLocation.trimmingCharacters(in: .whitespacesAndNewlines),
+                        attendees: eventAttendees,
+                        project: eventProject,
+                        attendedConfirmed: false
+                    )
+                    context.insert(event)
+                    try context.save()
+                    LinoJHaptics.lightTap()
+                    return AnyHashable(event.id)
+                }
+                existing.title = eventTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                existing.start = composedEventStart
+                existing.end = composedEventEnd
+                existing.location = eventLocation.trimmingCharacters(in: .whitespacesAndNewlines)
+                // attendees 类型 [Person]?；直接赋当前已选数组（W1 选人器增删的结果）。
+                existing.attendees = eventAttendees
+                existing.project = eventProject
+                // attendedConfirmed 不在编辑表单内，保留既有值不动（与 notes 同策略）。
+                try context.save()
+                LinoJHaptics.lightTap()
+                return AnyHashable(existing.id)
+            }
+
             let event = Event(
                 title: eventTitle.trimmingCharacters(in: .whitespacesAndNewlines),
                 start: composedEventStart,

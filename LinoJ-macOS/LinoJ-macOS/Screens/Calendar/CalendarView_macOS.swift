@@ -48,6 +48,9 @@ struct CalendarView_macOS: View {
     /// Timer 引用，存到 @State 让 lifecycle 能 cancel。Optional 因为 onAppear 之前为 nil。
     @State private var nowTimer: Timer?
 
+    /// W4：当前待删除确认的事件（驱动 `.confirmationDialog`）。nil 表示无弹窗。
+    @State private var eventPendingDelete: Event?
+
     /// 7AM - 9PM 的小时数（14 小时）。
     private let startHour: Int = 7
     private let endHour: Int = 21
@@ -88,6 +91,45 @@ struct CalendarView_macOS: View {
         }
         .onDisappear {
             stopNowTimer()
+        }
+        // W4：删除事件确认对话框（macOS）。抽成单独 modifier 减轻 body 类型检查负担。
+        .modifier(CalendarEventDeleteConfirmModifier(
+            pending: $eventPendingDelete,
+            onConfirm: { vm?.deleteEvent($0) }
+        ))
+    }
+
+    // MARK: - W4 事件操作（onTap 编辑 / contextMenu）
+
+    /// 打开事件编辑：设 router 信号让 Quick Add modal 以 event edit 模式打开。
+    private func openEdit(_ event: Event) {
+        router.quickAddEditingEvent = event
+        router.showQuickAdd = true
+    }
+
+    /// 事件卡 contextMenu 内容：Edit / Mark|Unmark attended（仅已结束事件）/ Delete。
+    /// 「标记已出席」仅对已结束事件（end <= vm.now）出现；已确认则翻转为「取消已出席」。
+    @ViewBuilder
+    private func eventActions(for event: Event, vm: CalendarViewModel) -> some View {
+        Button { openEdit(event) } label: {
+            Text(LJStrings.eventEdit)
+        }
+        if event.end <= vm.now {
+            if event.attendedConfirmed {
+                Button { vm.unconfirmAttended(event) } label: {
+                    Text(LJStrings.eventUnmarkAttended)
+                }
+            } else {
+                Button { vm.confirmAttended(event) } label: {
+                    Text(LJStrings.eventMarkAttended)
+                }
+            }
+        }
+        Divider()
+        Button(role: .destructive) {
+            eventPendingDelete = event
+        } label: {
+            Text(LJStrings.eventDelete)
         }
     }
 
@@ -489,11 +531,14 @@ struct CalendarView_macOS: View {
                     .offset(x: 0, y: CGFloat(i) * pxPerHour)
             }
 
-            // events：绝对定位
+            // events：绝对定位。W4：外层套 onTap（打开编辑）+ contextMenu（Edit/Mark/Delete）。
             ForEach(dayEvents, id: \.id) { event in
                 if let layout = eventLayout(event: event, columnWidth: columnWidth) {
                     EventCard(event: event, variant: .macWeekGrid)
                         .frame(width: layout.width, height: layout.height)
+                        .contentShape(Rectangle())
+                        .onTapGesture { openEdit(event) }
+                        .contextMenu { eventActions(for: event, vm: vm) }
                         .offset(x: layout.x, y: layout.y)
                 }
             }
@@ -585,5 +630,40 @@ struct CalendarView_macOS: View {
     private func stopNowTimer() {
         nowTimer?.invalidate()
         nowTimer = nil
+    }
+}
+
+// MARK: - W4 删除事件确认对话框 modifier
+
+/// 把 `.confirmationDialog` 抽成独立 modifier —— 直接挂在 CalendarView_macOS 的 body 长链上易触发
+/// Swift「unable to type-check this expression in reasonable time」。抽出后 body 链恢复简单。
+private struct CalendarEventDeleteConfirmModifier: ViewModifier {
+    @Binding var pending: Event?
+    let onConfirm: (Event) -> Void
+
+    func body(content: Content) -> some View {
+        content.confirmationDialog(
+            Text(LJStrings.eventDeleteConfirmTitle),
+            isPresented: Binding(
+                get: { pending != nil },
+                set: { if !$0 { pending = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pending
+        ) { event in
+            Button(role: .destructive) {
+                onConfirm(event)
+                pending = nil
+            } label: {
+                Text(LJStrings.eventDeleteConfirmConfirm)
+            }
+            Button(role: .cancel) {
+                pending = nil
+            } label: {
+                Text(LJStrings.quickAddCancel)
+            }
+        } message: { _ in
+            Text(LJStrings.eventDeleteConfirmMessage)
+        }
     }
 }

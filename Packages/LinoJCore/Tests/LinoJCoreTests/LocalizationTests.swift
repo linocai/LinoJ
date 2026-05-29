@@ -161,6 +161,41 @@ struct LocalizationTests {
         }
     }
 
+    // MARK: - W4 事件操作新增 key 双语验证
+
+    @Test("W4 事件操作 8 个 key 双语都有非空翻译，且 zh ≠ en")
+    func w4EventActionKeys() {
+        let cases: [(name: String, resource: LocalizedStringResource, expectedEn: String, expectedZh: String)] = [
+            ("Event.edit", LJStrings.eventEdit, "Edit event", "编辑事件"),
+            ("Event.delete", LJStrings.eventDelete, "Delete event", "删除事件"),
+            ("Event.markAttended", LJStrings.eventMarkAttended, "Mark attended", "标记已出席"),
+            ("Event.unmarkAttended", LJStrings.eventUnmarkAttended, "Unmark attended", "取消已出席"),
+            ("Event.deleteConfirmTitle", LJStrings.eventDeleteConfirmTitle, "Delete this event?", "删除该事件？"),
+            ("Event.deleteConfirmMessage", LJStrings.eventDeleteConfirmMessage, "This can't be undone.", "此操作无法撤销。"),
+            ("Event.deleteConfirmConfirm", LJStrings.eventDeleteConfirmConfirm, "Delete", "删除"),
+            ("QuickAdd.editEventTitle", LJStrings.quickAddEditEventTitle, "Edit event", "编辑事件"),
+        ]
+
+        for c in cases {
+            let en = resolve(c.resource, locale: "en")
+            let zh = resolve(c.resource, locale: "zh-Hans")
+            #expect(en == c.expectedEn, "[\(c.name)] EN 翻译错位：得到 '\(en)'，期望 '\(c.expectedEn)'")
+            #expect(zh == c.expectedZh, "[\(c.name)] 中文翻译错位：得到 '\(zh)'，期望 '\(c.expectedZh)'")
+            #expect(zh != en, "[\(c.name)] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+        }
+    }
+
+    // MARK: - W5 ProjectDetail 添加事件新增 key 双语验证
+
+    @Test("W5 ProjectDetail addEvent key 双语都有非空翻译，且 zh ≠ en")
+    func w5ProjectDetailAddEventKey() {
+        let en = resolve(LJStrings.addEvent, locale: "en")
+        let zh = resolve(LJStrings.addEvent, locale: "zh-Hans")
+        #expect(en == "+ Add event", "[Project.addEvent] EN 翻译错位：得到 '\(en)'")
+        #expect(zh == "+ 添加事件", "[Project.addEvent] 中文翻译错位：得到 '\(zh)'")
+        #expect(zh != en, "[Project.addEvent] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
     // MARK: - Bundle 暴露验证
 
     @Test("LinoJCoreBundle.bundle 能查到 xcstrings 资源")

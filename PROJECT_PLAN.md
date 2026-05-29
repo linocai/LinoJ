@@ -1657,6 +1657,121 @@ public func unconfirmAttended(_ event: Event)  // attendedConfirmed = false + sa
 
 ---
 
+### W7 — macOS 桌面包实测三项收口（搜索 esc 可点 / 关联事件可编辑 / 顶栏交错）  [前端 + 全栈（②）]
+
+**背景（用户在 macOS 桌面包实测 W1-W6 后反馈三项）：**
+1. 搜索面板只能按键盘 esc 退出，希望右上那枚「esc」徽章也能点击退出。
+2. 项目详情页右侧「关联事件」点不开，希望点事件直接进入编辑（用户常在项目页直接改事件）。
+3. macOS 顶栏「交错」不好看：红绿灯明显比工具栏内容偏高、整体错位像两层；最左边缘还有一条很细的竖线伪影。
+
+**总体优先级**：macOS 优先。①③ 仅 macOS；② macOS 优先 + iOS 对等。复用 W4 已建好的事件编辑基建，**不新增 @Model、不改 schema**。范围严格限定这三项，不扩张。
+
+---
+
+#### W7.1 — 搜索面板「esc」徽章可点击退出  [macOS 前端]
+
+**现状定点：**
+- `SearchPalette_macOS.swift:140` 的 `kbd("esc")`（helper 在 `:337`）是**纯视觉提示徽章**（chip 底圆角文字），不是按钮，无任何点击行为。
+- 该 View 已在 `:30` 持有 `@Environment(\.dismiss) private var dismiss`；search palette 由 `RootWindow.swift:179` 的 `.sheet(isPresented: $router.showSearch)` 呈现。
+- 既有键盘 esc 退出是系统 `.sheet` 默认行为（非 `.onKeyPress` 自定义），保持不变。
+
+**技术选型 / 决策：**
+- 把 header 里的 `kbd("esc")`（`:140`）替换为一个 `Button { dismiss() } label: { kbd("esc") }`，`.buttonStyle(.plain)`，让徽章本身可点。**用 `dismiss()`**（与既有系统 sheet dismiss 路径一致；不直接写 `router.showSearch = false`，避免与系统 sheet 状态不同步——sheet 由 `isPresented` 绑定，`dismiss()` 会正确翻回该 binding）。
+- 视觉保持原徽章样式不变（仍调用 `kbd("esc")` 作 label），`.plain` 去掉系统按钮 chrome；**新增**：`.accessibilityLabel`（复用既有「关闭/取消」类 key，见下「本地化」）、macOS hover 反馈复用文件内既有 `.ljHoverBackground()` 或仅加 `.help(...)`（builder 二选一，倾向加 `.help` tooltip + accessibilityLabel，不引入新 hover 修饰避免改视觉）。
+- 不改 `kbd(_:)` helper 签名（其它调用点 `↵`/`↑↓` 仍是纯视觉），只在 esc 这一处包 Button。
+
+**本地化：**
+- accessibilityLabel 复用既有 key（**优先不新增**）：检查 `LJStrings` 是否已有「关闭」类 key（如 `quickAddCancel` = Cancel/取消，或 W3 的关闭类 key）。若有合适项直接用；确无可复用项才走双轨三步新增 `Search.closeHint`（Close/关闭），按硬约束流程：编辑 `Localizable.xcstrings` 中英双填 → `xcrun xcstringstool compile Packages/LinoJCore/Sources/LinoJCore/Resources/Localizable.xcstrings -o Packages/LinoJCore/Sources/LinoJCore/Resources/` → `Strings.swift` 加成员。
+
+**验收标准：**
+- macOS 搜索面板（⌘K 打开）右上「esc」徽章**鼠标点击可关闭面板**，行为与按键盘 esc 一致。
+- 键盘 esc 仍可退出（无回归）；徽章视觉与原样式一致（chip 底、圆角、mono 字）。
+- VoiceOver 读到该徽章为可操作按钮且有「关闭」类标签。
+- `swift build -Xswiftc -warnings-as-errors` 0 warning；macOS build SUCCEEDED。
+
+**拆分：** 仅 macOS（`SearchPalette_macOS.swift`）。iOS 搜索是 `SearchSheet_iOS.swift`，iOS sheet 自带下拉/滑动关闭手势，**本期不动 iOS 搜索**（用户反馈仅 macOS）。
+
+---
+
+#### W7.2 — 项目详情「关联事件」点击进入编辑  [全栈，macOS 优先 + iOS 对等]
+
+**现状定点：**
+- macOS `ProjectDetailView_macOS.swift:510` `private func eventRow(_ event:)` 是自定义事件行（time + title + location + AvatarStack + 左 2pt accent + border），**未挂任何点击手势**。
+- iOS `ProjectDetailView_iOS.swift:484` 同名 `eventRow(_:)` 也是自定义行（已带 `.contentShape(Rectangle())` 于 `:509`，但**无 onTapGesture**），由 `linkedEventsSection`（`:408`）渲染。两端 ProjectDetail 的 linked-events 用的都是**自定义行、非 EventCard**（EventCard 在 W4 保持纯展示，本期同样不动）。
+- 两端 ProjectDetail 均已 `@Environment(TabRouter.self) private var router`（macOS `:27` / iOS `:27`），且 `:113`(macOS)/`:181`(iOS) 已用 `router.quickAddEditingProject` 打开编辑，**证明 router 编辑路径可用**。
+- `TabRouter.quickAddEditingEvent: Event?`（`:53`）已由 W4 落地；两端 QuickAdd sheet 已支持 editingEvent 模式（W4），打开后 onDisappear 清回 nil。
+
+**技术选型 / 决策（复用 W4 事件编辑基建）：**
+- **最小实现：仅「点击 → 打开事件编辑」，本期不加 contextMenu。** 理由：ProjectDetail 持有的是 `ProjectDetailViewModel`，它**不含** `deleteEvent` / `confirmAttended` / `unconfirmAttended`（这些在 W4 加到了 `CalendarViewModel` / `MainViewModel`，未加到 `ProjectDetailViewModel`）。要做完整右键「编辑/删除/标记已出席」需给 `ProjectDetailViewModel` 补这些方法，超出「在项目页编辑事件」的核心诉求；删除/标记出席用户可去日历做。本期保持 `ProjectDetailViewModel` 不动，满足核心诉求即可。（若后续要补 contextMenu，复用 W4 同模式：`ProjectDetailViewModel` 加 `deleteEvent`/`confirmAttended`/`unconfirmAttended`（context.delete/置位 + save + refresh），外层套 `.contextMenu`——单列为未来增量，不在 W7 范围。）
+- **macOS（先做先验收）**：在 `eventRow(_:)`（`:510`）的最外层 modifier 链上加 `.contentShape(Rectangle())`（保证整行可点，当前未显式加）+ `.onTapGesture { router.quickAddEditingEvent = event; router.showQuickAdd = true }`。打开 QuickAdd 事件编辑模式（W4 已让 sheet 读 `quickAddEditingEvent` 预填）。可选加 `.ljHoverBackground()` 或 `.help`/光标提示（与文件内既有交互行风格一致，builder 视情况，倾向加 hover 提示「可点击」感）。
+- **iOS（后做后验收）**：`eventRow(_:)`（`:484`）已有 `.contentShape(Rectangle())`，仅在其后加 `.onTapGesture { router.quickAddEditingEvent = event; router.showQuickAdd = true }`。iOS QuickAdd（`QuickAddSheet_iOS.swift`）同样已支持 editingEvent（W4）。
+- **不改** `EventCard.swift`（纯展示）、**不改** `ProjectDetailViewModel`、**不改** schema、**不新增** router 字段（`quickAddEditingEvent` 已存在）。
+
+**关键接口 / 类型契约（复用既有，无新增）：**
+```swift
+// 既有，W4 落地，本期直接复用：
+// TabRouter.quickAddEditingEvent: Event?   // 非 nil → QuickAdd 以事件编辑模式打开
+// TabRouter.showQuickAdd: Bool
+// 点击事件行的统一动作（两端一致）：
+router.quickAddEditingEvent = event
+router.showQuickAdd = true
+// QuickAdd sheet onDisappear（W4 已实现）会把 quickAddEditingEvent 清回 nil。
+// 与 quickAddEditingProject 互斥（同一时刻只设一个）——本期点击事件只设 quickAddEditingEvent，天然不冲突。
+```
+
+**本地化：** 无新增（编辑流程文案 W4 已提供：`quickAddEditEventTitle` 等）。
+
+**验收标准：**
+- macOS：ProjectDetail 右列「关联事件」任一事件行**鼠标点击 → 打开 QuickAdd 事件编辑模式**，预填该事件 title/start/end/location/attendees/project；改后保存，回到 ProjectDetail 该行更新（time/title/location 随之变）。
+- iOS：ProjectDetail「关联事件」事件行**点击 → 打开 QuickAdd 事件编辑模式**，行为同 macOS。
+- 编辑保存走 W4 的 update 分支（按 ID 原地回写，`attendedConfirmed` 保留不动），不新增重复事件。
+- 关闭 QuickAdd 后 `quickAddEditingEvent` 清回 nil；再从顶栏 `+ New` 打开是干净 create 模式（无残留预填）。
+- `swift build -Xswiftc -warnings-as-errors` 0 warning；两端 build SUCCEEDED。（纯 UI 点击接线，无新增单测；若 W4 的 QuickAddViewModel 事件编辑测试已覆盖 update 分支则不另加。）
+
+**拆分（共享 / macOS / iOS）：**
+- **共享**：无（复用 W4 已加的 `quickAddEditingEvent` 与 QuickAddViewModel 事件编辑能力）。
+- **macOS（先验收）**：`ProjectDetailView_macOS.swift` `eventRow(_:)` 加 `.contentShape` + `.onTapGesture`。
+- **iOS（后验收）**：`ProjectDetailView_iOS.swift` `eventRow(_:)` 加 `.onTapGesture`（contentShape 已有）。
+
+---
+
+#### W7.3 — macOS 顶栏红绿灯垂直对齐 + 最左竖线伪影  [macOS 前端，需出包截图迭代]
+
+**现状定点：**
+- 窗口 `.hiddenTitleBar`（unified chrome，见 0.9.1 / W6 changelog）。`RootWindow.swift:48` body 是 `VStack(spacing: 0)`，第一项 `toolbar(router:)`（`:199`）是 44pt 高自定义顶栏：左 `.padding(.leading, 78)` 给红绿灯让位，内容 HStack（wordmark / tabs / Spacer / Search pill / + New），`.frame(height: 44)`，下沿 0.5pt `Color.lj.border` 分隔线（`:232` overlay bottom）。
+- `RootWindow.swift:78` `.background(TrafficLightConfigurator(barHeight: 44))`；`TrafficLightConfigurator`（`:371`）零尺寸 NSView 抓 window，`reposition()`（`:411`）把三枚红绿灯 setFrameOrigin 到 `raw = container.bounds.height - topInset - bh`（`topInset = (barHeight - bh)/2`），并 `clamp` 到 `[0, container.bounds.height - bh]`。
+- 用户截图：红绿灯明显**比工具栏内容偏高**、整体像两层交错；最左边缘一条很细竖线伪影。
+
+**根因假设（headless 无法验真实渲染，列主假设 + 备选）：**
+- **主假设（最可能）**：`reposition()` 用 `container.bounds.height` 当作 44pt 顶栏高来居中，但红绿灯按钮的 superview（titlebar / themeFrame 容器）**真实高度不是 44pt**，而是系统标准标题栏高（约 28pt），且其在 window 内的坐标原点也未必与 SwiftUI 44pt 顶栏顶部重合。于是 `(barHeight - bh)/2` 的 inset 是相对错误的容器高算的 → 红绿灯被定位到「系统标题栏中线」而非「44pt SwiftUI 顶栏视觉中线」，表现为偏上、与 wordmark/tabs 不齐。**修复方向**：不要相对 `container.bounds.height` 算，而是相对**窗口内容顶部（window contentLayoutRect / frame 顶）** 把按钮中心对齐到「距窗口顶 44/2 = 22pt」处：即按 `window.contentView` 或 `themeFrame` 的几何，令按钮中心 Y（AppKit 自下而上坐标）= 容器顶 - 22pt。需在 `reposition()` 里改用红绿灯所在容器**相对 window 的实际偏移**重新推导目标 Y，使按钮垂直中心落在窗口顶向下 22pt。clamp 上限放宽（当前 clamp 可能把目标顶回偏上）。
+- **备选 A**：`.hiddenTitleBar` 下窗口仍保留了一段标题栏高度把整个 SwiftUI 内容（含 44pt 顶栏）下推，导致顶栏内容相对红绿灯偏低——若如此则相反方向，应改为把顶栏内容向上贴齐或把红绿灯目标下移更多。
+- **备选 B**：顶栏内容 HStack 未真正垂直居中于 44pt（某元素 baseline/默认对齐使内容偏下），可在 `toolbar` 内容外层加显式垂直居中（HStack 默认 `.center` 已居中，但 wordmark 的 dot / tab 的 padding 不对称可能造成视觉偏移）——作为微调项。
+- **最左竖线伪影**：排查候选——① 顶栏下沿 `Rectangle().frame(height: 0.5)`（`:233`）正常是水平线，不应竖直；② 主内容 `ZStack` 的 `Color.lj.bg.ignoresSafeArea()`（`:63`）或 ProjectDetail/各屏左列 `.overlay(alignment:.trailing){ Rectangle().frame(width:0.5) }` 在窗口左缘的渲染；③ `.padding(.leading, 78)` 让位区与红绿灯容器边界处的 1px 抗锯齿缝；④ `TrafficLightConfigurator` 的零尺寸 NSView 或红绿灯容器残留边框。builder 出包后按全局经验**给可疑容器加临时彩色 `.border`** 定位竖线归属，再针对性消除（如某 Rectangle 越界 / ignoresSafeArea 边）。
+
+**技术选型 / 决策：**
+- 优先按**主假设**改 `TrafficLightConfigurator.reposition()`：以窗口顶为基准把红绿灯中心对齐到 44pt 顶栏中线（顶向下 22pt），而非相对 `container.bounds.height` 居中。保留 clamp 但放宽上限避免顶回偏上。
+- **明确标注：本项 headless 无法验真实渲染。** builder 必须出 macOS 包 → `open <.app>` 启动新二进制（绕开 Xcode 增量缓存）→ 用户截图判断红绿灯与顶栏内容是否齐平、竖线是否消失。**若一次不中**，按全局经验给顶栏容器 / 红绿灯容器 / 主内容 ZStack 加临时醒目彩色 `.border` + 一条「构建新鲜度标记」，让用户再截图迭代定位，连续未中再换备选假设 A/B。
+- 不改窗口 `.hiddenTitleBar` 选型（unified chrome 是 W6 既定方向）；不改顶栏 44pt 高度与三段布局（W6/V4 已验收的视觉）。仅调红绿灯定位算法 + 消竖线。
+
+**关键接口 / 类型契约：** 无新增类型。仅修改 `TrafficLightConfigurator.reposition()` 内的目标 Y 计算（私有），以及（若定位到）某 Rectangle/overlay 的越界修正。`barHeight: 44` 入参不变。
+
+**验收标准：**
+- macOS 出包后真机启动：红绿灯三枚按钮**垂直中心与顶栏 wordmark/tabs/Search/New 同排齐平**（不再偏上、不像两层交错）。
+- 窗口最左边缘**无细竖线伪影**。
+- 进入全屏 / 退出全屏 / 改变窗口大小后红绿灯位置仍正确（`reposition()` 监听 didResize / 进出全屏，无回归）。
+- `swift build -Xswiftc -warnings-as-errors` 0 warning（注意：`RootWindow.swift` `reposition()` 既有的 warning 若仍在，本期顺手消除或保持现状由 builder 判断，不得新增 warning）。
+- **本项验收以用户截图为准**（headless 不可判），plan 接受「需多轮截图迭代」。
+
+**拆分：** 仅 macOS（`RootWindow.swift`）。iOS 无顶栏红绿灯，不涉及。
+
+---
+
+**W7 整体前置依赖：** W4（提供 `quickAddEditingEvent` 与 QuickAddViewModel 事件编辑能力，W7.2 直接复用）；V4/W6（macOS 顶栏现状，W7.3 在其基础上修红绿灯定位）。无付费能力依赖，不触碰 entitlements / schema。
+
+**W7 施工顺序建议：** W7.1（最小、纯 macOS UI）→ W7.2 macOS → W7.2 iOS → W7.3（需出包截图迭代，放最后）。
+
+---
+
 ## 用户需在网页端手动操作的清单（v1.0）
 
 > 以下操作 Claude / builder **无法代做**（涉及 Apple 网页控制台 / 账号交互）。请用户在对应 Phase **施工前**完成（尤其 V0 前置的 App ID + Container）。每项标注「Xcode 能否自动建」以免白点。
@@ -2145,6 +2260,65 @@ public func unconfirmAttended(_ event: Event)  // attendedConfirmed = false + sa
 - **影响范围（待 builder 施工）**：共享 `QuickAddViewModel` / `CalendarViewModel` / `MainViewModel` / `TabRouter` / `Strings.swift` + `Localizable.xcstrings` + 两 lproj + 测试；macOS `CalendarView_macOS` / `MainView_macOS` / `QuickAddModal_macOS` / `ProjectDetailView_macOS`；iOS `CalendarView_iOS` / `MainView_iOS` / `QuickAddSheet_iOS` / `ProjectDetailView_iOS`。`EventCard.swift` 不改。
 - **新增本地化 key**：W4 8 个（`Event.edit/delete/markAttended/unmarkAttended/deleteConfirmTitle/deleteConfirmMessage/deleteConfirmConfirm` + `QuickAdd.editEventTitle`）；W5 1 个（`Project.addEvent`）；W6 0 个。均走双轨三步。
 - **涉及 Phase（新增）**：W4 / W5 / W6，均无付费能力依赖，依赖 v0.9 + V5 + W1。W6 建议在 W4 之后做（消费 W4 的 `isEditingAny`）。
+
+### [2026-05-28] W4 施工（@builder）— 事件可操作：编辑 / 删除 / 标记已出席
+- **变更内容**：
+  - **共享**：`QuickAddViewModel` 加 `editingEvent` init 参 + `editingEventID`（private(set)）+ `isEditingEvent` + `isEditingAny`（= isEditing || isEditingEvent；`isEditing` 语义保持 = project edit 不变），init 预填既有 event 的 title/start/end/location/attendees/project（start 同灌 eventDate+eventStart，end 灌 eventEnd），submit `.event` 分支加 edit 回写（按 ID fetch 原地更新，fetch 不到回退创建，attendedConfirmed 保留既有不动，不触碰 memberCount）；`TabRouter` 加 `quickAddEditingEvent: Event?`（与 quickAddEditingProject 同模式，互斥）；`CalendarViewModel`/`MainViewModel` 各加 `deleteEvent`（context.delete + save + refresh）+ `unconfirmAttended`（attendedConfirmed=false + save + refresh），复用既有 `confirmAttended` 作「标记已出席」；`Strings.swift` 加 8 个成员，`Localizable.xcstrings` 双填 8 key + 重生两 lproj。`EventCard.swift` **未改**（保持纯展示）。
+  - **macOS（先验收）**：`CalendarView_macOS`（周视图 `.macWeekGrid` 卡外层套 `onTapGesture` 打开编辑 + `contextMenu`：Edit / Mark|Unmark attended（仅 end<=vm.now）/ Delete）；`MainView_macOS`（`.macRail` row 同套，dayRow 加 vm 参；过去判定用 `LinoJTime.today()`）；`QuickAddModal_macOS`（VM 构造传 editingEvent、headerTitle/createButtonTitle/accessibilityLabel 用 isEditingAny、segmented `.disabled(isEditingAny)`、onDisappear 清 quickAddEditingEvent）；两屏删除走 `.confirmationDialog`（抽成 private ViewModifier，见下偏离）。
+  - **iOS（后验收）**：`CalendarView_iOS`（`.iosFull` 套 onTap+contextMenu）；`MainView_iOS`（`.iosMini` 套 onTap+contextMenu）；`QuickAddSheet_iOS`（同 macOS 的 VM 构造 / 文案 / segmented / onDisappear）；删除确认同走抽出的 ViewModifier。
+  - **测试**：新增 `QuickAddViewModelEventEditTests`（7 个：edit init 预填、submit update 不新增、attendees 回写、fetch 不到回退创建、attendedConfirmed 保留、isEditing 语义保持、create 模式 flags 全 false）；`CalendarViewModelTests` +2（deleteEvent / unconfirm↔confirm）；`MainViewModelTests` +2（同）；`LocalizationTests` +1（W4 8 key zh≠en）。测试数 152 → **163 全绿**。
+- **新增本地化 key（8，中英双填）**：`Event.edit`/`Event.delete`/`Event.markAttended`/`Event.unmarkAttended`/`Event.deleteConfirmTitle`/`Event.deleteConfirmMessage`/`Event.deleteConfirmConfirm` + `QuickAdd.editEventTitle`。
+- **偏离说明**：两端删除确认对话框从「直接挂在 View body 的 `.confirmationDialog`」改为「抽成独立 private `ViewModifier`」。原因：`MainView_macOS` body 长 modifier 链直接挂 confirmationDialog 触发 Swift `unable to type-check this expression in reasonable time`（编译失败）；抽成 ViewModifier 后 body 链恢复简单、编译通过。**纯实现手法、不改任何 plan 行为/契约**（仍是 confirmationDialog + 破坏性 Delete + Cancel + 不可撤销文案）。其余完全按 plan「关键接口/类型契约」「拆分」「完成语义决策」逐条落实。
+- **验收**：`swift test --package-path Packages/LinoJCore` **163 全绿**（152 + 11 W4）；`swift build --package-path Packages/LinoJCore -Xswiftc -warnings-as-errors` **0 warning**；macOS `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build` **BUILD SUCCEEDED**（唯一 warning 在 `RootWindow.swift:404 reposition()`，W4 前既有、与本期无关）；iOS Simulator（iPhone 17 Pro）`build` **BUILD SUCCEEDED** 0 代码 warning。⚠️ headless 无法验真实点击/右键/长按/CloudKit——**需用户真机验收（macOS 优先）**：① 周视图/Main 右栏点事件卡 → 打开编辑（标题「编辑事件」+ 按钮「保存」+ 预填）→ 改 title 保存即更新、重启仍在；② 右键/长按 → Edit / Delete（+ 过去事件出现 Mark/Unmark attended）；Delete → 确认弹窗 → 事件消失、重启不复现；③ 已结束事件出现「标记已出席」点后变「取消已出席」（可逆）、未来事件不出现该项；④ 编辑改 attendees（经 W1 选人器）保存后头像数正确、重启仍在。
+- **影响范围**：Phase W4。
+
+### [2026-05-28] W5 施工（@builder）— ProjectDetail「+ 添加事件 / + 添加待办」接通 + 文案修正
+- **变更内容**：
+  - **共享（先做）**：`Strings.swift` 加 `addEvent`（`Project.addEvent`）；`Localizable.xcstrings` 双填 `Project.addEvent` = "+ Add event" / "+ 添加事件" + `xcstringstool compile` 重生两 lproj；`LocalizationTests` +1（W5 `addEvent` 的 zh≠en 断言）。`TabRouter` / `QuickAddViewModel` **未改**（复用既有 `quickAddPrefilledProject` / `quickAddDefaultKind` / `showQuickAdd` + `prefilledProject` 的 `.event`/`.todo` 既有分支）。核对两端 QuickAdd sheet onDisappear 均已清 `quickAddPrefilledProject` 回 nil（`QuickAddModal_macOS.swift:80` / `QuickAddSheet_iOS.swift:71`），**无需补**。
+  - **macOS（次做，先验收）**：`ProjectDetailView_macOS.swift` —— 「+ 添加待办」按钮（左列 header）action 接 `router.quickAddPrefilledProject = project; quickAddDefaultKind = .todo; showQuickAdd = true`；「+ 添加事件」按钮（右列「关联事件」header）同上但 `.todo` 改 `.event`，并把 label 从误用的 `LJStrings.addTodo` 改 `LJStrings.addEvent`。
+  - **iOS（末做，后验收）**：`ProjectDetailView_iOS.swift` —— 「+ 添加事件」按钮（`linkedEventsSection` header）接通 `.event` + label 改 `addEvent`。**核对结果：iOS ProjectDetail 无独立「+ 添加待办」入口**（todos 区无 `+` 按钮，仅此 add-event 一个 stub），故 iOS 仅接通 add-event 一处，符合 plan「有则一并接通」的条件判断。
+- **新增本地化 key（1，中英双填）**：`Project.addEvent` = "+ Add event" / "+ 添加事件"。「+ 添加待办」复用既有 `Project.addTodo`，不新增。
+- **偏离说明**：无。完全按 plan「技术选型/决策」「拆分」「验收标准」逐条落实（接通方式、文案修正、复用既有 router 字段与 prefilledProject 分支、不改 VM/Router）。
+- **验收**：`swift test --package-path Packages/LinoJCore` **164 全绿**（163 + 1 W5 LocalizationTest）；`swift build --package-path Packages/LinoJCore -Xswiftc -warnings-as-errors` **0 warning**；macOS `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build` **BUILD SUCCEEDED**（唯一代码 warning 在 `RootWindow.swift:404 reposition()`，W5 前既有、与本期无关；另有 AccentColor 资产目录 warning，非代码）；iOS Simulator（iPhone 17 Pro）`build` **BUILD SUCCEEDED** 0 代码 warning。⚠️ headless 无法验真实点击/弹 sheet——**需用户真机验收（macOS 优先）**：① ProjectDetail 点「+ 添加待办」→ 打开 QuickAdd，kind 预选 Todo、scope 预选 Company、Project chip 预填本项目；创建后 todo 出现在此 ProjectDetail 待办列；② 点「+ 添加事件」→ 打开 QuickAdd，kind 预选 Event、Project 预填本项目；创建后事件出现在「关联事件」列、`linkedEventsCount` +1；③「+ 添加事件」按钮文案显示「+ 添加事件 / + Add event」（不再错显「添加待办」）；④ 关 QuickAdd 后再从顶栏 `+ New` 打开不残留上次预填 project。
+- **影响范围**：Phase W5。
+
+### [2026-05-28] W6 施工（@builder）— 编辑模式隐藏分段控件（小 UX 收口）
+- **变更内容**：
+  - **共享**：无（仅消费 W4 已加的 `QuickAddViewModel.isEditingAny`，未改 VM/本地化；plan 说明 W6 无新增 key，已核实无新增）。
+  - **macOS（次做，先验收）**：`QuickAddModal_macOS.swift` header —— 把三段分段 `Picker(.segmented).disabled(vm.isEditingAny)`（原 :141-165）改为 `if !vm.isEditingAny { Picker(...) }` 整块条件渲染。编辑态（项目 / 事件）不再灰显分段控件，仅留标题（`headerTitle` 三态逻辑 W4 已接，W6 未改）。
+  - **iOS（末做，后验收）**：`QuickAddSheet_iOS.swift` 的 `kindSegmented(vm:)`（原 :170-183）同改为 `if !vm.isEditingAny { Picker(...) }`。调用点（`content` :92 的 `.padding`）保留：编辑态函数返回 `EmptyView`、零尺寸，VStack(spacing:0) 自动收拢、无空洞。
+- **新增本地化 key**：无（标题 key `quickAddEditProjectTitle` / `quickAddEditEventTitle` / `quickAddNew` 由 V5+W4 提供）。
+- **偏离说明**：无。完全按 plan「技术选型/决策」「拆分」「验收标准」落实——用聚合 `isEditingAny` 作隐藏条件（覆盖 project edit 与 event edit 两态），create 模式照常显示三段控件可切，标题逻辑不动。
+- **验收**：`swift test --package-path Packages/LinoJCore` **164 全绿**（纯 UI 条件渲染，无新增/受影响测试）；`swift build --package-path Packages/LinoJCore -Xswiftc -warnings-as-errors` **0 warning**；iOS Simulator（iPhone 17 Pro）`build` **BUILD SUCCEEDED** 0 代码 warning；macOS `CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build` **BUILD SUCCEEDED**（唯一代码 warning 在 `RootWindow.swift:404 reposition()`，W6 前既有、与本期无关）。⚠️ headless 无法验真实渲染——**需用户真机验收（macOS 优先）**：① ProjectDetail「编辑项目」/ 事件卡「编辑事件」进入 QuickAdd → 顶部不再有灰掉的三段分段控件、仅显示「编辑项目」/「编辑事件」标题；② 顶栏 `+ New` / ⌘N 新建 → 三段分段控件正常显示可切。
+- **影响范围**：Phase W6。
+
+### [2026-05-28] W7 施工（@builder）— macOS 桌面包实测三项收口
+- **变更内容**：
+  - **W7.1 搜索 esc 徽章可点（macOS）**：`SearchPalette_macOS.swift` header 把 `kbd("esc")`（原 :140）包成 `Button { dismiss() } label: { kbd("esc") }` + `.buttonStyle(.plain)` + `.help(...)` + `.accessibilityLabel(...)`，用 `:30` 既有 `@Environment(\.dismiss)`（与系统 `.sheet` dismiss 路径一致）。徽章视觉不变（仍调 `kbd`），键盘 esc 退出无回归。
+  - **W7.2 关联事件点击进编辑（macOS 先 + iOS 对等）**：macOS `ProjectDetailView_macOS.swift` `eventRow(_:)`（原 :510）最外层加 `.contentShape(Rectangle())` + `.onTapGesture { router.quickAddEditingEvent = event; router.showQuickAdd = true }`；iOS `ProjectDetailView_iOS.swift` `eventRow(_:)`（原 :484，contentShape 已有）仅加同一 `.onTapGesture`。两端复用 W4 已落地的 `TabRouter.quickAddEditingEvent` + QuickAdd 事件编辑模式。**未加 contextMenu**（按 plan 决策：ProjectDetailViewModel 无 deleteEvent/confirmAttended，超核心诉求）。未改 EventCard / ProjectDetailViewModel / schema / router 字段。
+  - **W7.3 顶栏红绿灯对齐 + 最左竖线（macOS）**：`RootWindow.swift` `TrafficLightConfigurator.reposition()` 按 plan 主假设重写——不再相对红绿灯所在的系统 titlebar 容器（约 28pt）`container.bounds.height` 居中，改为以 `window.contentView`（hiddenTitleBar 下铺满整窗）顶部为基准，把红绿灯**垂直中心**对齐到「内容顶向下 barHeight/2（=22pt）」：`desiredCenterInContent = (0, contentView.bounds.maxY - 22)` → `container.convert(...from: contentView)` 换算到容器坐标系 → 逐枚按钮 `newY = centerInContainer.y - bh/2`，clamp 放宽为仅防溢出 `[0, container.height-bh]`。最左竖线伪影：在 `attach()` 里对 window 设 `titlebarSeparatorStyle = .none`（hiddenTitleBar 下 AppKit 仍可能在 titlebar/内容交界绘 separator，主疑此处）。
+- **新增本地化 key**：无。W7.1 复用既有 `LJStrings.quickAddCancel`（Cancel / 取消，作关闭语义的 accessibilityLabel/help）；W7.2/W7.3 文案 W4 已提供或无文案。
+- **偏离说明**：无。三项均按 plan「技术选型/决策」「拆分」逐条落实（W7.1 用 dismiss() 不写 router 状态；W7.2 仅点击不做 contextMenu；W7.3 走主修复假设）。W7.3 额外加的 `titlebarSeparatorStyle = .none` 是 plan「最左竖线伪影」排查候选范围内的针对性消除（候选④红绿灯容器/titlebar 残留边框），未超范围。
+- **验收**：`swift test --package-path Packages/LinoJCore` **164 全绿**（无新增/受影响测试，纯 UI 接线）；`swift build --package-path Packages/LinoJCore -Xswiftc -warnings-as-errors` **0 warning**；macOS Debug `build`（含签名版与 `CODE_SIGNING_ALLOWED=NO` 版）**BUILD SUCCEEDED**，**0 新增代码 warning**（唯一代码 warning 仍是 `RootWindow.swift reposition()` 在 nonisolated context 调用，W7 前既有、本期未新增）；iOS Simulator（iPhone 17 Pro）`build` **BUILD SUCCEEDED** 0 代码 warning。已出签名 macOS 包并 `open` 启新二进制确认进程在（PID 存活）。⚠️ headless 无法验真实点击/渲染——**需用户 macOS 真机验收**：① 搜索面板（⌘K）点右上「esc」徽章关闭、键盘 esc 仍可退；② ProjectDetail 右列「关联事件」点任一事件 → 打开 QuickAdd 事件编辑模式（标题「编辑事件」+ 预填）；iOS 同；③ **W7.3 顶栏红绿灯是否与 wordmark/tabs 同排齐平、最左竖线是否消失需用户截图确认**——本项 headless 不可判，若主假设未中按 plan 给可疑容器加临时彩色 border 迭代（连续未中再换备选 A/B）。
+- **影响范围**：Phase W7（macOS：W7.1/W7.3；macOS+iOS：W7.2）。
+
+### [2026-05-28] W7.3 顶栏对齐 —— 截图定位迭代（真因修正）
+- **背景**：W7 出包后用户实测，W7.3「红绿灯对齐」**未生效**——红绿灯仍浮在顶栏带之上、交错。W7 builder 当时只动了 `TrafficLightConfigurator.reposition()`（移红绿灯），没解决真因。按全局经验「macOS 布局看不见就别盲猜」，主控直接做**调试边框定位迭代**（不再走 builder 盲改）。
+- **定位手段**：给 44pt 顶栏带临时加 `Color.red.opacity(0.22)` 底 + `Color.blue` 边框，出签名包让用户截图。截图实证：**顶栏带的上边缘没贴窗口顶**，红绿灯落在带「之上」的一条空白 strip 里——即顶栏 VStack 虽在 `.hiddenTitleBar` 下，仍**尊重顶部 title-bar 安全区**，整条 44pt 带被下推 ~28pt（title bar 高度），所以红绿灯（在 titlebar 区，约 22pt）与带内容（被推到 ~50pt 中线）错开 ~28pt。
+- **真因 & 修复**：根因是顶栏没吃掉顶部安全区，**不是** reposition 的坐标。修复 = 在 `RootWindow` 根 `VStack` 加 `.ignoresSafeArea(.container, edges: .top)`，让 44pt 顶栏带贴到窗口最顶；带内容中线≈22pt 与红绿灯（reposition 后 22pt）对齐。W7 的 `TrafficLightConfigurator`（22pt 居中）保留——两者配合后对齐成功（用户截图确认：红绿灯与 wordmark/tabs 同排居中、带贴顶，与设计稿一致）。调试边框已移除。
+- **验收**：用户 macOS 桌面包截图确认顶栏对齐设计稿；`swift test` 164 全绿、`-warnings-as-errors` 0 warning（package 不含 macOS App，仍编译验证）；签名 Release 桌面包 BUILD SUCCEEDED 并运行确认。
+- **影响范围**：仅 `LinoJ-macOS/.../RootWindow.swift`（VStack 加 `.ignoresSafeArea(.container, edges: .top)`，去除临时调试边框）。
+- **经验**：已踩坑——`.hiddenTitleBar` 下自定义顶栏若要红绿灯与内容同排融合，**必须**让顶栏容器 `.ignoresSafeArea(edges: .top)` 贴到窗口真顶，否则被 title-bar 安全区下推、只调红绿灯位置治标不治本。值得沉淀到全局经验。
+
+---
+
+### [2026-05-28] 扩充 W7 —— macOS 桌面包实测三项收口（搜索 esc 可点 / 关联事件可编辑 / 顶栏交错）
+- **动机**：用户在 macOS 桌面包实测 W1-W6 后反馈三项 UX 问题，主控已逐条定点到代码，本次由 @planner 补一个 W7 Phase（延续 W 组风格，标类型 + 契约 + 选型 + 验收 + 拆分）。macOS 优先；范围严格限定这三项。
+- **涉及 Phase**：新增 W7（拆 W7.1 / W7.2 / W7.3 三子项）。
+- **W7.1 搜索 esc 徽章可点 [macOS 前端]**：`SearchPalette_macOS.swift:140` 的 `kbd("esc")` 是纯视觉徽章，包成 `Button { dismiss() }`（用 `:30` 既有 `@Environment(\.dismiss)`，与系统 `.sheet` dismiss 路径一致，不直接写 `router.showSearch=false`）、`.buttonStyle(.plain)` 保原样式 + accessibilityLabel/`.help`。本地化优先复用既有「关闭/取消」类 key，确无才走双轨三步。仅 macOS，不动 iOS 搜索。
+- **W7.2 关联事件点击进编辑 [全栈，macOS 优先 + iOS 对等]**：两端 ProjectDetail 的 linked-events 用自定义 `eventRow`（macOS `:510` 无点击 / iOS `:484` 有 contentShape 无 onTap），均已持有 router。给 `eventRow` 加 `.contentShape` + `.onTapGesture { router.quickAddEditingEvent = event; router.showQuickAdd = true }`，复用 W4 已落地的 `TabRouter.quickAddEditingEvent`（`:53`）+ QuickAdd 事件编辑模式。**决策：本期最小实现，仅「点击→打开编辑」，不加 contextMenu**——因 `ProjectDetailViewModel` 不含 `deleteEvent`/`confirmAttended`（在 CalendarViewModel/MainViewModel），加完整右键菜单需扩 VM、超出「在项目页编辑事件」核心诉求；删除/标记出席用户去日历做。contextMenu 列为未来增量（复用 W4 同模式）。不改 EventCard / ProjectDetailViewModel / schema / router 字段。
+- **W7.3 macOS 顶栏红绿灯对齐 + 最左竖线伪影 [macOS 前端，需出包截图迭代]**：`RootWindow.swift:78` `TrafficLightConfigurator(barHeight:44)` 的 `reposition()`（`:411`）以红绿灯**容器** `container.bounds.height` 居中，但该容器是系统标题栏（约 28pt）非 44pt SwiftUI 顶栏 → 红绿灯被定位到系统标题栏中线（偏上）而非 44pt 顶栏视觉中线，造成「两层交错」。**主修复假设**：改 `reposition()` 以**窗口顶为基准**把红绿灯中心对齐到顶向下 22pt（44/2），放宽 clamp 上限。备选 A（hiddenTitleBar 残留标题栏高把内容下推，方向相反）/ B（顶栏内容未真正垂直居中，微调）。最左竖线伪影排查候选：顶栏下沿 Rectangle、主内容 ZStack 的 ignoresSafeArea、各屏左列 trailing overlay Rectangle、`.padding(.leading,78)` 让位缝。**明确标注本项 headless 无法验真实渲染**：builder 出包→`open` 启新二进制→用户截图判齐平/竖线；一次不中按全局经验给可疑容器加临时彩色 `.border` + 构建新鲜度标记迭代，连续未中再换备选假设。仅 macOS。
+- **影响范围**：W7（macOS only：W7.1/W7.3；W7.2 macOS+iOS）。前置 W4（事件编辑基建）+ V4/W6（顶栏现状）。不触碰 entitlements/schema/付费能力。施工顺序建议：W7.1 → W7.2 macOS → W7.2 iOS → W7.3（截图迭代项放最后）。
 
 ---
 
