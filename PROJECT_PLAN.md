@@ -3006,6 +3006,26 @@ public enum LinoJStore {
 
 ---
 
+### [2026-05-31] U8 施工 —— iOS 各屏底部留白收口（移除旧浮动 capsule 遗留的 100/110pt spacer）
+
+- **逐屏改了哪几处底部 spacer（6 个主内容屏，各 1 处）**——全部从旧的 `Color.clear.frame(height: 100/110)`（「让出 tab bar」遗留）改成 **`Color.clear.frame(height: 24)`**（小段视觉呼吸），注释统一改成「U8：原生 tab bar 已由系统安全区让位，仅保留小段视觉呼吸。」：
+  - `MainView_iOS.swift:211`——原 `height: 100`，在 U4「最近灵感」角块（`recentInspirationSection()`，line 207）**之后**；只调底部 spacer，灵感 section 原封不动（U4 协同核对通过）。
+  - `PersonalView_iOS.swift:115`——原 `height: 110`。
+  - `CompanyView_iOS.swift:142`——原 `height: 110`。
+  - `CalendarView_iOS.swift:189`——原 `height: 110`。
+  - `ProjectDetailView_iOS.swift:140`——原 `height: 110`。
+  - `InspirationView_iOS.swift:123`——原 `height: 100`。
+- **最终用哪种方案**：**统一改成 24pt 小 spacer**（plan 决策给的「移除硬编码 100pt，依系统安全区 + 16-24pt 小 spacer，实测为准」三选其一）。原生 iOS 26 tab bar 的系统底部安全区已让位，24pt 仅作最后一条内容与 tab bar 之间的视觉呼吸；不引入 `.safeAreaInset`（保持各屏现有 ScrollView 结构最小改动）。**真机滚到底的「无大片留白 / 不被切掉最后一条」须用户实测确认**，必要时再在 0–24pt 间微调（仅改这 6 处常量，无结构影响）。
+- **核对结果（plan 要求核对的其它入口）**：
+  - `CompanyView_iOS` / `ProjectDetailView_iOS`——确认同属旧 capsule 遗留底部 spacer，已改（见上）。
+  - 各 sheet（`SettingsSheet_iOS` / `SearchSheet_iOS` / `QuickAddSheet_iOS`）——**不在 U8 范围，未改**。理由：sheet 模态呈现盖在 tab bar 之上、底部本就没有 tab bar 需要让位。具体核对：`SettingsSheet_iOS:47` 的 `Color.clear.frame(height: 56)` 是**顶栏 overlay 占位**（首 section 不被顶栏遮），非底部留白；`SettingsSheet_iOS:84` 的 `.padding(.bottom, 40)` 是 sheet 正常底距，非 100pt capsule 遗留；`SearchSheet_iOS:254` 与 `QuickAddSheet_iOS:705/733` 的 `Spacer(minLength: 0)` 都是结果行内的横向 spacer，与底部留白无关。均保持原样。
+- **偏离说明**：无偏离。纯 UI 数值调整，未碰任何逻辑 / U9 / 灵感 section / 日历 / entitlements / pbxproj / Widget；未 bump 版本号；未 commit（主控统一管）。
+- **验收**：① `swift test --package-path Packages/LinoJCore` **212 全绿**（纯 UI 不影响测试，数字与 U7 后一致）；② `swift build --package-path Packages/LinoJCore -Xswiftc -warnings-as-errors` **0 warning**（Build complete）；③ **iOS App target `xcodebuild -workspace LinoJ.xcworkspace -scheme LinoJ-iOS -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` BUILD SUCCEEDED**，0 新增源码 warning（仅有与本期无关的 `appintentsmetadataprocessor` 工具链提示）；④ **macOS App target 仍 BUILD SUCCEEDED**（未动 macOS 文件，确认未破坏）。
+- **headless 测不到、须出 iOS 包真机滚到底验证**：6 屏（Main / Personal / Company / Calendar / Inspiration / ProjectDetail）各滚到底——① 不再有 ~100pt 大片留白（应为约 24pt + 系统安全区的轻微呼吸）；② 最后一条内容**不被原生 tab bar 切掉**（系统安全区正常生效）。若任一屏仍偏松/偏紧，仅需微调对应屏的 24pt 常量。
+- **影响范围**：Phase U8。改 6 个 iOS 主内容屏各 1 处底部 spacer（`MainView_iOS` / `PersonalView_iOS` / `CompanyView_iOS` / `CalendarView_iOS` / `ProjectDetailView_iOS` / `InspirationView_iOS`）。**无单测（纯 UI）。未碰 sheet / macOS / 逻辑 / U9 / 灵感 section / entitlements / pbxproj / Widget / 版本号。**
+
+---
+
 ## 🚀 v1.0 公开上线剩余清单（新会话从这里接）
 
 **必做（TestFlight / 上架前）**

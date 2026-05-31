@@ -139,7 +139,8 @@ struct CompanyView_iOS: View {
                     projectsSection(vm: vm)
                         .padding(.top, 26)
 
-                    Color.clear.frame(height: 110)
+                    // U8：原生 tab bar 已由系统安全区让位，仅保留小段视觉呼吸。
+                    Color.clear.frame(height: 24)
                 }
             }
         }
