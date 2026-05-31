@@ -26,15 +26,20 @@ public enum Scope: String, Codable, CaseIterable, Sendable {
     case company
 }
 
-/// 顶层四个 Tab 的标识。
+/// 顶层 Tab 的标识。
 ///
 /// raw 值用 lowercase 单词，便于：
 ///   - Settings 中的 `defaultTab` 持久化为字符串；
 ///   - 调试日志 / 深链接（v1.0 用）；
 ///   - SwiftUI Picker tag 直接绑 `AppTab`。
+///
+/// U0（v1.1）新增第 5 个 case `inspiration`（灵感）。CaseIterable 自动纳入 `allCases`；
+/// 所有遍历 `allCases` 的点（Settings defaultTab picker / Search jump-to）天然覆盖；
+/// 所有穷举 `switch self`（如 `localizedDisplayName` / SearchViewModel.display）已为新 case 补分支。
 public enum AppTab: String, Codable, CaseIterable, Sendable {
     case main
     case personal
     case company
     case calendar
+    case inspiration   // U0 新增；raw "inspiration"
 }

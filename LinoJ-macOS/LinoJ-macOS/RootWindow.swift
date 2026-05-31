@@ -70,6 +70,11 @@ struct RootWindow: View {
                     CompanyView_macOS()
                 case .calendar:
                     CalendarView_macOS()
+                case .inspiration:
+                    // U0：第 5 个 case 的最小占位，保持 switch 穷举编译绿。
+                    // 顶栏暂未接线第 5 个 tabButton（U3 接），故该分支当前不可达；
+                    // 真实灵感 UI 在 U3/U4 实现。占位仅渲背景，避免空 body 类型问题。
+                    Color.lj.bg.ignoresSafeArea()
                 }
             }
         }

@@ -31,6 +31,13 @@ public enum LJStrings {
     public static let tabPersonal: LocalizedStringResource = r("Tab.personal")
     public static let tabCompany: LocalizedStringResource = r("Tab.company")
     public static let tabCalendar: LocalizedStringResource = r("Tab.calendar")
+    /// U0（v1.1）：第 5 个 Tab「灵感 / Inspiration」标签。
+    public static let tabInspiration: LocalizedStringResource = r("Tab.inspiration")
+
+    // MARK: - Notes (灵感版块, U1)
+
+    /// 空正文笔记在列表 / 搜索的标题回退占位（`Note.displayTitle` 用）。
+    public static let noteUntitled: LocalizedStringResource = r("Note.untitled")
 
     // MARK: - Toolbar (macOS 顶栏)
 
@@ -456,10 +463,11 @@ public extension AppTab {
     /// SwiftUI Picker / Tab label / 占位文案统一使用的本地化标签。
     var localizedDisplayName: LocalizedStringResource {
         switch self {
-        case .main:     return LJStrings.tabMain
-        case .personal: return LJStrings.tabPersonal
-        case .company:  return LJStrings.tabCompany
-        case .calendar: return LJStrings.tabCalendar
+        case .main:        return LJStrings.tabMain
+        case .personal:    return LJStrings.tabPersonal
+        case .company:     return LJStrings.tabCompany
+        case .calendar:    return LJStrings.tabCalendar
+        case .inspiration: return LJStrings.tabInspiration
         }
     }
 }

@@ -249,6 +249,18 @@ public enum SeedData {
             context.insert(event)
         }
 
+        // 7) Notes —— U1（v1.1）灵感版块示例。仅纯本地 seed 路径（与上方 seed 同处，
+        //    cloud ON 不 seed，遵 CLAUDE.md seed 竞态约束）。2 条示例，1 条置顶。
+        //    正文用纯文本 AttributedString；首行作 displayTitle。
+        let seedNotes: [(body: String, isPinned: Bool)] = [
+            ("Sidebar spec ideas\nThree columns, collapsible. Pin the calendar to the right rail.", true),
+            ("Weekend reading\n《人类简史》Ch. 3 — note the cognitive revolution argument.", false),
+        ]
+        for spec in seedNotes {
+            let note = Note(body: AttributedString(spec.body), isPinned: spec.isPinned)
+            context.insert(note)
+        }
+
         // 一次性持久化全部 insert。失败抛错让 App 启动早期就 surface 出来。
         try context.save()
 

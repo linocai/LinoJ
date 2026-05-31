@@ -1772,6 +1772,495 @@ router.showQuickAdd = true
 
 ---
 
+## v1.1 升级 Phase 列表（U 组：灵感版块 / 重叠事件 / 升级建议 / Widget）
+
+> v1.1 是 v1.0 之后的第一个**大版本升级**。本组在 v1.0 已上线基线（CloudKit / Push / SIWA 全接通、`swift test` 164 全绿、版本 1.0 / build 3）之上追加四块能力：① **灵感版块**（照抄苹果备忘录 MVP，升为第 5 个 Tab + Main 角块）；② **重叠事件呈现**（共享纯函数算法 + 两端渲染）；③ **升级建议**（冲突预警进 Heads-up / macOS 周视图拖拽改期 / iOS 底部留白收口）；④ **Widget / 锁屏小组件**（新 WidgetKit target + App Group + SwiftData store 迁移）。
+>
+> **全组施工纪律（与 W/V 组一致）：**
+> 1. **先 macOS 验收 → 再 iOS**：所有双端 Phase 都先把 macOS 跑通验收，再做 iOS；共享层（LinoJCore）先于两端 UI。
+> 2. **CloudKit 硬约束贯穿**：本组新增 `@Model Note` 必须逐条满足下方「Note 模型 CloudKit 硬约束清单」；漏一条都会在真机加载 `.private` 容器时 fatalError，而 `inMemory + .none` 单测**抓不到**——**必须真机验证容器能加载**。
+> 3. **本地化三轨制**：所有用户可见文案走「编辑 `Localizable.xcstrings` 中英双填 → `xcrun xcstringstool compile Packages/LinoJCore/Sources/LinoJCore/Resources/Localizable.xcstrings -o Packages/LinoJCore/Sources/LinoJCore/Resources/` 重生两个 lproj → `Strings.swift` 加 `LJStrings` 成员」三步，三处一致，不许 raw String 字面量。漏第二步 `swift test` 会解析不到新 key 退回 en。
+> 4. **改 SwiftUI View 必须 xcodebuild 两端 App target 验证**（`swift build` / `swift test` 只编译 package，不暴露 View body 类型检查超时 / 布局问题）。长 `body` 挂多闭包 modifier（如 contextMenu / confirmationDialog）易触发 type-check 超时，抽 `ViewModifier`。
+> 5. **打包用 `ditto` 不用 `cp -R`**（cp 可能拷坏 Resources，签名校验仍通过）。
+> 6. **不新增额外计划文件**；Plan 变更只记入本文件变更日志。
+>
+> **依赖序（拓扑）：**
+> `U0（版本前置 + AppTab 第5 case）` → `U1（Note schema + CloudKit 约束）` → `U2（NoteListViewModel + NoteEditorViewModel）` → `U3（灵感 macOS UI + Main 角块）` → `U4（灵感 iOS UI + Main 角块）`；
+> `U5（重叠算法 + 两端渲染）`（依赖现有 CalendarViewModel，可与 U1-U4 并行）→ `U6（冲突 Heads-up）`（依赖 U5 的重叠判定）；
+> `U7（macOS 周视图拖拽改期）`（依赖 U5，仅 macOS）；`U8（iOS 底部留白收口）`（独立，可随时做）；
+> `U9（Widget + App Group + store 迁移）`（最重、独立成段，需用户先注册 App Group ID）；`U10（收尾 + 版本号 bump）`（依赖全部）。
+
+---
+
+### U0 — v1.1 版本前置 + AppTab 第 5 个 case（inspiration）  [全栈 / 共享 + pbxproj]
+
+**范围：**
+- 在 `Enums.swift` 给 `AppTab` 加第 5 个 case `inspiration`（raw 值 `"inspiration"`，lowercase，与既有 4 case 风格一致）。`CaseIterable` 自动把它纳入 `allCases`——**核对所有遍历 `AppTab.allCases` 的点**（Settings 的 defaultTab picker 等）是否需要为新 case 兜底文案，避免出现无 label 的 tab。
+- 新增本地化 key `Tab.inspiration`（"Inspiration" / "灵感"），三轨补齐；`Strings.swift` 加 `LJStrings.tabInspiration`。
+- **本 Phase 不 bump 版本号**（版本号 bump 集中到 U10 收尾，避免中途 build 号反复跳）。U0 只做枚举 + 文案的前置，让后续 U3/U4 接线有 case 可用。
+- **macOS 顶栏第 5 tab 布局风险评估（必做，结论写进本 Phase）**：当前 macOS 顶栏是单行 HStack（`RootWindow.swift:206` `toolbar(router:)`），左聚簇 4 个 `tabButton`（:214-219），中间单 `Spacer`，右 Search pill（minWidth 200）+ "+ New"。加第 5 个 `tabButton(.inspiration, ...)` 会**挤占单行宽度**，在窄窗口（min 1200×720）下可能把右侧 Search/New 推出或与 tabs 重叠。**决策（定死，不留给施工选）**：
+  - 第 5 个 tabButton 直接加到现有 HStack（:214-219）的 4 个之后，**保持单行**。
+  - 为保证窄窗口不溢出：把右侧 Search pill 的 `minWidth` 从 200 降级为「�narrow 时收缩成纯 icon」——**但本期最简方案**：先保持 Search pill 不变，**仅给 tabs 的 HStack 套 `.layoutPriority` 让其优先于 Search pill 收缩**，并实测 1200pt 下 5 tab + Search + New 是否溢出。
+  - **若实测溢出**（W7.3 经验：macOS 布局看不见就别盲猜，出包截图为准）：退化方案——把 Search pill 在窗口 < 1320pt 时折叠为纯放大镜 icon 按钮（去掉 "Search or jump" 文案与 ⌘K hint，点击行为不变）。该折叠逻辑用 `GeometryReader` 读顶栏宽或 `RootWindow` 已有的窗口宽度判断。
+  - **不改红绿灯对齐**（W7.3 已用 `.ignoresSafeArea(.container, edges: .top)` 调好，第 5 tab 不动顶栏高度 44 与该修饰，不得回归）。
+  - 本项 headless 测不到真实渲染，**U3 出 macOS 包后用户截图确认顶栏单行容纳 5 tab + 右侧按钮不溢出、红绿灯仍对齐**。
+
+**关键接口 / 类型契约：**
+```swift
+public enum AppTab: String, Codable, CaseIterable, Sendable {
+    case main
+    case personal
+    case company
+    case calendar
+    case inspiration   // U0 新增；raw "inspiration"
+}
+```
+- `LJStrings.tabInspiration: LocalizedStringResource = r("Tab.inspiration")`
+
+**验收标准：**
+- `AppTab.allCases` 含 5 个 case；`AppTab(rawValue: "inspiration") == .inspiration`。
+- Settings 的 defaultTab picker（若遍历 allCases）出现 "Inspiration / 灵感" 选项且可选中、可持久化（核对 `SettingsViewModel.defaultTab` 的 enum round-trip 不因新 case 崩）。
+- `Tab.inspiration` 中英双填，`LocalizationTests` 加 zh≠en 断言。
+- `swift test` 全绿（164 → 165）；`swift build -Xswiftc -warnings-as-errors` 0 warning。
+
+**影响范围：** `Enums.swift` + `Localizable.xcstrings`（重生两 lproj）+ `Strings.swift` + `LocalizationTests`。**不改两端 UI 接线**（接线在 U3/U4）。**不改 pbxproj 版本号**（U10 做）。
+
+**前置依赖：** 无。U 组第一个 Phase。
+
+---
+
+### U1 — 灵感数据层：`@Model Note` + Schema 注册 + CloudKit 硬约束  [后端 / 共享]
+
+**范围：**
+- 新建 `Packages/LinoJCore/Sources/LinoJCore/Models/Note.swift`，定义 `@Model final class Note`，照学既有 `Todo`/`Event`/`Person` 的 `@Model` 写法（标量带默认值、无 `@Attribute(.unique)`、关系 optional）。
+- 把 `Note.self` 加入 `ModelContainer+LinoJ.swift:41` 的 `Schema([Person, Project, Todo, Event])` → `Schema([Person, Project, Todo, Event, Note])`。**漏列会在首次 fetch Note 时 trap**（CLAUDE.md 硬约束②）。
+- 富文本正文存储：**用 `AttributedString` 编码成 `Data` 落库**（字段 `bodyData: Data`）。Note 提供 computed `body: AttributedString { get set }` 在 `bodyData` 与 `AttributedString` 间编解码（`try? AttributedString(... )` / `try? JSONEncoder().encode(...)`，编解码失败兜底空串）。
+- **标题派生**：`title` 不单独存字段，由正文首行派生——提供 computed `displayTitle: String`（取 `body` 纯文本第一行，trim 后空则回退本地化「新笔记 / New note」占位）。**决策定死**：不存独立 title 字段，避免 title 与正文首行不一致的同步冲突；列表与搜索都用 `displayTitle`。
+- `Note` 字段（全部满足 CloudKit 约束）：`id: UUID = UUID()`、`bodyData: Data = Data()`、`isPinned: Bool = false`、`createdAt: Date = .now`、`updatedAt: Date = .now`。**MVP 无任何关系字段**（不挂 person / project / folder——延后到 v1.2+），因此本 Phase 不引入新 inverse 关系，CloudKit 关系约束天然满足。
+- **DEBUG seed**：`SeedData.swift` 加 1-2 条示例 Note（仅纯本地 seed 路径，与既有 seed 同处——CLAUDE.md：seed 只在 iCloud sync OFF 时执行，cloud ON 不 seed，避免与云端重复）。
+
+**Note 模型 CloudKit 硬约束清单（U1 最关键技术风险，逐条核对，照 V1 清单同款纪律）：**
+1. **非 optional 标量必须有默认值**：`bodyData = Data()`、`isPinned = false`、`createdAt = .now`、`updatedAt = .now`、`id = UUID()`。✅ 逐字段给默认值。
+2. **关系全 optional**：MVP `Note` 无关系字段，天然满足；**未来若加 `project: Project?` 或 `people: [Person]?` 必须 optional 且双向 inverse**（v1.2+，本期不做，但在模型注释里写明约束以防后人踩坑）。
+3. **禁 `@Attribute(.unique)`**：`id` 不标 unique，靠 UUID 自然唯一（与既有模型一致）。
+4. **`bodyData: Data` 字段**：CloudKit 把 `Data` 当 asset/bytes 存储，无特殊约束；但**大富文本（含图片）会膨胀**——MVP 富文本不含图片（图片延后 v1.2+），`Data` 体积可控。
+5. **`updatedAt` 编辑入口每次重写**：`updatedAt` 是「列表按编辑时间倒序」的排序键，**每次 `body` / `isPinned` 变更都必须重算 `updatedAt = .now`**（在 U2 的 ViewModel 写回路径里强制，类比 V1 约束 7 的 `memberCount` 冗余字段纪律）；CloudKit 同步它作普通 Date 字段，last-writer-wins。
+6. **schema 迁移**：v1.0 已有 store 升级到含 Note 的新 schema —— **加新实体是兼容变更**，SwiftData 走 lightweight migration（不动既有 4 实体）。施工先在干净安装（删 app）验证容器加载，再测 v1.0 旧 store 升级路径（保留旧 store 启动不 crash、既有数据不丢）。
+7. **CloudKit 生产 schema 必须重新 deploy**：新 `Note` record type 在 Development 环境由 SwiftData 首次运行自动生成；**Release / TestFlight 上线前必须在 CloudKit Dashboard 把含 Note 的 schema 从 Development → Production 重新 deploy**（见文末「网页手动清单（v1.1）」）。
+
+**关键接口 / 类型契约：**
+```swift
+@Model
+public final class Note {
+    public var id: UUID = UUID()
+    /// 富文本正文，编码成 Data 落库。读写走 `body` computed property，不直接碰。
+    public var bodyData: Data = Data()
+    public var isPinned: Bool = false
+    public var createdAt: Date = Date.now
+    /// 列表倒序排序键 + CloudKit 冲突 last-writer-wins。每次编辑必须重写（U2 ViewModel 负责）。
+    public var updatedAt: Date = Date.now
+
+    public init(id: UUID = UUID(), body: AttributedString = AttributedString(),
+                isPinned: Bool = false, createdAt: Date = .now, updatedAt: Date = .now) { ... }
+
+    /// AttributedString ⇄ bodyData 编解码（失败兜底空串）。
+    public var body: AttributedString { get set }
+    /// 列表 / 搜索显示标题：正文首行 trim；空则回退本地化「新笔记」。
+    public var displayTitle: String { get }
+}
+```
+- `ModelContainer+LinoJ.swift`：`Schema([Person, Project, Todo, Event, Note])`。
+- 本地化 key `Note.untitled`（"New note" / "新笔记"）供 `displayTitle` 空回退用。
+
+**验收标准：**
+- 干净安装真机：App 启动不 crash，`@Query var notes: [Note]` 能 fetch（验证 schema 列全 Note）。**必须真机验证容器加载**（inMemory 单测抓不到 CloudKit 关系/约束校验——本期 Note 无关系，但 schema 注册仍需真机确认 `.private` 容器接受新 record type）。
+- v1.0 旧 store 升级路径：保留旧 store（已有 Todo/Event/Project 数据）启动 → 不 crash、既有数据全在、Note 表为空（lightweight migration 成功）。
+- `Note(body:)` round-trip：写入富文本 `body`（含加粗/项目符号）→ `bodyData` 非空 → 重新读 `body` 内容一致（属性保留）。
+- `displayTitle`：正文首行非空时取首行；正文空时回退「新笔记 / New note」。
+- `LinoJCoreTests` 新增 `NoteModelTests`（body 编解码 round-trip、displayTitle 派生、updatedAt 默认值）；`LocalizationTests` 加 `Note.untitled` zh≠en。
+- `swift test` 全绿；`swift build -Xswiftc -warnings-as-errors` 0 warning。
+
+**影响范围：** 新增 `Models/Note.swift`；改 `ModelContainer+LinoJ.swift`、`SeedData.swift`、`Strings.swift` + xcstrings；新增 `NoteModelTests`。**不改两端 UI**。
+
+**前置依赖：** U0（不强依赖，但 U0/U1 同属数据/枚举前置，建议连做）。
+
+---
+
+### U2 — 灵感 ViewModel：`NoteListViewModel` + `NoteEditorViewModel`  [后端 / 共享]
+
+**范围：**
+- 新建 `Packages/LinoJCore/Sources/LinoJCore/ViewModels/NoteListViewModel.swift` 与 `NoteEditorViewModel.swift`，照学既有 `@Observable @MainActor final class` + `context` 注入 + `tick`/`refresh()` 模式（参考 `MainViewModel` / `CalendarViewModel`）。
+- **NoteListViewModel**：负责列表的排序 / 搜索 / 增删改置顶。
+  - `sortedNotes: [Note]`：先 `isPinned == true` 组（按 `updatedAt` 倒序），后非置顶组（按 `updatedAt` 倒序），两组拼接（置顶恒在上）。
+  - `filteredNotes(query:)` 或 `searchText` + `results`：按 `displayTitle` + 正文纯文本做大小写不敏感 contains 过滤；空 query 返回 `sortedNotes` 全量。
+  - `createNote() -> Note`：`context.insert(Note())` + save + refresh，返回新实例（供 UI 立即打开编辑器）。
+  - `delete(_ note:)`：`context.delete` + save + refresh。
+  - `togglePinned(_ note:)`：翻 `isPinned` + **重写 `updatedAt = .now`** + save + refresh（置顶/取消置顶算一次编辑，影响排序）。
+  - `recentNotes(limit: Int = 3)`：`sortedNotes` 前 N 条，供 Main 角块「最近灵感」缩略用。
+- **NoteEditorViewModel**：负责单条 Note 的富文本编辑写回。
+  - init 接收 `context` + `note: Note`。
+  - `body: AttributedString { get set }`：set 时写回 `note.body` + **重写 `note.updatedAt = .now`** + `try? context.save()`（编辑即存，无显式保存按钮——对齐备忘录交互）。**节流**：编辑器高频回调时为避免每键一存，可做轻量去抖（如 0.5s）或每次 commit 存；MVP 选「每次 body 变更即写回 note + 标脏，save 由 SwiftData autosave / onDisappear 兜底」——**决策定死**：set body 时立即写 `note.body` 与 `note.updatedAt`，`context.save()` 在编辑器 `onDisappear` 调一次（避免高频 save 卡 CloudKit），但 `updatedAt` 实时更新保证列表顺序在退出时已正确。
+  - `togglePinned()` / `deleteSelf()`：转发到对该 note 的操作（供编辑器顶栏菜单用）。
+
+**关键接口 / 类型契约：**
+```swift
+@Observable @MainActor public final class NoteListViewModel {
+    public init(context: ModelContext)
+    public var searchText: String { get set }
+    public var sortedNotes: [Note] { get }            // pinned 组在上，各组 updatedAt 倒序
+    public var results: [Note] { get }                // 应用 searchText 后的列表（空 query = sortedNotes）
+    public func recentNotes(limit: Int = 3) -> [Note]
+    @discardableResult public func createNote() -> Note
+    public func delete(_ note: Note)
+    public func togglePinned(_ note: Note)            // 翻 isPinned + 重写 updatedAt + save + refresh
+    public func refresh()
+}
+
+@Observable @MainActor public final class NoteEditorViewModel {
+    public init(context: ModelContext, note: Note)
+    public var body: AttributedString { get set }     // set → 写 note.body + note.updatedAt = .now
+    public func save()                                // context.save()（editor onDisappear 调）
+    public func togglePinned()
+    public func deleteSelf()
+    public var isPinned: Bool { get }
+}
+```
+
+**验收标准：**
+- `sortedNotes`：2 条置顶 + 3 条非置顶，置顶组恒在前，组内按 `updatedAt` 倒序。
+- `togglePinned` 后该 note 的 `updatedAt` 被刷新、排序立即变化（置顶跳到顶部）。
+- `results`：搜 "abc" 只返回 displayTitle 或正文含 "abc" 的 note；空 query 返回全量。
+- `createNote()` 返回新 Note，且已 insert 进 context（再 fetch 能查到）。
+- `NoteEditorViewModel.body` set → `note.body` 与 `note.updatedAt` 同步更新（updatedAt 比 set 前大）。
+- `LinoJCoreTests` 新增 `NoteListViewModelTests`（排序/置顶/搜索/增删）+ `NoteEditorViewModelTests`（body 写回 + updatedAt 刷新 + togglePinned）。
+- `swift test` 全绿；`swift build -Xswiftc -warnings-as-errors` 0 warning。
+
+**影响范围：** 新增两个 ViewModel + 两个测试文件。**不改两端 UI**。
+
+**前置依赖：** U1（Note 模型 + body/displayTitle）。
+
+---
+
+### U3 — 灵感版块 macOS UI + Main 右下角缩略卡 + 顶栏第 5 tab 接线  [前端 / macOS]
+
+> **设计稿未覆盖灵感版块**——基于现有 design system（`Colors.swift` `Color.lj.*` / `Typography` / `LJSpacing` / `Modifiers.swift` `.cardStyle()` 等 / 既有 `EventCard`/`ProjectCard` 卡片样式）自行设计一版，视觉/交互契约在本 Phase **定死**，不留给施工自由发挥。calm 调性：白底卡 + 0.5px border + ink/inkSoft 文字，置顶用既有 chip 灰底标记，**不引入新强调色**（蓝色 `#2563eb` 仍专属 urgent/heads-up，灵感版块不用蓝）。
+
+**视觉 / 交互契约（macOS，定死）：**
+- **布局**：Inspiration tab 内容用两列 master-detail（`1fr` 列表 + `1fr/flex` 编辑器），或单列列表点击 push 编辑器——**决策定死**：macOS 用 **左列表（固定 ~320pt）+ 右编辑器** 的双栏（类似备忘录 macOS）。左列表顶部「Inspiration」大标题（26pt，对齐既有屏标题）+ 计数副标「X notes」+ 搜索框（复用既有 chip 样式输入）；下面是 note 行列表（每行：`displayTitle` 13-15pt 600 + 正文摘要次行 inkSoft 12.5pt 单行截断 + 右侧 `updatedAt` mono 时间 + 置顶 note 行带 pin 标记）。右编辑器：顶栏（标题占位 + 富文本工具条 + 置顶/删除菜单）+ `TextEditor` 富文本区。
+- **新建**：左列表顶部「+ New note」按钮（ink 样式，复用顶栏 "+ New" 按钮观感）→ `vm.createNote()` → 右编辑器打开新空 note，光标聚焦。
+- **删除**：note 行 `.contextMenu`（右键）含 Delete（二次确认 `.confirmationDialog`）；编辑器顶栏 `⋯` 菜单含 Delete。
+- **置顶**：note 行右键菜单 + 编辑器 `⋯` 菜单含 Pin / Unpin（翻 `isPinned`）。
+- **搜索**：列表顶搜索框绑 `vm.searchText`，实时过滤 `vm.results`。
+- **富文本编辑（关键技术风险，施工首步先验证）**：用 SwiftUI 原生 `TextEditor` 绑 `AttributedString`（macOS 26 富文本编辑 API），工具条提供加粗 / 斜体 / 标题 / 项目符号 / **勾选清单 checklist** 五种格式。
+  - **施工第一步必须先写一个最小验证**：`@State var s = AttributedString("x"); TextEditor(text: $s)` 在 macOS 26 真机/模拟器编译 + 运行能编辑富文本（加粗能落进 `AttributedString`）。
+  - **若该 API 在 macOS 26 不可用 / 不稳**（编译不过 / 运行 crash / 富文本属性丢失）：**回退方案（定死）**——MVP 降级为**纯文本 markdown String 编辑**：`Note` 的 `body` 改存 markdown 文本（`TextEditor(text: $string)` 普通字符串），加粗/项目符号/checklist 用 markdown 语法（`**bold**` / `- item` / `- [ ] todo`），渲染时若需展示再 `AttributedString(markdown:)`。回退不改 `Note` 的字段名（`bodyData` 存 UTF-8 String 的 Data），只改编辑器与编解码策略，U1/U2 契约不破。**走回退路径必须在变更日志「偏离说明」记录。**
+  - checklist 勾选：富文本可用时用 `AttributedString` 的列表/勾选属性；回退路径用 markdown `- [ ]` / `- [x]` 行内切换。
+- **空状态**：无 note 时左列表显示既有 `EmptyState` 风格小图 + "No notes yet" / "还没有灵感" + "+ New note" CTA（复用 `EmptyState` 组件）。
+
+**顶栏第 5 tab 接线（macOS）：**
+- `RootWindow.swift:214-219` 的 tabs HStack 加 `tabButton(.inspiration, LJStrings.tabInspiration, router: router)`（第 5 个）。
+- `RootWindow` 内容分发处（body 的 tab 内容 switch，核对在 `:60` 附近的 ZStack/switch）加 `case .inspiration: InspirationView_macOS()`。
+- 新建 `LinoJ-macOS/LinoJ-macOS/Screens/Inspiration/InspirationView_macOS.swift`。
+- **执行 U0 顶栏布局风险评估的结论**：出包后用户截图确认单行容纳 5 tab + Search + New 不溢出、红绿灯仍对齐；溢出则按 U0 的折叠方案（Search pill 窄窗折叠为 icon）处理。
+
+**Main 右下角缩略卡（macOS）：**
+- 在 `MainView_macOS` 的右栏（`rightRail` :406，360pt 列）**底部追加**一块「最近灵感」缩略卡（在既有 "Next 7 days" + "From yesterday" 之下，或作为右栏新 section）——**决策定死**：放右栏最底，title「Inspiration / 灵感」小节头 + `vm 或 NoteListViewModel.recentNotes(3)` 三条 note 标题行（点击整卡 → `router.current = .inspiration`，可选定位到该 note）+ 一个「快速记一条」入口（点击 → `router.current = .inspiration` 并 `createNote()` 打开新编辑器）。
+- Main 角块的数据：`MainView_macOS` 用 `@Query var notes: [Note]` 取最近 3 条（或新建轻量 `NoteListViewModel` 实例）。**不污染 `MainViewModel`**（保持 Main 既有 VM 职责单一）——角块自持一个 `NoteListViewModel` 或直接用 `@Query` + 排序闭包。
+- 角块样式复用既有右栏 section 卡片观感（`.cardStyle()` / 0.5px border / inkSoft 次级文字）。
+
+**关键接口 / 类型契约：** 无新增共享类型（复用 U2 的 `NoteListViewModel` / `NoteEditorViewModel`）。新增本地化 key：`Inspiration.title`（"Inspiration"/"灵感"）、`Inspiration.newNote`（"+ New note"/"+ 新笔记"）、`Inspiration.empty`（"No notes yet"/"还没有灵感"）、`Inspiration.recent`（"Recent notes"/"最近灵感"）、`Inspiration.quickJot`（"Jot something"/"随手记一条"）、`Note.pin`/`Note.unpin`/`Note.delete`/`Note.deleteConfirmTitle`（删除二次确认，复用 W4 的 `Event.deleteConfirmMessage`/`...Confirm` 通用文案如适用）。富文本工具条 label：`Format.bold`/`Format.italic`/`Format.heading`/`Format.bullet`/`Format.checklist`。全部三轨双填。
+
+**验收标准（macOS，先验收）：**
+- 顶栏出现第 5 个 tab「灵感」，点击进入 Inspiration 双栏；顶栏单行不溢出、红绿灯对齐无回归（用户截图确认）。
+- 列表按 `updatedAt` 倒序、置顶在上；搜索框实时过滤；空状态显示 EmptyState + CTA。
+- 「+ New note」→ 新建空 note 并打开编辑器聚焦；输入富文本（加粗 / 项目符号 / checklist）→ 退出编辑器后列表该 note 跳到顶部（updatedAt 更新）、重启仍在、内容保留。
+- 右键 note 行 → Pin / Delete（删除二次确认）；编辑器 `⋯` → Pin / Delete。
+- Main 右栏底部「最近灵感」缩略卡显示最近 3 条标题；点击 → 切到 Inspiration tab；「快速记一条」→ 切到 tab 并打开新编辑器。
+- **富文本 API 验证结论已落地**：可用则原生富文本；不可用则 markdown 回退（变更日志记偏离）。
+- 新增文案三轨双填，`LocalizationTests` 加 zh≠en 断言。
+- `swift test` 全绿；**xcodebuild macOS App target build SUCCEEDED**（不止 package）；`-warnings-as-errors` 0 warning；出 macOS 包真机/桌面包启动验证（schema 含 Note，容器加载不 crash）。
+
+**影响范围：** 新增 `InspirationView_macOS.swift`；改 `RootWindow.swift`（第 5 tab + 内容分发）、`MainView_macOS.swift`（右栏角块）、`Strings.swift` + xcstrings。
+
+**前置依赖：** U0（AppTab case + tab 文案）、U1（Note）、U2（ViewModel）。**先于 U4**（macOS 验收通过再做 iOS）。
+
+---
+
+### U4 — 灵感版块 iOS UI + Main 角块 + 第 5 个 Tab 接线  [前端 / iOS]
+
+> 复用 U3 已定死的视觉/交互契约与 U2 ViewModel；iOS 适配为单列 push 导航（非双栏）。**先 U3 macOS 验收，再做本 Phase。**
+
+**视觉 / 交互契约（iOS，定死）：**
+- **导航**：Inspiration tab 内是 `NavigationStack`：根为 note 列表（大标题「灵感」34pt + 计数 + 搜索栏）；点 note 行 push 进富文本编辑器（全屏）。
+- **列表**：单列 note 行（白卡，14pt radius，对齐 iOS 卡片风格）：`displayTitle` 16pt 600 + 正文摘要 inkSoft 单行截断 + `updatedAt` mono 时间 + 置顶 pin 标记。置顶组在上。
+- **新建**：iOS 用既有右上 FloatingActions 入口体系——**决策定死**：在 Inspiration tab 内的 NavigationStack 顶部放一个「+ New note」入口（导航栏 trailing 按钮或列表顶 ink 按钮），`createNote()` → push 编辑器。**不复用全局 `+`（Quick Add）**（Quick Add 是 Todo/Event/Project 三段，灵感不混入其中）。
+- **删除 / 置顶**：note 行用 iOS swipe actions（左滑删除红 / 右滑或 leading 置顶）+ 编辑器导航栏 `⋯` 菜单（Pin/Unpin/Delete，删除 `.confirmationDialog`）。
+- **富文本编辑**：同 U3——`TextEditor` 绑 `AttributedString`（iOS 26 富文本 API），同样**施工首步先验证**，不可用则 markdown 回退（与 U3 同一回退决策；若 U3 已确定走回退，iOS 直接走回退，不再单独验证）。
+- **空状态**：复用 `EmptyState` 组件 + CTA。
+
+**第 5 个 Tab 接线（iOS）：**
+- `RootTabView.swift:49-86` 的 `TabView(selection:$router.current)` 加第 5 个 `Tab(value: AppTab.inspiration){ InspirationView_iOS() } label: { Label { Text(LJStrings.tabInspiration) } icon: { Image(systemName: "lightbulb") } }`（SF Symbol 用 `lightbulb`，与 calm 调性一致；照搬既有 4 个 Tab 写法）。**iOS 26 原生 Liquid Glass tab bar 自动容纳第 5 个 tab**（CLAUDE.md：iOS 26 用原生 tab bar，不自渲 capsule），无 macOS 那种单行宽度风险。
+- 新建 `LinoJ-iOS/LinoJ-iOS/Screens/Inspiration/InspirationView_iOS.swift`。
+
+**Main 右下角缩略卡（iOS）：**
+- `MainView_iOS` 的单列 ScrollView（`content` :128）在「Projects」section（:181）之后、底部 100pt 留白（:184，注意 U8 会改这个值）**之前**，追加「最近灵感」section：小节头「最近灵感」+ 横向 ScrollView 或竖向 1-3 条 note 卡（点击 → `router.current = .inspiration`）+「随手记一条」入口（→ 切 tab + createNote）。两端 Main 角块布局各自适配（iOS 用 section + 横向卡，与既有 upcoming/projects section 风格一致）。
+
+**关键接口 / 类型契约：** 复用 U2/U3 已定义的 VM 与本地化 key，无新增类型。
+
+**验收标准（iOS，后验收）：**
+- 底部原生 tab bar 出现第 5 个「灵感」tab（lightbulb 图标 + label），点击进入；原生 bar 仍是单条 Liquid Glass，无两条叠加（CLAUDE.md 坑）。
+- 列表排序/置顶/搜索/空状态行为与 macOS 一致；点 note push 富文本编辑器，编辑后返回列表该 note 跳顶、内容保留、重启仍在。
+- swipe 删除 / 置顶；编辑器 `⋯` 菜单 Pin/Delete。
+- Main 单列底部「最近灵感」section 显示最近 note；点击切 tab；「随手记一条」→ 切 tab + 新编辑器。
+- 富文本 API 与 U3 同结论（原生或 markdown 回退）。
+- `swift test` 全绿；**xcodebuild iOS App target build SUCCEEDED**；`-warnings-as-errors` 0 warning；真机启动验证容器加载不 crash。
+
+**影响范围：** 新增 `InspirationView_iOS.swift`；改 `RootTabView.swift`（第 5 Tab）、`MainView_iOS.swift`（角块）。共享层不改（U2 已就绪）。
+
+**前置依赖：** U0/U1/U2 + **U3（macOS 先验收，且 U3 已定的富文本回退结论沿用）**。
+
+---
+
+### U5 — 重叠事件呈现：共享列分配算法 + macOS 并排渲染 + iOS 冲突提示  [全栈 / 共享纯函数 + 两端渲染]
+
+**范围：**
+- **算法放共享 `CalendarViewModel`**（`Packages/LinoJCore/Sources/LinoJCore/ViewModels/CalendarViewModel.swift`）：新增纯函数 `func overlapLayout(forDay dayStart: Date) -> [UUID: (column: Int, columnCount: Int)]`。
+  - 取该天事件（复用 `eventsByDay[dayStart]`，已按 start 升序）。
+  - **传递性重叠归簇**：按 start 扫描，事件 A、B 重叠定义为 `A.start < B.end && B.start < A.end`（区间相交，端点相接不算重叠）。把传递相连的重叠事件归为一个「簇」（cluster）。
+  - **簇内贪心分配列（lane）**：簇内事件按 start 排序，对每个事件分配「最左可用列」（该列上一个事件已结束 `prevEnd <= cur.start` 即可复用该列）；`columnCount` = 该簇用到的最大列数。
+  - 返回 `[eventID: (column, columnCount)]`：`column` 为该事件的列序号（0-based），`columnCount` 为其所在簇的总列数。**簇内所有事件 columnCount 一致**（同簇等分列宽）。
+  - **纯函数、不读 `tick`、不 mutate**——便于单测（不依赖 SwiftData 刷新机制）。可设计成 `static func computeOverlapLayout(events: [Event]) -> [UUID: (Int, Int)]` 由实例方法包一层，**static 版直接吃 `[Event]` 入参**，单测无需起 ViewModel。
+- **macOS 渲染**（`CalendarView_macOS.swift`）：`eventLayout(event:columnWidth:)`（:566）改造——当前写死 `x = 4, width = columnWidth - 8`（满列宽，重叠叠一起）。改为消费 `overlapLayout`：
+  - 在 `dayColumn`（:503）渲染前对该天调一次 `vm.overlapLayout(forDay: dayStart)` 拿到 map，传入 `eventLayout`。
+  - `eventLayout` 新增 `column` / `columnCount` 参数：`laneWidth = (columnWidth - 8) / CGFloat(columnCount)`、`x = 4 + CGFloat(column) * laneWidth`、`width = laneWidth - innerGap`（如 -2pt 列间隙）。`y`/`height` 时间映射逻辑不变。
+  - **MVP 等宽**：簇内每列等宽，不做「向右扩展吃空列」精修（精修列为可选未来增量，不在本期）。
+- **iOS 渲染**（`CalendarView_iOS.swift`）：iOS 日历是**单日 ScrollView 卡片列表**（`dayEvents` :371，`ForEach EventCard(.iosFull)`），**列表非网格，无法并排分列**。**决策定死**：用**冲突视觉提示**——
+  - 对当天事件调 `vm.overlapLayout(forDay:)`，`columnCount > 1` 的事件即「与他人冲突」。
+  - 在这些事件的 `EventCard(.iosFull)` 上加一个**冲突角标 / 标记**：卡片右上或时间行旁加一个小 chip「与 X 冲突 / Overlaps」（用 inkMute 中性色，**不用蓝**）；X 为同簇其它事件数（`columnCount - 1`）或同簇某事件标题（MVP 用「与 N 个日程重叠」计数文案，避免拼接长标题）。
+  - **不改 EventCard 组件内部**（保持纯展示纪律，参考 W4）：在 `dayEvents` 的 `ForEach` 外层用 `.overlay` 或在卡片上方插一行冲突提示文字，由 `CalendarView_iOS` 渲染。
+- **不改 schema、不新增 @Model**：纯算法 + 渲染。
+
+**关键接口 / 类型契约：**
+```swift
+@Observable @MainActor public final class CalendarViewModel {
+    /// U5：该天事件的重叠列分配。返回 eventID → (column 0-based, 同簇总列数)。
+    /// 不重叠的事件 columnCount == 1, column == 0。
+    public func overlapLayout(forDay dayStart: Date) -> [UUID: (column: Int, columnCount: Int)]
+    /// 纯函数核心（单测直接调，不起 SwiftData）。
+    public static func computeOverlapLayout(events: [Event]) -> [UUID: (column: Int, columnCount: Int)]
+}
+```
+- macOS `eventLayout` 签名扩展：`private func eventLayout(event: Event, columnWidth: CGFloat, column: Int, columnCount: Int) -> (x,y,width,height)?`。
+- iOS 新增本地化 key：`Calendar.overlapsCount`（"Overlaps %d" / "与 %d 个日程重叠"，复数走 xcstrings plural 规则，参考既有 `Counts.eventsCount` 复数写法）。
+
+**验收标准：**
+- **算法单测（重测项目天菜，必须覆盖）** `CalendarOverlapTests`：
+  - 相邻不重叠（A 9-10, B 10-11，端点相接）→ 各 `(0, 1)`。
+  - 完全重叠（A 9-11, B 9-11）→ 一个 `(0,2)` 一个 `(1,2)`。
+  - 链式重叠（A 9-10:30, B 10-11, C 10:45-12）→ 同簇，列数与列序号正确（A col0、B col1、C 复用 col0 因 A 已结束于 10:30 < 10:45）。
+  - 三件同时叠（A/B/C 都 9-10）→ 各 `(0,3)/(1,3)/(2,3)`。
+  - 两个独立簇（A/B 叠在上午，C/D 叠在下午，两簇不相交）→ 两簇各自 columnCount，互不影响列序号。
+  - 空天 / 单事件 → 单事件 `(0,1)`。
+- macOS：构造同一天 2-3 个重叠事件 → 周视图该天**并排分列显示**（不再叠在一起），列宽等分；不重叠事件仍满列宽。出 macOS 包用户截图确认并排正确（headless 看不到渲染）。
+- iOS：同一天重叠事件的 `.iosFull` 卡显示「与 N 个日程重叠」提示；不重叠事件无提示。
+- `LinoJCoreTests` 新增 `CalendarOverlapTests`（上列 6+ 用例）；`LocalizationTests` 加 `Calendar.overlapsCount` 复数 zh≠en。
+- `swift test` 全绿；两端 xcodebuild App target build SUCCEEDED；`-warnings-as-errors` 0 warning。
+
+**影响范围：** 改 `CalendarViewModel.swift`（加算法）、`CalendarView_macOS.swift`（eventLayout 消费列分配）、`CalendarView_iOS.swift`（冲突提示）、`Strings.swift` + xcstrings；新增 `CalendarOverlapTests`。
+
+**前置依赖：** 无（依赖既有 `CalendarViewModel`/`eventsByDay`）。可与 U1-U4 并行。**先 macOS 渲染验收 → 再 iOS 提示。**
+
+---
+
+### U6 — 冲突预警进 Heads-up  [全栈 / 共享 Service + Main 渲染]
+
+**范围（升级建议 3.1）：**
+- 两件（或多件）事件时间撞车时，在 Main 顶部 Heads-up 区冒一条提示（如「11:00 有 2 个日程冲突 / 2 events overlap at 11:00」）。符合 README NON-NEGOTIABLE：「时间只通过 Heads-up 渗入 Main」。
+- **落点决策（定死）**：复用 U5 的重叠判定逻辑（`computeOverlapLayout` 的「同簇 columnCount > 1」= 冲突），在 `HeadsUpService`（`Services/HeadsUpService.swift`）扩展或在 `MainViewModel` 增一个并列的「冲突提示」computed——**决策**：在 `HeadsUpService` 内**新增一条独立的冲突扫描**，输出一个 `conflictAlert: ConflictAlertModel?`（与既有 `currentAlert: HeadsUpAlertModel?` 并列，不混淆「即将开始」与「时间冲突」两种语义）。
+  - 冲突扫描范围：**今天**的事件（与 Main「今天」语境一致），找 `start` 落在今天、且与其它今日事件重叠的簇；取**最早一个冲突簇**生成提示（只显示一条，不堆叠，与 headsUp 单条策略一致）。
+  - 提示内容：冲突起始时间（簇内最早 start 的时刻，mono 格式）+ 冲突事件数。
+  - tick 复用既有 60s Timer（`HeadsUpService` 已有 `start()`/`tick()`），在 `tick()` 内一并算 `conflictAlert`。
+- **Main 渲染**：两端 Main 顶部 heads-up 区（macOS `MainView_macOS` leftColumn 顶 / iOS `MainView_iOS` header 下）在 `headsUp` 之外、追加渲染 `conflictAlert`（若两者都有，**决策定死**：headsUp「即将开始」优先在上，conflict 在其下，或同一区两条——MVP 选「conflict 提示作为 heads-up 区的第二条 pill，inkMute 中性色，不抢蓝色 heads-up 的视觉权重」）。复用既有 `HeadsUpAlert` 组件样式但用中性色变体（冲突非「紧急即将」，用中性提示色，避免与蓝色 heads-up 混淆）。
+- **不调度本地通知**：冲突预警只在 Main UI 冒泡，不发系统横幅（避免打扰；README 的本地通知是给「即将开始」的 heads-up，冲突是被动提示）。
+
+**关键接口 / 类型契约：**
+```swift
+public struct ConflictAlertModel: Equatable, Sendable {
+    public let atTime: Date        // 冲突簇最早 start
+    public let count: Int          // 冲突事件数（簇 size）
+}
+@Observable @MainActor public final class HeadsUpService {
+    /// U6：今日时间冲突提示（与 currentAlert 并列，语义独立）。tick 内一并计算。
+    public var conflictAlert: ConflictAlertModel? = nil
+}
+@Observable @MainActor public final class MainViewModel {
+    /// U6：转发 service.conflictAlert（@Observable 自动追踪），service 未注入时 nil。
+    public var conflict: ConflictAlertModel? { headsUpService?.conflictAlert }
+}
+```
+- 重叠判定**复用 U5 的 `CalendarViewModel.computeOverlapLayout(events:)`**（static 纯函数，HeadsUpService 直接调，不重复实现归簇逻辑）。
+- 本地化 key：`HeadsUp.conflict`（"%1$d events overlap at %2$@" / "%2$@ 有 %1$d 个日程冲突"，含位置参数，xcstrings 双填）。
+
+**验收标准：**
+- 构造今天两件时间撞车的事件 + 注入 HeadsUpService → `conflictAlert` 非 nil，`count == 2`、`atTime` = 较早那件的 start；Main 顶部出现冲突提示 pill。
+- 今天无冲突时 `conflictAlert == nil`，Main 不显示冲突 pill。
+- 同时存在「即将开始 heads-up」与「冲突」时，两条提示都显示（heads-up 蓝在上、conflict 中性在下），不互相吞掉。
+- 冲突提示**不触发系统通知横幅**（仅 UI）。
+- `LinoJCoreTests`：`HeadsUpService` 扩 `conflictAlert` 测试（有/无冲突、最早簇选取、复用 computeOverlapLayout）；`LocalizationTests` 加 `HeadsUp.conflict` zh≠en。
+- `swift test` 全绿；两端 App target build SUCCEEDED；`-warnings-as-errors` 0 warning。
+
+**影响范围：** 改 `HeadsUpService.swift`、`MainViewModel.swift`、两端 `MainView_*.swift`（渲染 conflict pill）、`Strings.swift` + xcstrings；扩 `HeadsUpService` 测试。
+
+**前置依赖：** **U5（复用 computeOverlapLayout）**。先 macOS 渲染验收 → 再 iOS。
+
+---
+
+### U7 — macOS 周视图拖拽改期  [前端 / macOS]
+
+**范围（升级建议 3.2，仅 macOS）：**
+- macOS 周视图事件卡已绝对定位（`CalendarView_macOS.swift` `dayColumn` :503，`eventLayout` 算 x/y）。加**拖拽移动**：拖动事件卡上下平移改 `start`/`end`（保持时长），可选左右平移跨天改日期。
+- **可选拉伸改时长**：卡片下边缘拖拽改 `end`（延长/缩短）——**MVP 决策**：先做「拖拽移动整块平移」必做；「下边缘拉伸改时长」列为本 Phase 可选，若 type-check/手势冲突复杂则降级为下一增量（写进验收为可选项）。
+- **吸附**：拖拽落点吸附到 15 分钟网格（`pxPerHour = 46`，15min = 11.5pt），避免落到秒级。
+- **写回**：拖拽结束（`DragGesture.onEnded`）计算新 `start`/`end` → 写回 Event → `vm` 新增 `moveEvent(_ event:newStart:newEnd:)`（`event.start = ...; event.end = ...; try? context.save(); refresh()`，与既有 `confirmAttended`/`deleteEvent` 同 VM 同模式）。拖拽中（`onChanged`）只更新一个 `@State` 的临时偏移做视觉预览，不每帧 save。
+- **与 U5 重叠渲染协同**：拖拽后事件可能进入/离开重叠簇——写回 refresh 后 `overlapLayout` 自动重算，列分配更新（无需特殊处理）。
+- **与既有点击编辑（W4）协同**：周视图卡已有 `.onTapGesture { openEdit }`（:540）+ `.contextMenu`（:541）。**决策定死**：拖拽用 `DragGesture(minimumDistance: 4)`，小于阈值视为点击（走 openEdit），大于阈值视为拖拽——用 `.gesture` 优先级或 `highPriorityGesture` 避免 tap 与 drag 冲突；施工需实测点击仍能打开编辑、拖拽不误触。
+
+**关键接口 / 类型契约：**
+```swift
+@Observable @MainActor public final class CalendarViewModel {
+    /// U7：拖拽改期写回。平移保持时长则传 newStart/newEnd；拉伸只改 newEnd。
+    public func moveEvent(_ event: Event, newStart: Date, newEnd: Date)  // save + refresh
+}
+```
+- 时间↔像素换算复用 `eventLayout` 已有的 `startHour`/`pxPerHour`/`startOfDay` 逻辑（拖拽 Δy → Δ分钟 = `Δy / pxPerHour * 60`，吸附到 15 分钟）。
+
+**验收标准（仅 macOS，出包截图/真机验收）：**
+- 周视图拖拽事件卡上下移动 → 释放后事件 `start`/`end` 平移到新时刻（时长不变）、卡片落到新位置、SwiftData 持久化、重启仍在。
+- 拖拽落点吸附到 15 分钟刻度。
+- 拖拽进入与另一事件重叠的时段 → 释放后两者按 U5 并排分列（重叠渲染自动更新）。
+- **点击不误触拖拽**：轻点事件卡仍打开 W4 编辑；右键仍出 contextMenu。
+- （可选）下边缘拉伸改时长：拖下边缘只改 `end`、`start` 不变。
+- `LinoJCoreTests`：`CalendarViewModel` 加 `moveEvent` 测试（新 start/end 写回、event 在 context 中值正确）。
+- `swift test` 全绿；**macOS App target build SUCCEEDED**（拖拽手势 + 绝对定位 body 易 type-check 超时，必须 xcodebuild 验证）；`-warnings-as-errors` 0 warning；出包真机/桌面包验证拖拽手感（headless 验不到手势）。
+
+**影响范围：** 改 `CalendarView_macOS.swift`（dayColumn 事件卡加 DragGesture + 预览偏移 state）、`CalendarViewModel.swift`（moveEvent）；扩 `CalendarViewModelTests`。**iOS 不涉及**（iOS 是列表非网格，无拖拽改期）。
+
+**前置依赖：** U5（拖拽后重叠渲染协同）+ W4（既有点击编辑/contextMenu，拖拽需与之共存）。仅 macOS。
+
+---
+
+### U8 — iOS 各屏底部留白收口  [前端 / iOS]
+
+**范围（升级建议 3.3，仅 iOS）：**
+- iOS 各屏滚到底有 ~100pt 多余留白（旧浮动 capsule 遗留；现 iOS 26 原生 tab bar 已由系统处理安全区，`Color.clear.frame(height: 100)` 这类硬编码底部 spacer 多余）。
+- **定点**：`MainView_iOS.swift:184` `Color.clear.frame(height: 100)`；`PersonalView_iOS.swift` 与 `CalendarView_iOS.swift` 内的等价底部 spacer（grep `100` 命中三屏，施工逐屏定位实际 spacer 行）。核对 `CompanyView_iOS` / `ProjectDetailView_iOS` / 各 Settings/Search/QuickAdd sheet 是否也有类似硬编码底部留白。
+- **决策（定死）**：原生 tab bar 下，内容用 `.safeAreaInset` 或系统自动处理底部安全区，**移除硬编码 100pt spacer**；若移除后内容被 tab bar 略遮挡，改为一个**小得多的** spacer（如 16-24pt 视觉呼吸）或依赖系统 safe area，**实测为准**（出 iOS 包真机滚到底确认无大片空白、也不被 tab bar 切掉最后一条内容）。
+- **U4 注意**：U4 在 `MainView_iOS` 底部 100pt 之前插了「最近灵感」section——U8 改 100pt 时核对与 U4 的角块不冲突（U8 若先于 U4 做则只改 100 值；若后于 U4 做则在 U4 新增 section 之后调底部 spacer）。**建议 U8 在 U4 之后做**，避免反复改同一处。
+
+**关键接口 / 类型契约：** 无（纯 UI 数值/布局调整）。
+
+**验收标准（仅 iOS，真机滚到底验收）：**
+- 各屏（Main / Personal / Company / Calendar / Inspiration / ProjectDetail）滚到底**无明显多余留白**（不再是 ~100pt 空白）。
+- 最后一条内容**不被原生 tab bar 遮挡**（系统安全区正常生效）。
+- `swift build -Xswiftc -warnings-as-errors` 0 warning；**iOS App target build SUCCEEDED**；出 iOS 包真机滚动验收（headless 验不到滚动留白）。
+
+**影响范围：** 改各 iOS 屏的底部 spacer（`MainView_iOS` / `PersonalView_iOS` / `CalendarView_iOS` 等，逐屏定点）。**无单测**（纯 UI）。
+
+**前置依赖：** 无硬依赖；**建议在 U4 之后**（避免与 Main 角块改动撞同一处底部）。仅 iOS。
+
+---
+
+### U9 — Widget / 锁屏小组件 + App Group + SwiftData store 迁移  [全栈 / 新 target + entitlements + pbxproj]
+
+> **本组第二重的一块（除灵感外），单独成 Phase，风险等级：高。** 核心风险是「当前无 App Group」——Widget extension 要读 App 的 SwiftData 数据，必须让 App 与 widget 共享一个 App Group 容器，这涉及 **entitlements 改动 + 网页注册 App Group ID + SwiftData store 物理位置迁移 + 老数据迁移**。施工前用户必须先在 developer.apple.com 注册 App Group ID（见文末「网页手动清单（v1.1）」）。
+
+**范围与子步骤（严格按序）：**
+
+**U9.1 — App Group capability + entitlements（前置，全栈）**
+- 用户网页注册 App Group ID（定死命名 `group.com.linocai.linoj`）。
+- 两端 App entitlements（`LinoJ-macOS.entitlements` / `LinoJ-iOS.entitlements`）+ 新 widget extension entitlements 各加 `com.apple.security.application-groups` = `[group.com.linocai.linoj]`。
+- macOS widget 还需 app-sandbox（widget extension 在 macOS 下沙盒）；核对 widget target 的 sandbox + app-group 组合。
+
+**U9.2 — SwiftData store 迁到 App Group 容器（最高风险，需迁移方案 + 回退）**
+- **现状**：`LinoJStore.makeContainer`（`ModelContainer+LinoJ.swift`）用 `ModelConfiguration("LinoJStore", ...)` **默认 store 位置**（App 私有 Application Support 目录），无显式 URL。Widget 进程访问不到 App 私有目录。
+- **改造（定死）**：`ModelConfiguration` 显式指定 `url:` 指向 App Group group container 内的 store 文件：`FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.linocai.linoj")!.appending(path: "LinoJStore.sqlite")`。App 与 widget 用**同一 URL** 打开同一 store。
+- **CloudKit 协同**：`cloudKitDatabase: .private(...)` 与 App Group store URL **可共存**（CloudKit 同步绑容器 ID，store 物理位置可在 group 容器）——但**必须真机验证**：App Group 容器内的 store 接 CloudKit `.private` 能正常同步、不 crash（CLAUDE.md：CloudKit 约束类 bug 单测抓不到，真机验证）。
+- **老数据迁移（必给方案 + 回退）**：v1.0 用户的数据在旧默认位置；切到 App Group URL 后，旧 store 不会自动出现在新位置 → **数据看似丢失**。**迁移方案（定死）**：App 启动时，若 App Group 容器内无 store 文件、而旧默认位置有 store 文件 → 把旧 store（含 `-wal`/`-shm` 三件套）**拷贝**（`FileManager.copyItem`）到 App Group 容器，再用新 URL 打开；拷贝成功后旧 store 保留不删（**回退保险**：迁移出问题可回退用旧位置）。迁移逻辑放 `LinoJStore` 内一个 `migrateStoreToAppGroupIfNeeded()`，App init 在 `makeContainer` 前调一次，幂等（已迁移则跳过）。
+  - **cloud ON 用户的特例**：cloud ON 时数据在云端，本地 store 重建后会从 CloudKit 拉回——但为稳妥，迁移逻辑对 cloud ON / OFF 都执行本地拷贝（拷贝是无害的本地操作）。
+  - **回退路径**：若 App Group 容器 URL 获取失败（`containerURL` 返回 nil，如 entitlement 没配好）→ `makeContainer` fallback 回默认位置（不带 group URL），保证 App 不因 widget 配置问题而起不来（与既有 `makeContainerWithFallback` 的容错风格一致）。
+- **测试 store 不变**：`inMemory: true` 路径不碰 App Group URL（测试仍纯内存 + `.none`）。
+
+**U9.3 — Widget extension target + timeline（前端 + pbxproj）**
+- 新建 WidgetKit extension target（两端各一，或共享 widget 代码 + 各自 target）。命名 `LinoJWidgets`。pbxproj 加 target + 关联 App Group entitlement + 依赖 `LinoJCore`（widget 读模型用同一 `@Model` 定义与 `LinoJStore`）。
+- **Widget 内容（定死，calm 调性）**：
+  - **今日事件 look-ahead**：显示今天接下来的 1-3 个事件（mono 时间 + 标题），照 README「时间通过简洁呈现」调性。
+  - **open todo 计数**：小尺寸 widget 显示「X open · Y urgent」计数（复用 Main 的计数语义）。
+  - 尺寸：systemSmall（计数 or 下一个事件）、systemMedium（今日 1-3 事件 look-ahead）；锁屏 accessoryRectangular（下一个事件）/ accessoryInline（open 计数）。
+- **timeline provider**：读 App Group 内 SwiftData store（`LinoJStore.makeContainer` 同 URL，widget 进程内只读 fetch Event/Todo），生成 timeline entries；刷新策略用 `.atEnd` + 每个整点/事件起点刷新（`TimelineReloadPolicy`）。**widget 不写数据**（只读）。
+- **视觉**：复用 `LinoJCore` 的 `Color.lj.*` / Typography（widget 内可 import LinoJCore design tokens）；蓝色仍只给 urgent。
+
+**关键接口 / 类型契约：**
+```swift
+public enum LinoJStore {
+    /// U9：App Group store URL（两端 App 与 widget 共用）。containerURL 失败返回 nil（fallback 默认位置）。
+    public static func appGroupStoreURL() -> URL?
+    /// U9：旧默认位置 store 迁到 App Group 容器（幂等；已迁移或无旧 store 则 no-op）。
+    @MainActor public static func migrateStoreToAppGroupIfNeeded()
+    /// makeContainer 改造：非 inMemory 时 ModelConfiguration 显式指定 url = appGroupStoreURL()（失败 fallback 默认）。
+    @MainActor public static func makeContainer(inMemory: Bool = false, cloudSyncEnabled: Bool = true) throws -> ModelContainer
+}
+```
+- App Group ID 常量集中放 `LinoJCloudKit` 同处或新 `LinoJAppGroup.id = "group.com.linocai.linoj"`。
+
+**验收标准：**
+- **store 迁移（最关键，真机验证）**：
+  - 干净安装（无旧 store）：App 启动建 App Group 容器内 store，不 crash；既有功能正常；CloudKit 同步仍工作。
+  - **v1.0 旧 store 升级路径**：保留 v1.0 旧数据的 App 升级到 U9 → 启动后**旧数据全部出现**（迁移成功）、不丢、CloudKit 同步不重复（与 seed 竞态同源风险，核对 cloud ON 不重复 seed）。**必须真机验证**（迁移 + CloudKit + App Group 三者叠加，单测抓不到）。
+  - App Group entitlement 缺失 / containerURL nil：fallback 回默认位置，App 仍能起。
+- **Widget**：添加 widget 到桌面/主屏/锁屏 → 显示今日事件 look-ahead / open 计数，数据与 App 一致；App 内改数据后 widget 在下次 timeline 刷新时更新。
+- 两端 widget target build SUCCEEDED；widget extension entitlement 含 App Group。
+- `LinoJCoreTests`：`appGroupStoreURL` / `migrateStoreToAppGroupIfNeeded` 的可测部分（用临时目录桩验证「无旧 store 时 no-op」「有旧 store 时拷贝到目标」逻辑——真实 group 容器 headless 取不到，测纯文件搬运逻辑）。
+- `swift test` 全绿；两端 App + widget target build SUCCEEDED；`-warnings-as-errors` 0 warning。
+
+**影响范围：** 改 `ModelContainer+LinoJ.swift`（App Group URL + 迁移）、两端 App init（调 migrate）、两端 entitlements、两端 `project.pbxproj`（新 widget target + App Group capability）；新增 `LinoJWidgets` 源码 + widget entitlements；新增 store 迁移测试。
+
+**前置依赖：** **用户先网页注册 App Group ID**（U9.1 前置）。无其它 Phase 硬依赖（可在灵感/重叠之后独立做）。**建议放本组靠后**（最重、改 entitlements + store 位置，与其它 Phase 隔离，降低互相干扰）。
+
+---
+
+### U10 — v1.1 收尾：版本号 bump + 测试补全 + Release 验证  [全栈 / 共享 + pbxproj]
+
+**范围：**
+- **版本号统一 bump 到 v1.1**：
+  - 两端 `project.pbxproj` `MARKETING_VERSION` `1.0 → 1.1`（Debug + Release 各一处，两端共 4 处）。
+  - 两端 `CURRENT_PROJECT_VERSION`（build）`3 → 4`（单调递增；两端 Debug+Release 共 4 处）。
+  - `LinoJCore.swift:15` `LinoJCore.version` `"1.0" → "1.1"`。
+  - `LinoJCoreSmokeTests.swift:13` 版本断言 `LinoJCore.version == "1.0"` → `== "1.1"`（测试名/描述同步改 1.1）。
+- **测试补全**：U 组新增的所有 ViewModel / Service / 算法（NoteListViewModel / NoteEditorViewModel / Note 模型 / CalendarOverlap / HeadsUpService conflict / CalendarViewModel.moveEvent / store 迁移）单测齐全且全绿。
+- **xcstrings 同步收口**：U0-U9 新增的全部用户可见文案中英双填，两 lproj 已重生，`LocalizationTests` 覆盖所有新 key 的 zh≠en 断言。
+- **Release 验证**：两端 Release scheme build SUCCEEDED；CloudKit 在 Release 走 production 环境（提醒：含 Note 的新 schema 须先 deploy 到 production，见网页清单）。
+- **真机回归清单**（headless 测不到，U10 出包后逐项真机过）：① 含 Note 的 schema 真机容器加载不 crash；② App Group store 迁移后旧数据全在 + CloudKit 同步；③ macOS 顶栏 5 tab 单行不溢出 + 红绿灯对齐；④ 富文本编辑（或 markdown 回退）真机可用；⑤ macOS 周视图重叠并排 + 拖拽改期手感；⑥ widget 显示数据；⑦ iOS 底部留白已收。
+
+**关键接口 / 类型契约：** 无新增代码类型；产物为版本号一致性 + 全量测试绿 + Release 包。
+
+**验收标准：**
+- App Settings/About 显示「LinoJ 1.1」；两端 build 号 4。
+- 全量 `swift test` 全绿（v1.0 基线 164 + U 组新增，预计 180+）。
+- 两端 Release build SUCCEEDED；`-warnings-as-errors` 0 warning。
+- 上列真机回归 7 项逐项通过（用户实测/截图确认）。
+
+**影响范围：** 两端 `project.pbxproj` + `LinoJCore.swift` + `LinoJCoreSmokeTests.swift`；测试补全散落各测试文件。
+
+**前置依赖：** U0..U9 全部。
+
+---
+
+**U 组整体施工顺序建议：**
+`U0 → U1 → U2 → U3（macOS 验收）→ U4（iOS）` ‖ `U5（macOS 渲染验收 → iOS 提示）→ U6（macOS → iOS）` ‖ `U7（macOS）` ；`U8（iOS，建议 U4 后）`；`U9（用户先注册 App Group ID，放靠后独立做）`；最后 `U10 收尾 + 版本号 bump + 真机回归`。
+其中 U1-U4（灵感）与 U5-U7（日历）两条线**可并行**（不同文件域），但每条线内严格「共享层 → macOS 验收 → iOS」。
+
+---
+
 ## 用户需在网页端手动操作的清单（v1.0）
 
 > 以下操作 Claude / builder **无法代做**（涉及 Apple 网页控制台 / 账号交互）。请用户在对应 Phase **施工前**完成（尤其 V0 前置的 App ID + Container）。每项标注「Xcode 能否自动建」以免白点。
@@ -1811,6 +2300,31 @@ router.showQuickAdd = true
 | Push Notifications key / APNs | CloudKit 静默推送不需单独 APNs key（CloudKit 托管） | 无需手动建 APNs key |
 
 **清单共 3 大网页 / 5 项必做手动操作**：(1) 注册 2 个 App ID 并勾三 capability、(2) 创建 CloudKit Container、(3) CloudKit Dashboard Deploy 到 Production（V6 前）、(4) App Store Connect 建 App 记录、(5) 等价确认（container 关联到 App ID 的 iCloud capability）。
+
+---
+
+## 用户需在网页端手动操作的清单（v1.1 新增）
+
+> v1.1 在 v1.0 清单之外**新增两项**用户网页手动操作。其它（证书 / Profile / Container 已建）沿用 v1.0 清单，无需重做。
+
+### 1. icloud.developer.apple.com — CloudKit Dashboard 重新 Deploy schema 到 Production（因新 `Note` 模型，**U10 上线前必做**）
+路径：https://icloud.developer.apple.com → container `iCloud.com.linocai.linoj`
+- v1.1 新增 `@Model Note`（U1）→ SwiftData 在 **Development** 环境首次运行时自动生成 `CD_Note` record type（无需手填）。
+- **上线前（Release / TestFlight 跑 production 环境）**：在 Dashboard 把含新 `Note` record type 的 schema **重新 Deploy（Development → Production）**（"Deploy Schema Changes…"）。**v1.0 已 deploy 过一次，但新增 Note 后必须再 deploy**，否则 production 端无 `Note` 表，灵感笔记同步失败 / 报错。
+- 说明：schema 自动生成是 SwiftData 做的；**Deploy to Production 必须手动点**（Xcode 不会自动）。
+
+### 2. developer.apple.com — 注册 App Group ID（因 Widget，**U9 施工前必做**）
+路径：https://developer.apple.com/account → "Certificates, Identifiers & Profiles" → "Identifiers" → 右上类型筛选切到 "App Groups" → "+"
+- **新建 App Group**：标识符 `group.com.linocai.linoj`（定死命名，与 plan U9 一致）。
+- 关联到统一 App ID `com.linocai.linoj`：在 App ID 的 capability 列表里勾选 "App Groups" 并把这个 group 关联进去（两端 App 共用同一 App ID，故一次关联即可）。
+- Widget extension target 的 App ID（Xcode automatic signing 会建一个 `com.linocai.linoj.LinoJWidgets` 之类的子 App ID）同样需勾 App Groups 并关联 `group.com.linocai.linoj`——可在 Xcode 开 widget target 的 App Groups capability 时自动同步回 portal，回这里确认。
+- 说明：App Group **ID 注册 + 关联到 App ID** 必须网页/Xcode 配合手动办；Xcode automatic signing 能在开 capability 时同步，但 group 标识符本身建议先在网页建好以免命名漂移。
+
+### v1.1 网页手动操作小结
+| 项 | 触发 Phase | Xcode 能否自动 | 谁来做 |
+|---|---|---|---|
+| CloudKit schema 重 Deploy 到 Production（含 Note） | U1（产生）/ U10（上线前） | ❌ 不会自动 | **CloudKit Dashboard 手动** |
+| 注册 App Group ID `group.com.linocai.linoj` + 关联 App ID | U9 前置 | 开 capability 能同步，标识符建议先手建 | **网页手动建 + Xcode 同步** |
 
 ---
 
@@ -2325,6 +2839,86 @@ router.showQuickAdd = true
 - **W7.2 关联事件点击进编辑 [全栈，macOS 优先 + iOS 对等]**：两端 ProjectDetail 的 linked-events 用自定义 `eventRow`（macOS `:510` 无点击 / iOS `:484` 有 contentShape 无 onTap），均已持有 router。给 `eventRow` 加 `.contentShape` + `.onTapGesture { router.quickAddEditingEvent = event; router.showQuickAdd = true }`，复用 W4 已落地的 `TabRouter.quickAddEditingEvent`（`:53`）+ QuickAdd 事件编辑模式。**决策：本期最小实现，仅「点击→打开编辑」，不加 contextMenu**——因 `ProjectDetailViewModel` 不含 `deleteEvent`/`confirmAttended`（在 CalendarViewModel/MainViewModel），加完整右键菜单需扩 VM、超出「在项目页编辑事件」核心诉求；删除/标记出席用户去日历做。contextMenu 列为未来增量（复用 W4 同模式）。不改 EventCard / ProjectDetailViewModel / schema / router 字段。
 - **W7.3 macOS 顶栏红绿灯对齐 + 最左竖线伪影 [macOS 前端，需出包截图迭代]**：`RootWindow.swift:78` `TrafficLightConfigurator(barHeight:44)` 的 `reposition()`（`:411`）以红绿灯**容器** `container.bounds.height` 居中，但该容器是系统标题栏（约 28pt）非 44pt SwiftUI 顶栏 → 红绿灯被定位到系统标题栏中线（偏上）而非 44pt 顶栏视觉中线，造成「两层交错」。**主修复假设**：改 `reposition()` 以**窗口顶为基准**把红绿灯中心对齐到顶向下 22pt（44/2），放宽 clamp 上限。备选 A（hiddenTitleBar 残留标题栏高把内容下推，方向相反）/ B（顶栏内容未真正垂直居中，微调）。最左竖线伪影排查候选：顶栏下沿 Rectangle、主内容 ZStack 的 ignoresSafeArea、各屏左列 trailing overlay Rectangle、`.padding(.leading,78)` 让位缝。**明确标注本项 headless 无法验真实渲染**：builder 出包→`open` 启新二进制→用户截图判齐平/竖线；一次不中按全局经验给可疑容器加临时彩色 `.border` + 构建新鲜度标记迭代，连续未中再换备选假设。仅 macOS。
 - **影响范围**：W7（macOS only：W7.1/W7.3；W7.2 macOS+iOS）。前置 W4（事件编辑基建）+ V4/W6（顶栏现状）。不触碰 entitlements/schema/付费能力。施工顺序建议：W7.1 → W7.2 macOS → W7.2 iOS → W7.3（截图迭代项放最后）。
+
+---
+
+### [2026-05-31] v1.1 规划
+
+- **动机**：v1.0 已上线基线（CloudKit / Push / SIWA 全接通，`swift test` 164 全绿，版本 1.0 / build 3）之上，用户拍板做第一个大版本升级 v1.1，含四块：① 灵感版块（照抄苹果备忘录 MVP）② 重叠事件呈现 ③ 升级建议（冲突预警 / macOS 拖拽改期 / iOS 留白）④ Widget。本次由 @planner 在生效 plan 区追加 **U 组（U0..U10）**，延续 W/V 组写作粒度（类型标注 / 接口·类型契约 / 选型定死 / 文件级定点含行号 / 验收 / 拆分顺序 / 影响范围）。**本次仅改 PROJECT_PLAN.md，不动任何源码 / 测试 / 工程文件。**
+- **涉及 Phase（新增 11 个）**：
+  - **U0** AppTab 加第 5 case `inspiration` + 文案 + **macOS 顶栏单行容纳 5 tab 的布局风险评估与降级方案**（不 bump 版本）。
+  - **U1** 新 `@Model Note`（富文本 `bodyData: Data`、`displayTitle` 派生、isPinned、createdAt、updatedAt）+ 入 `Schema([..., Note])` + **Note CloudKit 硬约束清单逐条核对**。
+  - **U2** `NoteListViewModel`（排序/置顶/搜索/增删 + recentNotes）+ `NoteEditorViewModel`（body 写回 + updatedAt 重算）。
+  - **U3** 灵感 macOS 双栏 UI + Main 右栏角块 + 顶栏第 5 tab 接线 +（先验收）；**富文本 API 验证作施工首步，不可用回退 markdown**。
+  - **U4** 灵感 iOS 单列 push UI + Main 角块 + 第 5 个原生 Tab（lightbulb）+（后验收）。
+  - **U5** 重叠列分配纯函数 `computeOverlapLayout` 放共享 `CalendarViewModel`（**重测项目天菜，6+ 单测用例**）+ macOS 并排分列渲染（改 `eventLayout`）+ iOS 冲突提示（列表非网格，用「与 N 个日程重叠」角标）。
+  - **U6** 冲突预警进 Heads-up（`HeadsUpService` 加 `conflictAlert`，复用 U5 归簇逻辑；中性色、不发系统通知）。
+  - **U7** macOS 周视图拖拽改期（DragGesture + 15min 吸附 + `moveEvent` 写回；与 W4 点击编辑共存）。仅 macOS。
+  - **U8** iOS 各屏底部 ~100pt 留白收口（移除硬编码 spacer，依赖原生 tab bar 安全区）。仅 iOS。
+  - **U9** Widget + App Group + **SwiftData store 迁到 App Group 容器 + 老数据迁移方案与回退**（最重，单独成段，需用户先注册 App Group ID）。
+  - **U10** 收尾：版本号统一 bump `1.0→1.1` / build `3→4` / `LinoJCore.version` + SmokeTests 断言 + 测试补全 + Release 验证 + 真机回归 7 项。
+- **关键技术决策（定死）**：
+  - 富文本：`TextEditor` 绑 `AttributedString`（26 原生），**施工首步先验证 26 上可用**；不可用降级 markdown 纯文本 String（不破 U1/U2 字段契约，走偏离说明）。
+  - Note 标题不存独立字段，由正文首行派生（`displayTitle`），避免与正文不一致的同步冲突。
+  - 重叠算法做成 `static computeOverlapLayout(events:)` 纯函数，U5 渲染与 U6 冲突预警共用，单测无需起 SwiftData。
+  - macOS 顶栏第 5 tab 保持单行；窄窗溢出则 Search pill 折叠为 icon（U0 评估、U3 出包截图确认）。不动 W7.3 已调好的红绿灯对齐（`.ignoresSafeArea(.container, edges:.top)`）。
+  - Widget store：`ModelConfiguration` 显式指定 App Group 容器 URL，App 与 widget 共用；迁移逻辑幂等拷贝旧 store 三件套到 group 容器，旧 store 保留作回退；containerURL nil 时 fallback 默认位置保证 App 能起。
+  - 砍掉「隐私政策 URL」项（用户明确忽略），不写进本组。
+- **最大的几个技术风险**：
+  1. **新 `@Model Note` 的 CloudKit 约束**——标量默认值齐全、无 unique、关系全 optional；`inMemory+.none` 单测抓不到 `.private` 容器校验，**必须真机验证容器加载**（U1/U3/U4/U10）。
+  2. **U9 Widget 的 SwiftData store 迁移**——store 物理位置从 App 私有目录搬到 App Group 容器 + 老数据迁移 + 与 CloudKit `.private` 叠加，单测只能测文件搬运逻辑，**真机验证迁移后旧数据全在 + CloudKit 不重复**（最高风险）。
+  3. **富文本 `TextEditor(AttributedString)` 在 macOS/iOS 26 的可用性**——施工首步验证，备 markdown 回退（U3）。
+  4. **macOS 顶栏第 5 tab 单行布局**——可能溢出，headless 看不到，出包截图迭代（U0/U3）。
+- **用户需在网页端手动做（v1.1 新增 2 项）**：① CloudKit Dashboard 把含 `Note` record type 的 schema 重新 Deploy 到 Production（U10 上线前）；② developer.apple.com 注册 App Group ID `group.com.linocai.linoj` 并关联 App ID（U9 前置）。详见上方「用户需在网页端手动操作的清单（v1.1 新增）」。
+- **施工时需真机验证（headless / 单测测不到）**：Note schema 真机容器加载；App Group store 迁移后旧数据 + CloudKit 同步；macOS 顶栏 5 tab 单行 + 红绿灯对齐；富文本编辑可用性；macOS 周视图重叠并排 + 拖拽手感；widget 显示数据；iOS 底部留白滚动观感。
+- **影响范围**：仅 `PROJECT_PLAN.md`（追加 U 组 11 个 Phase + v1.1 网页手动清单 + 本变更日志）。源码 / 测试 / pbxproj / entitlements 在对应 U Phase 施工时才动。
+
+---
+
+### [2026-05-31] U0 施工 —— AppTab 第 5 个 case `inspiration` + 文案前置
+
+- **变更内容**：
+  - `Enums.swift`：`AppTab` 加第 5 个 `case inspiration`（raw `"inspiration"`，CaseIterable 自动纳入 `allCases`）。
+  - `Strings.swift`：加 `LJStrings.tabInspiration = r("Tab.inspiration")`；`AppTab.localizedDisplayName` 的穷举 `switch` 补 `.inspiration → tabInspiration` 分支。
+  - `SearchViewModel.swift`：`display(for:)` 内对 `jumpTo(tab)` 的穷举 `switch tab` 补 `.inspiration`（label `"Jump to Inspiration"`、shortcut `"⌘5"`，沿用该 VM 既有英文硬编码风格，不属本期本地化范围）。
+  - `LocalizationTests.swift`：新增 `u0TabInspirationKey`（`Tab.inspiration` zh≠en 断言，en="Inspiration" / zh="灵感"）。
+- **新增本地化 key**：`Tab.inspiration`（"Inspiration" / "灵感"），三轨补齐——xcstrings（manual extractionState、中英双填）→ `xcrun xcstringstool compile` 重生两 lproj（XML plist 格式保留，各 +2 行）→ `Strings.swift` 加成员。
+- **偏离说明（主控明确要求，记录在此）**：plan U0 验收只覆盖 LinoJCore package，未查两端 App target。加第 5 个 case 会打断 macOS `RootWindow.swift:64` 对 4 个 case 的穷举 `switch router.current`（报「switch must be exhaustive」）。为保持 **main 始终可编译**，给该 switch 加最小占位分支 `case .inspiration: Color.lj.bg.ignoresSafeArea()`（仅渲背景、当前顶栏未接线第 5 tab 故不可达），**不实现真实灵感 UI**（真实 UI 在 U3/U4）。iOS `RootTabView` 用 value-based `Tab(value:)` 声明、无穷举 switch，`placeholder(for:)` 走 `localizedDisplayName`，故 iOS 无需改动即编译绿。**未给 macOS 顶栏加第 5 个 tabButton、未给 `LinoJCommands.swift` 加 ⌘5 菜单项**（按 plan U0「不改两端 UI 接线，接线在 U3/U4」）。macOS 顶栏单行容纳 5 tab 的布局风险评估结论已写在 U0 Phase 正文，真实接线 + 出包截图确认在 U3。
+- **验收**：`swift test --package-path Packages/LinoJCore` 164 → **165 全绿**；`swift build -Xswiftc -warnings-as-errors` **0 warning**；macOS App target `xcodebuild ... LinoJ-macOS` **BUILD SUCCEEDED**（仅既有 `RootWindow.swift:416 reposition()` 主 actor 隔离 warning，与本期无关）；iOS App target `xcodebuild ... LinoJ-iOS -destination 'generic/platform=iOS Simulator'` **BUILD SUCCEEDED**（仅既有 `AccentColor` 缺失 warning，与本期无关）。
+- **影响范围**：Phase U0。`Enums.swift` + `Strings.swift` + `SearchViewModel.swift` + `Localizable.xcstrings`（重生两 lproj）+ `LocalizationTests.swift` + `RootWindow.swift`（占位分支）。**未 bump 版本号**（U10 做）。
+
+---
+
+### [2026-05-31] U1 施工 —— 灵感数据层 `@Model Note` + Schema 注册 + CloudKit 硬约束
+
+- **变更内容**：
+  - 新增 `Models/Note.swift`：`@Model final class Note`，字段 `id: UUID = UUID()` / `bodyData: Data = Data()` / `isPinned: Bool = false` / `createdAt: Date = .now` / `updatedAt: Date = .now`（全带默认值）；computed `body: AttributedString { get set }`（`bodyData` ⇄ `AttributedString` 经 `JSONEncoder/JSONDecoder` 编解码，空/损坏数据兜底空串）；computed `displayTitle: String`（正文首个非空行 trim，全空回退本地化 `Note.untitled`）。**MVP 无任何关系字段**。
+  - `ModelContainer+LinoJ.swift`：`Schema([Person, Project, Todo, Event])` → `Schema([..., Note.self])`。
+  - `SeedData.swift`：在既有纯本地 seed 路径（`seedAll`）末尾加 2 条示例 Note（1 条置顶），遵 CLAUDE.md seed 竞态约束（cloud ON 不 seed）。
+  - `Strings.swift`：加 `LJStrings.noteUntitled = r("Note.untitled")`。
+  - 新增 `Tests/.../NoteModelTests.swift`（9 个用例：默认值 / 纯文本 round-trip / 加粗+项目符号 round-trip / 损坏数据兜底 / displayTitle 首行·跳空行·空回退·全空白回退 / Note CRUD 验 schema 注册）；`LocalizationTests.swift` 加 `u1NoteUntitledKey`（zh≠en）。
+- **新增本地化 key**：`Note.untitled`（"New note" / "新笔记"），三轨补齐——xcstrings（manual、中英双填）→ `xcrun xcstringstool compile` 重生两 lproj（XML plist 格式保留，各 +2 行）→ `Strings.swift` 加成员。
+- **CloudKit 硬约束逐条核对（plan U1 清单）**：① 标量默认值齐全 ✅；② 关系全 optional —— MVP 无关系字段天然满足，模型注释已写明「未来加关系须 optional + 双向 inverse」防后人踩坑 ✅；③ 无 `@Attribute(.unique)`，靠 UUID 自然唯一 ✅；④ `bodyData: Data` 当 bytes 存储，MVP 富文本不含图片体积可控 ✅；⑤ `updatedAt` 排序键 / last-writer-wins，模型层就绪，写回纪律 U2 落 ✅；⑥ 加新实体走 lightweight migration，不动既有 4 实体 ✅；⑦ 生产 schema deploy 留 U10。
+- **偏离说明**：无。严格按 plan U1「关键接口/类型契约」实现，未引入计划外字段 / 关系 / API。`body` 编解码选用 `JSONEncoder/JSONDecoder`（plan 已指定该方案）。
+- **验收**：`swift test --package-path Packages/LinoJCore` 165 → **175 全绿**；`swift build -Xswiftc -warnings-as-errors` **0 warning**；macOS App target **BUILD SUCCEEDED**（仅既有 `reposition()` warning）；iOS App target **BUILD SUCCEEDED**（0 新增 warning）。
+- **headless 测不到、需真机验证（plan U1 验收标准）**：① 干净安装真机启动不 crash、`@Query var notes: [Note]` 能 fetch（`.private` 容器接受新 Note record type）——`inMemory + .none` 单测不连 CloudKit，抓不到容器层校验；② v1.0 旧 store 升级路径（已有 Todo/Event/Project 数据的旧 store 启动不 crash、既有数据全在、Note 表为空，lightweight migration 成功）。
+- **影响范围**：Phase U1。新增 `Models/Note.swift` + `NoteModelTests.swift`；改 `ModelContainer+LinoJ.swift` / `SeedData.swift` / `Strings.swift` / `Localizable.xcstrings`（重生两 lproj）/ `LocalizationTests.swift`。**不改两端 UI**。**未 bump 版本号**（U10 做）。
+
+---
+
+### [2026-05-31] U2 施工 —— 灵感 ViewModel `NoteListViewModel` + `NoteEditorViewModel`
+
+- **变更内容**：
+  - 新增 `ViewModels/NoteListViewModel.swift`（`@Observable @MainActor final class`，照学 `MainViewModel`/`CalendarViewModel` 的 ModelContext 注入 + `tick`/`refresh()` + save+refresh 模式）：`init(context:)`；`searchText: String`；computed `sortedNotes`（置顶组在上，两组各按 `updatedAt` 倒序拼接）；computed `results`（trim 后空 query 返回 `sortedNotes` 全量，否则按 `displayTitle` + 正文纯文本大小写不敏感 contains 过滤，保持排序）；`recentNotes(limit: Int = 3) -> [Note]`（`sortedNotes` 前 N 条，`max(0,limit)` 防负、`prefix` 不越界）；`@discardableResult createNote() -> Note`（insert + save + refresh，返回新实例）；`delete(_:)`（delete + save + refresh）；`togglePinned(_:)`（翻 `isPinned` + **重写 `updatedAt = .now`** + save + refresh）；`refresh()`。
+  - 新增 `ViewModels/NoteEditorViewModel.swift`（`@Observable @MainActor final class`）：`init(context:note:)`；computed `body: AttributedString { get set }`（get 转发 `note.body`；set 立即写回 `note.body` + **重写 `note.updatedAt = .now`**，不在 setter 里 save）；computed `isPinned`；`save()`（`try? context.save()`，编辑器 `onDisappear` 调一次兜底）；`togglePinned()`（翻 `isPinned` + 重写 `updatedAt` + save）；`deleteSelf()`（delete + save）。
+  - 新增 `Tests/.../NoteListViewModelTests.swift`（11 用例：排序置顶在上+组内 updatedAt 倒序 / togglePinned 顶到顶部并刷 updatedAt / togglePinned 取消置顶 / results 空 query 全量 / results 按 title 匹配 / results 按正文非首行匹配 / results 无匹配 / createNote insert / delete 移除 / recentNotes 前 N 条+默认 3+不越界）。
+  - 新增 `Tests/.../NoteEditorViewModelTests.swift`（6 用例：set body 写回+updatedAt 刷新 / body getter 转发 / save 持久化 re-fetch / togglePinned 翻转+刷 updatedAt / deleteSelf 移除）。
+- **`updatedAt` 写回纪律落地（U1 硬约束⑤）**：`NoteListViewModel.togglePinned` 与 `NoteEditorViewModel.{body set, togglePinned}` 三处变更路径全部强制 `updatedAt = .now`，作为列表倒序排序键 + CloudKit last-writer-wins，无旁路。
+- **新增本地化 key**：无。plan U2「关键接口/类型契约」未要求新 key（`Note.untitled` U1 已加；`Inspiration.*` / `Note.pin/unpin/delete` / `Format.*` 等属 U3 UI 范围，本期不引入）。
+- **偏离说明**：无。严格按 plan U2「关键接口/类型契约」实现两个 VM 的全部签名（方法名/字段/返回类型逐一对齐），未引入计划外 API。`body` setter 不在每次写时 save（高频 save 卡 CloudKit），save 由编辑器 `onDisappear` 调 —— 此为 plan U2 正文「决策定死」的行为，非偏离。
+- **验收**：`swift test --package-path Packages/LinoJCore` 175 → **190 全绿**（新增 NoteListViewModelTests 11 + NoteEditorViewModelTests 6 = 17 用例，两个新 Suite 均通过）；`swift build -Xswiftc -warnings-as-errors` **0 warning**；macOS App target `xcodebuild ... LinoJ-macOS` **BUILD SUCCEEDED**（仅既有 `reposition()` warning，与本期无关）；iOS App target `xcodebuild ... LinoJ-iOS -destination 'generic/platform=iOS Simulator'` **BUILD SUCCEEDED**（仅既有 `AccentColor` warning，与本期无关）。
+- **真机/UI 验证项（本期 headless 单测覆盖逻辑，UI 行为留 U3/U4）**：本期纯 ViewModel 层，inMemory 单测已覆盖排序/置顶/搜索/增删改/updatedAt 写回逻辑；编辑器「编辑即存 + onDisappear save 兜底」的真实交互、富文本 `TextEditor` 绑 `AttributedString` 可用性，须在 U3（macOS UI）首步验证（plan U3「富文本 API 验证」），不在本期范围。
+- **影响范围**：Phase U2。新增 `ViewModels/NoteListViewModel.swift` + `ViewModels/NoteEditorViewModel.swift` + `NoteListViewModelTests.swift` + `NoteEditorViewModelTests.swift`。**不改两端 UI、不改 Strings/xcstrings**。**未 bump 版本号**（U10 做）。
 
 ---
 

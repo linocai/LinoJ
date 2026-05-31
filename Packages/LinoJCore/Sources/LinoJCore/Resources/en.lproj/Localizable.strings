@@ -150,6 +150,8 @@
 	<string>To do</string>
 	<key>Menu.navigate</key>
 	<string>Navigate</string>
+	<key>Note.untitled</key>
+	<string>New note</string>
 	<key>Project.addEvent</key>
 	<string>+ Add event</string>
 	<key>Project.addTodo</key>
@@ -488,6 +490,8 @@
 	<string>Calendar</string>
 	<key>Tab.company</key>
 	<string>Company</string>
+	<key>Tab.inspiration</key>
+	<string>Inspiration</string>
 	<key>Tab.main</key>
 	<string>Main</string>
 	<key>Tab.personal</key>

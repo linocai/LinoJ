@@ -196,6 +196,28 @@ struct LocalizationTests {
         #expect(zh != en, "[Project.addEvent] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
     }
 
+    // MARK: - U0 灵感 Tab 新增 key 双语验证
+
+    @Test("U0 Tab.inspiration 双语都有非空翻译，且 zh ≠ en")
+    func u0TabInspirationKey() {
+        let en = resolve(LJStrings.tabInspiration, locale: "en")
+        let zh = resolve(LJStrings.tabInspiration, locale: "zh-Hans")
+        #expect(en == "Inspiration", "[Tab.inspiration] EN 翻译错位：得到 '\(en)'")
+        #expect(zh == "灵感", "[Tab.inspiration] 中文翻译错位：得到 '\(zh)'")
+        #expect(zh != en, "[Tab.inspiration] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
+    // MARK: - U1 灵感笔记新增 key 双语验证
+
+    @Test("U1 Note.untitled 双语都有非空翻译，且 zh ≠ en")
+    func u1NoteUntitledKey() {
+        let en = resolve(LJStrings.noteUntitled, locale: "en")
+        let zh = resolve(LJStrings.noteUntitled, locale: "zh-Hans")
+        #expect(en == "New note", "[Note.untitled] EN 翻译错位：得到 '\(en)'")
+        #expect(zh == "新笔记", "[Note.untitled] 中文翻译错位：得到 '\(zh)'")
+        #expect(zh != en, "[Note.untitled] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
     // MARK: - Bundle 暴露验证
 
     @Test("LinoJCoreBundle.bundle 能查到 xcstrings 资源")

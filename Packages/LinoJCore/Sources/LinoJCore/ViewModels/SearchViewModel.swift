@@ -328,10 +328,11 @@ public final class SearchViewModel {
                 let label: String
                 let shortcut: String
                 switch tab {
-                case .main:     label = "Jump to Main";     shortcut = "⌘1"
-                case .personal: label = "Jump to Personal"; shortcut = "⌘2"
-                case .company:  label = "Jump to Company";  shortcut = "⌘3"
-                case .calendar: label = "Jump to Calendar"; shortcut = "⌘4"
+                case .main:        label = "Jump to Main";        shortcut = "⌘1"
+                case .personal:    label = "Jump to Personal";    shortcut = "⌘2"
+                case .company:     label = "Jump to Company";     shortcut = "⌘3"
+                case .calendar:    label = "Jump to Calendar";    shortcut = "⌘4"
+                case .inspiration: label = "Jump to Inspiration"; shortcut = "⌘5"
                 }
                 return DisplayInfo(
                     iconSystemName: "arrow.right",

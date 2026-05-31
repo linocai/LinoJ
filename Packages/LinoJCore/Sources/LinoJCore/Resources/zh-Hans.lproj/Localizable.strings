@@ -150,6 +150,8 @@
 	<string>待办</string>
 	<key>Menu.navigate</key>
 	<string>导航</string>
+	<key>Note.untitled</key>
+	<string>新笔记</string>
 	<key>Project.addEvent</key>
 	<string>+ 添加事件</string>
 	<key>Project.addTodo</key>
@@ -488,6 +490,8 @@
 	<string>日历</string>
 	<key>Tab.company</key>
 	<string>工作</string>
+	<key>Tab.inspiration</key>
+	<string>灵感</string>
 	<key>Tab.main</key>
 	<string>主页</string>
 	<key>Tab.personal</key>

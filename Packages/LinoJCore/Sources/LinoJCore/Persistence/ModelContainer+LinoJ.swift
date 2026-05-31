@@ -43,6 +43,7 @@ public enum LinoJStore {
             Project.self,
             Todo.self,
             Event.self,
+            Note.self,   // U1（v1.1）：灵感版块 @Model。加新实体是兼容变更，走 lightweight migration。
         ])
 
         // 解析 cloudKitDatabase：

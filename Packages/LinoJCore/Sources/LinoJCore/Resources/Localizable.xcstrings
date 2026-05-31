@@ -1260,6 +1260,23 @@
         }
       }
     },
+    "Note.untitled": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New note"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新笔记"
+          }
+        }
+      }
+    },
     "Project.addEvent": {
       "extractionState": "manual",
       "localizations": {
@@ -4129,6 +4146,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "工作"
+          }
+        }
+      }
+    },
+    "Tab.inspiration": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inspiration"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "灵感"
           }
         }
       }
