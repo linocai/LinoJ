@@ -40,6 +40,8 @@
 	<string>新建事件</string>
 	<key>Calendar.nextWeek</key>
 	<string>下一周</string>
+	<key>Calendar.overlapsCount</key>
+	<string>与 %d 个日程重叠</string>
 	<key>Calendar.previousWeek</key>
 	<string>上一周</string>
 	<key>Calendar.tapToConfirm</key>

@@ -325,6 +325,23 @@
         }
       }
     },
+    "Calendar.overlapsCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overlaps %d"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "与 %d 个日程重叠"
+          }
+        }
+      }
+    },
     "Calendar.previousWeek": {
       "extractionState": "manual",
       "localizations": {

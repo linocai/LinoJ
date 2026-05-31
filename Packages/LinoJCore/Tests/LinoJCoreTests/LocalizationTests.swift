@@ -260,6 +260,17 @@ struct LocalizationTests {
         #expect(zh != en)
     }
 
+    // MARK: - U5 重叠冲突提示新增 key 双语验证
+
+    @Test("U5 Calendar.overlapsCount 含 %d 占位双语正确，且 zh ≠ en")
+    func u5CalendarOverlapsCount() {
+        let en = resolve(LJStrings.calendarOverlapsCount(2), locale: "en")
+        let zh = resolve(LJStrings.calendarOverlapsCount(2), locale: "zh-Hans")
+        #expect(en == "Overlaps 2", "[Calendar.overlapsCount] EN：得到 '\(en)'")
+        #expect(zh == "与 2 个日程重叠", "[Calendar.overlapsCount] 中文：得到 '\(zh)'")
+        #expect(zh != en, "[Calendar.overlapsCount] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
     // MARK: - Bundle 暴露验证
 
     @Test("LinoJCoreBundle.bundle 能查到 xcstrings 资源")

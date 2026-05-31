@@ -509,6 +509,8 @@ struct CalendarView_macOS: View {
     ) -> some View {
         let isToday = CalendarViewModel.calendar.isDate(dayStart, inSameDayAs: vm.todayStart)
         let dayEvents = vm.eventsByDay[dayStart] ?? []
+        // U5：该天重叠列分配。每渲染一天调一次，事件卡按所属簇的列序号 / 列数等分列宽。
+        let overlap = vm.overlapLayout(forDay: dayStart)
 
         ZStack(alignment: .topLeading) {
             // 整列左边线
@@ -532,8 +534,15 @@ struct CalendarView_macOS: View {
             }
 
             // events：绝对定位。W4：外层套 onTap（打开编辑）+ contextMenu（Edit/Mark/Delete）。
+            // U5：重叠事件按 overlap map 的 column / columnCount 等分列宽并排；不重叠仍满列宽。
             ForEach(dayEvents, id: \.id) { event in
-                if let layout = eventLayout(event: event, columnWidth: columnWidth) {
+                let slot = overlap[event.id] ?? (column: 0, columnCount: 1)
+                if let layout = eventLayout(
+                    event: event,
+                    columnWidth: columnWidth,
+                    column: slot.column,
+                    columnCount: slot.columnCount
+                ) {
                     EventCard(event: event, variant: .macWeekGrid)
                         .frame(width: layout.width, height: layout.height)
                         .contentShape(Rectangle())
@@ -563,7 +572,14 @@ struct CalendarView_macOS: View {
     }
 
     /// 给定一个 event 算出在日列中的位置 + 尺寸。返回 nil 表示落在可视范围之外。
-    private func eventLayout(event: Event, columnWidth: CGFloat) -> (x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat)? {
+    /// U5：`column` / `columnCount` 为该事件在所属重叠簇内的列序号（0-based）与簇总列数。
+    /// 不重叠事件 `columnCount == 1` → 仍满列宽（行为同旧）。MVP 等宽，不做向右扩展吃空列。
+    private func eventLayout(
+        event: Event,
+        columnWidth: CGFloat,
+        column: Int,
+        columnCount: Int
+    ) -> (x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat)? {
         let cal = CalendarViewModel.calendar
         let startComps = cal.dateComponents([.hour, .minute], from: event.start)
         let endComps = cal.dateComponents([.hour, .minute], from: event.end)
@@ -577,8 +593,12 @@ struct CalendarView_macOS: View {
         let clampedEnd = min(endH, Double(endHour))
         let topY = CGFloat(clampedStart - Double(startHour)) * pxPerHour + 2
         let height = CGFloat(clampedEnd - clampedStart) * pxPerHour - 4
-        let x: CGFloat = 4
-        let width = columnWidth - 8
+        // U5：列宽等分。可用宽度 = columnWidth - 8（左右各 4pt 边距），按 columnCount 等分；
+        // 每列再减 2pt 列间隙。column==0/columnCount==1 时回到旧的「满列宽」行为。
+        let safeColumnCount = max(1, columnCount)
+        let laneWidth = (columnWidth - 8) / CGFloat(safeColumnCount)
+        let x = 4 + CGFloat(column) * laneWidth
+        let width = laneWidth - 2
         return (x: x, y: topY, width: max(20, width), height: max(20, height))
     }
 

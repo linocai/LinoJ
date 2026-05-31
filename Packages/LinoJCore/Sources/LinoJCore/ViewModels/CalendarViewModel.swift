@@ -215,6 +215,89 @@ public final class CalendarViewModel {
         refresh()
     }
 
+    // MARK: - U5 重叠列分配（共享纯函数）
+
+    /// U5：该天事件的重叠列分配。返回 `eventID → (column 0-based, 同簇总列数)`。
+    /// 不重叠的事件 `columnCount == 1, column == 0`。取 `eventsByDay[dayStart]`（已按 start 升序）
+    /// 包一层调用纯函数核心；找不到该天返回空 map。
+    public func overlapLayout(forDay dayStart: Date) -> [UUID: (column: Int, columnCount: Int)] {
+        Self.computeOverlapLayout(events: eventsByDay[dayStart] ?? [])
+    }
+
+    /// U5：重叠列分配纯函数核心。**不读 `tick`、不 mutate、不依赖 SwiftData**——单测直接调。
+    ///
+    /// 算法：
+    ///   1. 传递性重叠归簇：A、B 重叠定义为 `A.start < B.end && B.start < A.end`（区间相交，
+    ///      端点相接不算）。把传递相连的重叠事件归为一个「簇」（cluster）。
+    ///   2. 簇内贪心分配列：簇内事件按 start 排序，对每个事件分配「最左可用列」
+    ///      （该列上一个事件已结束 `prevEnd <= cur.start` 即可复用该列）。
+    ///   3. `columnCount` = 该簇用到的最大列数；**簇内所有事件 columnCount 一致**（同簇等分列宽）。
+    public static func computeOverlapLayout(events: [Event]) -> [UUID: (column: Int, columnCount: Int)] {
+        guard !events.isEmpty else { return [:] }
+
+        // 按 start 升序排序（同 start 则按 end 升序，保证确定性）。
+        let sorted = events.sorted {
+            $0.start != $1.start ? $0.start < $1.start : $0.end < $1.end
+        }
+
+        var result: [UUID: (column: Int, columnCount: Int)] = [:]
+
+        // 传递性归簇：顺序扫描，维护当前簇 + 当前簇内所有事件的最大 end。
+        // 下一个事件的 start < 簇内最大 end → 与簇传递重叠（区间相交且端点不相接），并入；
+        // 否则封闭当前簇、开新簇。
+        var clusterStart = 0
+        var clusterMaxEnd = sorted[0].end
+        var i = 1
+        while i <= sorted.count {
+            let extendsCluster = i < sorted.count && sorted[i].start < clusterMaxEnd
+            if extendsCluster {
+                clusterMaxEnd = max(clusterMaxEnd, sorted[i].end)
+                i += 1
+            } else {
+                // 封闭 [clusterStart, i) 这一簇，分配列。
+                assignColumns(for: Array(sorted[clusterStart..<i]), into: &result)
+                clusterStart = i
+                if i < sorted.count { clusterMaxEnd = sorted[i].end }
+                i += 1
+            }
+        }
+
+        return result
+    }
+
+    /// 对单个簇（已按 start 升序）贪心分配「最左可用列」，并回写统一的 columnCount。
+    private static func assignColumns(
+        for cluster: [Event],
+        into result: inout [UUID: (column: Int, columnCount: Int)]
+    ) {
+        // 每列记录该列「上一个事件的 end」；列复用条件 prevEnd <= cur.start。
+        var columnEnds: [Date] = []
+        var assigned: [(id: UUID, column: Int)] = []
+
+        for event in cluster {
+            // 找最左一个 end <= event.start 的列；找不到则新开一列。
+            var placedColumn: Int? = nil
+            for (col, end) in columnEnds.enumerated() where end <= event.start {
+                placedColumn = col
+                break
+            }
+            let column: Int
+            if let col = placedColumn {
+                columnEnds[col] = event.end
+                column = col
+            } else {
+                columnEnds.append(event.end)
+                column = columnEnds.count - 1
+            }
+            assigned.append((id: event.id, column: column))
+        }
+
+        let columnCount = columnEnds.count
+        for entry in assigned {
+            result[entry.id] = (column: entry.column, columnCount: columnCount)
+        }
+    }
+
     // MARK: - Internal helpers
 
     /// 拉全部 Event。failure 静默退回空数组。

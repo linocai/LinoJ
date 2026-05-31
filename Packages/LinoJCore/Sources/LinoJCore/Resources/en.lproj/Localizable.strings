@@ -40,6 +40,8 @@
 	<string>New event</string>
 	<key>Calendar.nextWeek</key>
 	<string>Next week</string>
+	<key>Calendar.overlapsCount</key>
+	<string>Overlaps %d</string>
 	<key>Calendar.previousWeek</key>
 	<string>Previous week</string>
 	<key>Calendar.tapToConfirm</key>

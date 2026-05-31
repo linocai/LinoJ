@@ -230,6 +230,15 @@ public enum LJStrings {
     public static let jumpToday: LocalizedStringResource = r("Calendar.jumpToday")
     public static let newEvent: LocalizedStringResource = r("Calendar.newEvent")
     public static let newEventAcc: LocalizedStringResource = r("Calendar.newEventAcc")
+    /// U5：iOS 冲突提示 chip 文案「Overlaps %d / 与 %d 个日程重叠」。
+    /// %d = 同簇其它事件数（`columnCount - 1`）。
+    public static func calendarOverlapsCount(_ count: Int) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "Calendar.overlapsCount",
+            defaultValue: "Overlaps \(count)",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
 
     // MARK: - Project
 

@@ -370,6 +370,9 @@ struct CalendarView_iOS: View {
     @ViewBuilder
     private func dayEvents(vm: CalendarViewModel) -> some View {
         let dayEvents = vm.eventsByDay[vm.selectedDay] ?? []
+        // U5：iOS 列表无法并排分列 → 改用冲突视觉提示。对当天调重叠列分配，
+        // columnCount > 1 即与他人冲突；在卡片上方插一行「与 N 个日程重叠」chip（N = columnCount-1）。
+        let overlap = vm.overlapLayout(forDay: vm.selectedDay)
         VStack(spacing: 10) {
             if dayEvents.isEmpty {
                 Text(LJStrings.nothingOnBooksDot)
@@ -380,13 +383,38 @@ struct CalendarView_iOS: View {
                     .padding(.vertical, 40)
             } else {
                 ForEach(dayEvents, id: \.id) { event in
-                    // W4：外层套 onTap（打开编辑）+ contextMenu（长按：Edit/Mark/Delete）。
-                    EventCard(event: event, variant: .iosFull)
-                        .contentShape(Rectangle())
-                        .onTapGesture { openEdit(event) }
-                        .contextMenu { eventActions(for: event, vm: vm) }
+                    let columnCount = overlap[event.id]?.columnCount ?? 1
+                    VStack(alignment: .leading, spacing: 5) {
+                        if columnCount > 1 {
+                            conflictChip(otherCount: columnCount - 1)
+                        }
+                        // W4：外层套 onTap（打开编辑）+ contextMenu（长按：Edit/Mark/Delete）。
+                        EventCard(event: event, variant: .iosFull)
+                            .contentShape(Rectangle())
+                            .onTapGesture { openEdit(event) }
+                            .contextMenu { eventActions(for: event, vm: vm) }
+                    }
                 }
             }
+        }
+    }
+
+    /// U5：冲突提示 chip。`otherCount` = 同簇其它事件数（columnCount - 1）。
+    /// 用 inkMute 中性色（不用蓝，蓝只给 urgent / heads-up）；不改 EventCard 内部（纯展示纪律）。
+    @ViewBuilder
+    private func conflictChip(otherCount: Int) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 9, weight: .semibold))
+            Text(LJStrings.calendarOverlapsCount(otherCount))
+                .font(.system(size: 10.5, weight: .semibold, design: .default))
+        }
+        .foregroundStyle(Color.lj.inkMute)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background {
+            Capsule(style: .continuous)
+                .fill(Color.lj.chip)
         }
     }
 
