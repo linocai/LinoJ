@@ -39,6 +39,52 @@ public enum LJStrings {
     /// 空正文笔记在列表 / 搜索的标题回退占位（`Note.displayTitle` 用）。
     public static let noteUntitled: LocalizedStringResource = r("Note.untitled")
 
+    // MARK: - Inspiration (灵感版块界面, U3)
+
+    /// 灵感版块左列表大标题（对齐其它屏的 displayTitle）。
+    public static let inspirationTitle: LocalizedStringResource = r("Inspiration.title")
+    /// 「+ New note」新建按钮文案。
+    public static let inspirationNewNote: LocalizedStringResource = r("Inspiration.newNote")
+    /// 空状态主标题（EmptyState title）。
+    public static let inspirationEmpty: LocalizedStringResource = r("Inspiration.empty")
+    /// 空状态副标题（EmptyState subtitle）。
+    public static let inspirationEmptySubtitle: LocalizedStringResource = r("Inspiration.emptySubtitle")
+    /// Main 右栏「最近灵感」缩略卡小节头。
+    public static let inspirationRecent: LocalizedStringResource = r("Inspiration.recent")
+    /// Main 右栏「随手记一条 / 快速记一条」入口文案。
+    public static let inspirationQuickJot: LocalizedStringResource = r("Inspiration.quickJot")
+    /// 左列表计数副标「%d notes / %d 条笔记」。
+    public static func inspirationNotesCount(_ count: Int) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "Inspiration.notesCount",
+            defaultValue: "\(count) notes",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
+    /// 左列表搜索框 placeholder。
+    public static let inspirationSearchPlaceholder: LocalizedStringResource = r("Inspiration.searchPlaceholder")
+    /// 编辑器空标题占位（正文为空时显示）。
+    public static let inspirationTitlePlaceholder: LocalizedStringResource = r("Inspiration.titlePlaceholder")
+
+    // MARK: - Note actions (置顶 / 删除, U3)
+
+    /// note 行 / 编辑器菜单「置顶」。
+    public static let notePin: LocalizedStringResource = r("Note.pin")
+    /// note 行 / 编辑器菜单「取消置顶」。
+    public static let noteUnpin: LocalizedStringResource = r("Note.unpin")
+    /// note 行 / 编辑器菜单「删除笔记」。
+    public static let noteDelete: LocalizedStringResource = r("Note.delete")
+    /// 删除笔记二次确认对话框标题（confirm message / button 复用 Event.deleteConfirm*）。
+    public static let noteDeleteConfirmTitle: LocalizedStringResource = r("Note.deleteConfirmTitle")
+
+    // MARK: - Rich text format toolbar (U3)
+
+    public static let formatBold: LocalizedStringResource = r("Format.bold")
+    public static let formatItalic: LocalizedStringResource = r("Format.italic")
+    public static let formatHeading: LocalizedStringResource = r("Format.heading")
+    public static let formatBullet: LocalizedStringResource = r("Format.bullet")
+    public static let formatChecklist: LocalizedStringResource = r("Format.checklist")
+
     // MARK: - Toolbar (macOS 顶栏)
 
     /// macOS 顶栏右侧「Search or jump」按钮文案（V4）。

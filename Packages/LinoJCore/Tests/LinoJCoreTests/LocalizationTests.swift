@@ -218,6 +218,48 @@ struct LocalizationTests {
         #expect(zh != en, "[Note.untitled] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
     }
 
+    // MARK: - U3 灵感版块 UI 新增 key 双语验证
+
+    @Test("U3 灵感版块 17 个 key 双语都有非空翻译，且 zh ≠ en")
+    func u3InspirationKeys() {
+        let cases: [(name: String, resource: LocalizedStringResource, expectedEn: String, expectedZh: String)] = [
+            ("Inspiration.title", LJStrings.inspirationTitle, "Inspiration", "灵感"),
+            ("Inspiration.newNote", LJStrings.inspirationNewNote, "+ New note", "+ 新笔记"),
+            ("Inspiration.empty", LJStrings.inspirationEmpty, "No notes yet", "还没有灵感"),
+            ("Inspiration.emptySubtitle", LJStrings.inspirationEmptySubtitle, "Capture a fleeting thought.", "记下一闪而过的念头。"),
+            ("Inspiration.recent", LJStrings.inspirationRecent, "Recent notes", "最近灵感"),
+            ("Inspiration.quickJot", LJStrings.inspirationQuickJot, "Jot something", "随手记一条"),
+            ("Inspiration.searchPlaceholder", LJStrings.inspirationSearchPlaceholder, "Search notes…", "搜索笔记…"),
+            ("Inspiration.titlePlaceholder", LJStrings.inspirationTitlePlaceholder, "Untitled", "无标题"),
+            ("Note.pin", LJStrings.notePin, "Pin", "置顶"),
+            ("Note.unpin", LJStrings.noteUnpin, "Unpin", "取消置顶"),
+            ("Note.delete", LJStrings.noteDelete, "Delete note", "删除笔记"),
+            ("Note.deleteConfirmTitle", LJStrings.noteDeleteConfirmTitle, "Delete this note?", "删除该笔记？"),
+            ("Format.bold", LJStrings.formatBold, "Bold", "加粗"),
+            ("Format.italic", LJStrings.formatItalic, "Italic", "斜体"),
+            ("Format.heading", LJStrings.formatHeading, "Heading", "标题"),
+            ("Format.bullet", LJStrings.formatBullet, "Bullet list", "项目符号"),
+            ("Format.checklist", LJStrings.formatChecklist, "Checklist", "勾选清单"),
+        ]
+
+        for c in cases {
+            let en = resolve(c.resource, locale: "en")
+            let zh = resolve(c.resource, locale: "zh-Hans")
+            #expect(en == c.expectedEn, "[\(c.name)] EN 翻译错位：得到 '\(en)'，期望 '\(c.expectedEn)'")
+            #expect(zh == c.expectedZh, "[\(c.name)] 中文翻译错位：得到 '\(zh)'，期望 '\(c.expectedZh)'")
+            #expect(zh != en, "[\(c.name)] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+        }
+    }
+
+    @Test("U3 Inspiration.notesCount 含 %d 占位双语正确")
+    func u3InspirationNotesCount() {
+        let en = resolve(LJStrings.inspirationNotesCount(3), locale: "en")
+        let zh = resolve(LJStrings.inspirationNotesCount(3), locale: "zh-Hans")
+        #expect(en == "3 notes", "[Inspiration.notesCount] EN：得到 '\(en)'")
+        #expect(zh == "3 条笔记", "[Inspiration.notesCount] 中文：得到 '\(zh)'")
+        #expect(zh != en)
+    }
+
     // MARK: - Bundle 暴露验证
 
     @Test("LinoJCoreBundle.bundle 能查到 xcstrings 资源")

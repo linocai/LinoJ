@@ -2922,6 +2922,28 @@ public enum LinoJStore {
 
 ---
 
+### [2026-05-31] U3 施工 —— 灵感版块 macOS UI + Main 右栏缩略卡 + 顶栏第 5 tab 接线
+
+- **富文本 API 验证结论（关键）——【原生富文本可用，不走 markdown 回退】**：施工首步对 macOS 26.5（Xcode 26.5，deploy target macOS 26.0）做最小验证（`xcrun --sdk macosx swiftc -typecheck`）：
+  - `TextEditor(text: $attributedString, selection: $selection)` 编译通过（SDK swiftinterface 确认该重载 + `AttributedTextSelection` + `transformAttributes(in:body:)` 均存在）。
+  - 加粗/斜体/标题：`text.transformAttributes(in: &selection) { $0.font = (font ?? .system(size:14)).bold()/.italic() }` / `.system(size:20,weight:.semibold)` 全部编译通过。
+  - `AttributedString` JSON encode/decode 圆环验证通过（即 U1 `Note.encode/decode` 路径），富文本属性可落库。
+  - 结论：**用原生富文本**，无需 plan U3「markdown 回退」。工具条五种格式全部实现。**真机运行手感（属性是否真落进 AttributedString、TextEditor 富文本渲染）须出包验证**——typecheck 不覆盖运行期。
+- **变更内容**：
+  - 新增 `LinoJ-macOS/.../Screens/Inspiration/InspirationView_macOS.swift`：双栏 master-detail（左列表固定 320pt + 右编辑器 flex）。左列表 = 大标题「Inspiration」(`ljDisplayTitleStyle`) + 计数副标「X notes」+ chip 样式搜索框（绑 `vm.searchText`，带清空按钮）+「+ New note」ink 按钮 + note 行列表（pin 标记 + `displayTitle` + 正文摘要单行截断 + `updatedAt` mono 时间，选中态 chip 底）+ 空状态用 `EmptyState(.inboxZero)` + CTA。note 行 `.contextMenu` 含 Pin/Unpin + Delete（二次确认）。右编辑器拆独立 `NoteEditorPane`（`.id(note.id)` 切 note 时重建，持 `NoteEditorViewModel`）：顶栏标题预览 + `⋯` 菜单（Pin/Unpin/Delete）+ 富文本工具条（加粗/斜体/标题/项目符号/勾选清单）+ `TextEditor(text:$AttributedString, selection:)`。
+    - 工具条实现：加粗/斜体/标题走 `transformAttributes(in:&selection)` 改 `font`；项目符号/勾选清单走 `replaceSelection(&selection, withCharacters:)` 在选区插「• 」/「☐ 」前缀（可编辑 TextEditor 不交互渲染 `presentationIntent` 列表，故 MVP 用行前缀方案——见下偏离说明）。
+    - 删除二次确认抽成 `private struct NoteDeleteConfirmModifier: ViewModifier`（CLAUDE.md 坑：长 body + 多闭包 confirmationDialog 触发 type-check 超时）；confirm message/按钮复用 W4 的 `Event.deleteConfirmMessage`/`Event.deleteConfirmConfirm`/`QuickAdd.cancel`（plan U3 指明可复用）。
+    - 编辑器「编辑即存」：`TextEditor` 本地 `@State text` 与 `editorVM.body` 用 `.onChange(of:text)` 双向同步（VM setter 内重写 `updatedAt`），`.onDisappear` 调 `save()` 兜底。
+  - 改 `RootWindow.swift`：tabs HStack 加第 5 个 `tabButton(.inspiration, LJStrings.tabInspiration)`；内容分发 `case .inspiration` 由 U0 占位 `Color.lj.bg` 换成 `InspirationView_macOS()`。**未动** 44pt 顶栏高 / `.ignoresSafeArea(.container,edges:.top)` / `TrafficLightConfigurator`（不回归 W7.3）；本期未做 Search pill 窄窗折叠（U0 折叠方案留待出包实测确认是否溢出后再决定）。
+  - 改 `MainView_macOS.swift`：加 `@Query var notes:[Note]` + 自持轻量 `@State noteListVM: NoteListViewModel`（`.task` 初始化，仅用其 `createNote()`，**不污染 `MainViewModel`**）。`rightRail` 最底追加 `recentInspirationCard()`：小节头（点整卡 `router.current = .inspiration`）+ 最近 3 条 note 标题（排序契约：置顶在上、组内 updatedAt 倒序，View 内 `@Query` 排闭包取前 3）+「快速记一条」入口（`router.current = .inspiration` + `noteListVM.createNote()`）。复用 `.ljCardStyle()`/`.ljHoverLift()`。
+- **新增本地化 key（三轨双填，共 18 项）**：`Inspiration.title`("Inspiration"/"灵感")、`Inspiration.newNote`("+ New note"/"+ 新笔记")、`Inspiration.empty`("No notes yet"/"还没有灵感")、`Inspiration.emptySubtitle`("Capture a fleeting thought."/"记下一闪而过的念头。")、`Inspiration.recent`("Recent notes"/"最近灵感")、`Inspiration.quickJot`("Jot something"/"随手记一条")、`Inspiration.notesCount`("%d notes"/"%d 条笔记")、`Inspiration.searchPlaceholder`("Search notes…"/"搜索笔记…")、`Inspiration.titlePlaceholder`("Untitled"/"无标题")、`Note.pin`("Pin"/"置顶")、`Note.unpin`("Unpin"/"取消置顶")、`Note.delete`("Delete note"/"删除笔记")、`Note.deleteConfirmTitle`("Delete this note?"/"删除该笔记？")、`Format.bold/italic/heading/bullet/checklist`("Bold/Italic/Heading/Bullet list/Checklist"/"加粗/斜体/标题/项目符号/勾选清单")。三轨流程：编辑 `Localizable.xcstrings`（manual extractionState、中英双填）→ `xcrun xcstringstool compile` 重生两 lproj（XML plist 格式保留）→ `Strings.swift` 加 `LJStrings` 静态成员（`inspirationNotesCount(_:)` 含 `%d` 走 `LocalizedStringResource(key, defaultValue:)` 模式同 `headsUpInMinutes`）。`LocalizationTests` 加 2 个 test（17 项 zh≠en 批量断言 + notesCount `%d` 双语断言）。
+- **偏离说明**：① 富文本**未走** plan U3 的「markdown 回退」——原生 API 验证可用（见上「验证结论」），按 plan「可用则用原生富文本」分支执行，非偏离。② plan U3 列的项目符号/勾选清单原话是「富文本可用时用 `AttributedString` 的列表/勾选属性」；**实际实现用行前缀「• 」/「☐ 」插入**，因可编辑 `TextEditor` 不交互渲染 Foundation `PresentationIntent` 列表（`.listItem`/`.unorderedList` 在选区 container 上不可用 + 编辑器内不显示 bullet/checkbox），行前缀是 MVP 下「能编辑、能保存、能勾选切换字形」的可行方案，正文存储仍是 `Note.bodyData` AttributedString，**U1/U2 字段契约不破**——记为对「列表/勾选属性」具体实现手段的偏离，非数据契约偏离。③ 本期未实现顶栏 Search pill 窄窗折叠（U0 风险评估的折叠方案）——保持单行，待出包实测 1200pt 窄窗是否溢出再决定，符合 plan U3「若 1200pt 窄窗实测溢出才折叠」的条件触发。
+- **验收**：`swift test --package-path Packages/LinoJCore` 190 → **192 全绿**（+2 LocalizationTests）；`swift build -Xswiftc -warnings-as-errors` **0 warning**；**macOS App target `xcodebuild ... LinoJ-macOS ... build` BUILD SUCCEEDED**（`InspirationView_macOS.swift` + `MainView_macOS.swift` 均编译过，无 body type-check 超时，0 新增代码 warning）；iOS App target `xcodebuild ... LinoJ-iOS -destination 'generic/platform=iOS Simulator'` **BUILD SUCCEEDED**（本期共享层改动未破坏 iOS 编译；iOS UI U4 未碰）。
+- **headless 测不到、须出包截图/真机验证**：① 顶栏单行容纳 5 tab + Search pill + New 不溢出、macOS 红绿灯仍对齐（不回归 W7.3）；② 富文本编辑实际手感（加粗/斜体/标题落进 `AttributedString` 后 TextEditor 是否真渲染富文本、退出编辑器重进内容保留、重启仍在）；③ 双栏布局观感（320pt 左列表 + 右编辑器比例、选中态、空状态）；④ Main 右栏「最近灵感」卡点击切 tab + 「快速记一条」打开新编辑器的实际跳转。
+- **影响范围**：Phase U3（macOS）。新增 `Screens/Inspiration/InspirationView_macOS.swift`；改 `RootWindow.swift`（第 5 tab + 内容分发）、`MainView_macOS.swift`（右栏角块 + notes Query + 轻量 VM）、`Strings.swift` + `Localizable.xcstrings` + 两 lproj、`LocalizationTests.swift`。**未改 iOS UI、entitlements、pbxproj 版本号、Widget**（U4/U10 各自负责）。**未 bump 版本号**（U10 做）。
+
+---
+
 ## 🚀 v1.0 公开上线剩余清单（新会话从这里接）
 
 **必做（TestFlight / 上架前）**

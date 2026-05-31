@@ -138,6 +138,16 @@
 	<string>全部工作</string>
 	<key>Filter.standalone</key>
 	<string>独立项</string>
+	<key>Format.bold</key>
+	<string>加粗</string>
+	<key>Format.bullet</key>
+	<string>项目符号</string>
+	<key>Format.checklist</key>
+	<string>勾选清单</string>
+	<key>Format.heading</key>
+	<string>标题</string>
+	<key>Format.italic</key>
+	<string>斜体</string>
 	<key>HeadsUp.inMinutes</key>
 	<string>%d 分钟后</string>
 	<key>HeadsUp.open</key>
@@ -146,10 +156,36 @@
 	<string>稍后提醒</string>
 	<key>HeadsUp.title</key>
 	<string>即将开始</string>
+	<key>Inspiration.empty</key>
+	<string>还没有灵感</string>
+	<key>Inspiration.emptySubtitle</key>
+	<string>记下一闪而过的念头。</string>
+	<key>Inspiration.newNote</key>
+	<string>+ 新笔记</string>
+	<key>Inspiration.notesCount</key>
+	<string>%d 条笔记</string>
+	<key>Inspiration.quickJot</key>
+	<string>随手记一条</string>
+	<key>Inspiration.recent</key>
+	<string>最近灵感</string>
+	<key>Inspiration.searchPlaceholder</key>
+	<string>搜索笔记…</string>
+	<key>Inspiration.title</key>
+	<string>灵感</string>
+	<key>Inspiration.titlePlaceholder</key>
+	<string>无标题</string>
 	<key>Main.title</key>
 	<string>待办</string>
 	<key>Menu.navigate</key>
 	<string>导航</string>
+	<key>Note.delete</key>
+	<string>删除笔记</string>
+	<key>Note.deleteConfirmTitle</key>
+	<string>删除该笔记？</string>
+	<key>Note.pin</key>
+	<string>置顶</string>
+	<key>Note.unpin</key>
+	<string>取消置顶</string>
 	<key>Note.untitled</key>
 	<string>新笔记</string>
 	<key>Project.addEvent</key>

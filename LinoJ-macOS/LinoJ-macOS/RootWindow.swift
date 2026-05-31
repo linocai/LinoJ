@@ -71,10 +71,8 @@ struct RootWindow: View {
                 case .calendar:
                     CalendarView_macOS()
                 case .inspiration:
-                    // U0：第 5 个 case 的最小占位，保持 switch 穷举编译绿。
-                    // 顶栏暂未接线第 5 个 tabButton（U3 接），故该分支当前不可达；
-                    // 真实灵感 UI 在 U3/U4 实现。占位仅渲背景，避免空 body 类型问题。
-                    Color.lj.bg.ignoresSafeArea()
+                    // U3：第 5 个 tab 接通真实灵感双栏 UI。
+                    InspirationView_macOS()
                 }
             }
         }
@@ -221,6 +219,8 @@ struct RootWindow: View {
                 tabButton(.personal, LJStrings.tabPersonal, router: router)
                 tabButton(.company, LJStrings.tabCompany, router: router)
                 tabButton(.calendar, LJStrings.tabCalendar, router: router)
+                // U3：第 5 个 tab「灵感 / Inspiration」。
+                tabButton(.inspiration, LJStrings.tabInspiration, router: router)
             }
             .padding(.leading, LJSpacing.s4)   // wordmark→tab ≈16pt（HStack spacing 12 + 4）
 

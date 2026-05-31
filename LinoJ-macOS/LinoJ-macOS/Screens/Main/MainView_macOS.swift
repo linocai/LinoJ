@@ -34,6 +34,14 @@ struct MainView_macOS: View {
     @Query private var events: [Event]
     @Query private var projects: [Project]
 
+    /// U3：Main 右栏「最近灵感」缩略卡的数据源。`@Query` 拉所有 Note，下面按排序契约取最近 3 条。
+    /// 不污染 MainViewModel（角块自持轻量 NoteListViewModel）。
+    @Query private var notes: [Note]
+
+    /// U3：角块自持的 NoteListViewModel —— 仅用其 `createNote()`（「快速记一条」入口）。
+    /// 排序/取前 3 条直接在 View 里用 `@Query` 的 notes 排闭包，避免与 listVM 的 tick 刷新耦合。
+    @State private var noteListVM: NoteListViewModel?
+
     /// MainViewModel 在 `.task` 中由 modelContext 实例化。这里用 Optional 兜底，
     /// 让 View body 在 task fire 之前也能编译过。
     @State private var vm: MainViewModel?
@@ -60,6 +68,10 @@ struct MainView_macOS: View {
             // 再构造一次，VM 拿到最新的 service 引用。
             if vm == nil {
                 vm = makeVM()
+            }
+            // U3：角块用的轻量 NoteListViewModel（仅 createNote）。
+            if noteListVM == nil {
+                noteListVM = NoteListViewModel(context: modelContext)
             }
         }
         // services.headsUp 从 nil → 实际 service 时（RootWindow .task 完成），重建 vm。
@@ -431,9 +443,87 @@ struct MainView_macOS: View {
                 yesterdayBox(events: vm.yesterdayMissed, onConfirm: { vm.confirmAttended($0) })
                     .padding(.top, LJSpacing.s22)
             }
+
+            // U3：右栏最底「最近灵感」缩略卡。
+            recentInspirationCard()
+                .padding(.top, LJSpacing.s22)
         }
         .padding(.horizontal, LJSpacing.s18)
         .padding(.vertical, LJSpacing.s22)
+    }
+
+    // MARK: - U3 「最近灵感」缩略卡
+
+    /// 右栏最底「最近灵感」缩略卡：小节头 + 最近 3 条 note 标题（点击整卡 → 切 Inspiration tab）
+    /// + 「快速记一条」入口（切 tab + 打开新编辑器）。复用 `.ljCardStyle()` 卡片观感。
+    @ViewBuilder
+    private func recentInspirationCard() -> some View {
+        // 排序契约：置顶组在上，各组内 updatedAt 倒序，取前 3 条。
+        let pinned = notes.filter { $0.isPinned }.sorted { $0.updatedAt > $1.updatedAt }
+        let others = notes.filter { !$0.isPinned }.sorted { $0.updatedAt > $1.updatedAt }
+        let recent = Array((pinned + others).prefix(3))
+
+        VStack(alignment: .leading, spacing: LJSpacing.s8) {
+            // 小节头：点击整卡区域切到 Inspiration tab（用透明按钮包标题行）。
+            HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s8) {
+                Text(LJStrings.inspirationRecent)
+                    .font(.system(size: 11, weight: .bold, design: .default))
+                    .kerning(0.88)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Color.lj.inkMute)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(Color.lj.inkDim)
+            }
+
+            if recent.isEmpty {
+                Text(LJStrings.inspirationEmpty)
+                    .font(.system(size: 12, weight: .medium))
+                    .italic()
+                    .foregroundStyle(Color.lj.inkDim)
+                    .padding(.vertical, 2)
+            } else {
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(recent, id: \.id) { note in
+                        HStack(spacing: LJSpacing.s8) {
+                            if note.isPinned {
+                                Image(systemName: "pin.fill")
+                                    .font(.system(size: 8))
+                                    .foregroundStyle(Color.lj.inkMute)
+                            }
+                            Text(note.displayTitle)
+                                .font(.system(size: 12.5, weight: .medium))
+                                .foregroundStyle(Color.lj.inkSoft)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                    }
+                }
+            }
+
+            // 「快速记一条」入口
+            Button {
+                router.current = .inspiration
+                noteListVM?.createNote()
+            } label: {
+                HStack(spacing: LJSpacing.s6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(LJStrings.inspirationQuickJot)
+                        .font(.system(size: 11.5, weight: .semibold))
+                }
+                .foregroundStyle(Color.lj.inkSoft)
+                .padding(.top, 2)
+            }
+            .buttonStyle(.plain)
+            .ljHoverBackground()
+        }
+        .ljCardStyle()
+        // 点击卡片主体（标题区）切到 Inspiration tab；「快速记一条」按钮已独立处理。
+        .contentShape(RoundedRectangle(cornerRadius: LJRadii.card, style: .continuous))
+        .onTapGesture { router.current = .inspiration }
+        .ljHoverLift()
     }
 
     @ViewBuilder

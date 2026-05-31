@@ -138,6 +138,16 @@
 	<string>All work</string>
 	<key>Filter.standalone</key>
 	<string>Standalone</string>
+	<key>Format.bold</key>
+	<string>Bold</string>
+	<key>Format.bullet</key>
+	<string>Bullet list</string>
+	<key>Format.checklist</key>
+	<string>Checklist</string>
+	<key>Format.heading</key>
+	<string>Heading</string>
+	<key>Format.italic</key>
+	<string>Italic</string>
 	<key>HeadsUp.inMinutes</key>
 	<string>in %d min</string>
 	<key>HeadsUp.open</key>
@@ -146,10 +156,36 @@
 	<string>Snooze</string>
 	<key>HeadsUp.title</key>
 	<string>Heads up</string>
+	<key>Inspiration.empty</key>
+	<string>No notes yet</string>
+	<key>Inspiration.emptySubtitle</key>
+	<string>Capture a fleeting thought.</string>
+	<key>Inspiration.newNote</key>
+	<string>+ New note</string>
+	<key>Inspiration.notesCount</key>
+	<string>%d notes</string>
+	<key>Inspiration.quickJot</key>
+	<string>Jot something</string>
+	<key>Inspiration.recent</key>
+	<string>Recent notes</string>
+	<key>Inspiration.searchPlaceholder</key>
+	<string>Search notes…</string>
+	<key>Inspiration.title</key>
+	<string>Inspiration</string>
+	<key>Inspiration.titlePlaceholder</key>
+	<string>Untitled</string>
 	<key>Main.title</key>
 	<string>To do</string>
 	<key>Menu.navigate</key>
 	<string>Navigate</string>
+	<key>Note.delete</key>
+	<string>Delete note</string>
+	<key>Note.deleteConfirmTitle</key>
+	<string>Delete this note?</string>
+	<key>Note.pin</key>
+	<string>Pin</string>
+	<key>Note.unpin</key>
+	<string>Unpin</string>
 	<key>Note.untitled</key>
 	<string>New note</string>
 	<key>Project.addEvent</key>
