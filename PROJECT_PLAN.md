@@ -3064,6 +3064,24 @@ public enum LinoJStore {
 - **headless 抓不到、须主控出签名包 + 用户真机验**：把 widget 加到桌面 / 主屏 / 锁屏 → 显示今日事件 look-ahead 与 open/urgent 计数、数据与 app 一致；app 内改数据后下次 timeline 刷新更新。
 - **影响范围**：Phase U9（后半 U9.3）。新增 `LinoJWidgets/`（两端 target 源码 + Info.plist + entitlements）、`Packages/LinoJCore/Sources/LinoJCore/Widget/WidgetData.swift`、`WidgetDataTests.swift`；改两端 `project.pbxproj`（新 widget target + 嵌入 + App Group + LinoJCore 依赖）、`ModelContainer+LinoJ.swift`（`makeWidgetContainer()` 只读容器）、`Strings.swift` + xcstrings（widget 文案）。**未 bump 版本号（U10）、未 commit（主控统一管）。**
 
+### [2026-05-31] U10 施工 —— v1.1 版本号 bump + 收尾
+
+> 机械收尾 Phase：统一版本号 + 复核测试/本地化齐全 + 两端 Release 验证。无功能代码改动，未碰 entitlements / 迁移逻辑 / widget 实现。
+
+- **版本号改了哪几处（含 widget target 已对齐）**：
+  - 两端 `project.pbxproj`：`MARKETING_VERSION 1.0 → 1.1` 共 8 处（每端 4 处 = App target Debug/Release + Widget target Debug/Release）；`CURRENT_PROJECT_VERSION 3 → 4` 共 8 处（同上）。**App 与 Widget target 版本号已对齐到 1.1 / 4，避免提交校验报「extension 版本不匹配 app」。**
+  - `Packages/LinoJCore/Sources/LinoJCore/LinoJCore.swift:15` `LinoJCore.version "1.0" → "1.1"`。
+  - `Packages/LinoJCore/Tests/LinoJCoreTests/LinoJCoreSmokeTests.swift` 版本断言 `== "1.0" → == "1.1"`，测试名同步改 `v1.1 release identifier`。
+- **测试补全核对（无缺口，未新写）**：U 组单测齐全且全绿 —— `NoteModelTests` / `NoteListViewModelTests` / `NoteEditorViewModelTests` / `CalendarOverlapTests` / `HeadsUpServiceTests`（conflict）/ `CalendarViewModelTests`（moveEvent）/ `StoreMigrationTests` / `WidgetDataTests` 均在。`LocalizationTests` 覆盖 U0/U1/U3/U5/U6/U9 全部新 key 的 zh≠en 断言（widget displayName 是品牌名「LinoJ」中英同名、按设计不做 zh≠en）。复核未发现遗漏的 U 组新 key，未补任何断言。
+- **Release 验证结果**：
+  - `swift test --package-path Packages/LinoJCore` → **227 tests passed**（smoke 改值后数量不变）。
+  - `swift build -Xswiftc -warnings-as-errors` → 0 warning，Build complete。
+  - iOS Release（`LinoJWidgets-iOS` scheme，含 App + Widget）→ **BUILD SUCCEEDED**。
+  - macOS Release（`LinoJWidgets-macOS` scheme，含 App + Widget）→ **BUILD SUCCEEDED**。
+- **偏离说明**：无偏离。plan 原文「两端共 4 处 MARKETING_VERSION / 4 处 CURRENT_PROJECT_VERSION」是按 v1.0 App-only 写的；U9b 新增 widget target 后每端各多一处，故实际各 8 处，plan 已在 U10 范围注明「widget target 一并对齐」，照此执行。
+- **影响范围**：Phase U10。改两端 `project.pbxproj`、`LinoJCore.swift`、`LinoJCoreSmokeTests.swift`。**未改任何功能代码、未碰 entitlements / 迁移逻辑 / widget 实现、未 commit（主控统一管）。**
+- **真机回归 7 项**（headless 测不到，出包后用户逐项过）：见 U10 范围「真机回归清单」，本轮未执行（属用户实测环节）。
+
 ---
 
 ## 🚀 v1.0 公开上线剩余清单（新会话从这里接）

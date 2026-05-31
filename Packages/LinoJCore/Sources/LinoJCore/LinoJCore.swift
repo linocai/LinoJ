@@ -12,7 +12,7 @@ public enum LinoJCore {
     /// 当前 LinoJCore 库版本。
     ///
     /// 与 App 显示的 "LinoJ <version>" 一致；升级时同步更新。
-    public static let version: String = "1.0"
+    public static let version: String = "1.1"
 }
 
 /// W3：Settings About 区的外链常量。集中放在 Core，两端 Settings View 共用。
