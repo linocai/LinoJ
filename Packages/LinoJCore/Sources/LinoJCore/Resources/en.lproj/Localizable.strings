@@ -150,6 +150,8 @@
 	<string>Heading</string>
 	<key>Format.italic</key>
 	<string>Italic</string>
+	<key>HeadsUp.conflict</key>
+	<string>%1$d events overlap at %2$@</string>
 	<key>HeadsUp.inMinutes</key>
 	<string>in %d min</string>
 	<key>HeadsUp.open</key>

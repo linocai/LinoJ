@@ -30,6 +30,23 @@ import Foundation
 import Observation
 import SwiftData
 
+/// U6：今日时间冲突提示数据。`HeadsUpService` 在 tick 内扫描「今天」事件，找出
+/// 重叠簇（`computeOverlapLayout` 的 `columnCount > 1`），取最早一个簇生成此模型。
+///
+/// 与 `HeadsUpAlertModel`（「即将开始」）语义独立：一个是「头顶上即将发生」的紧急提示，
+/// 一个是「今天有日程撞车」的被动中性提示。Main 上两条并列渲染、互不吞掉。
+public struct ConflictAlertModel: Equatable, Sendable {
+    /// 冲突簇内最早一件事件的 start（提示展示的冲突起始时刻）。
+    public let atTime: Date
+    /// 冲突簇 size（撞车的事件数，≥ 2）。
+    public let count: Int
+
+    public init(atTime: Date, count: Int) {
+        self.atTime = atTime
+        self.count = count
+    }
+}
+
 @Observable
 @MainActor
 public final class HeadsUpService {
@@ -57,6 +74,10 @@ public final class HeadsUpService {
 
     /// 当前 alert。`@Observable` 让 SwiftUI 自动追踪。
     public var currentAlert: HeadsUpAlertModel? = nil
+
+    /// U6：今日时间冲突提示（与 `currentAlert` 并列，语义独立）。tick 内一并计算。
+    /// 无冲突 / 不在窗口内时为 nil。snooze 不影响冲突（冲突是被动提示，不参与 snooze）。
+    public var conflictAlert: ConflictAlertModel? = nil
 
     // MARK: Init
 
@@ -159,5 +180,62 @@ public final class HeadsUpService {
            !all.contains(where: { $0.id == current.eventID }) {
             currentAlert = nil
         }
+
+        // U6：今日时间冲突扫描（与上面「即将开始」并列，语义独立，不受 snooze 影响）。
+        // 复用上面已 fetch 的 `all`，避免二次 fetch。
+        conflictAlert = Self.computeConflictAlert(events: all, now: now)
+    }
+
+    // MARK: - U6 冲突扫描
+
+    /// U6：在「今天」（`now` 所在日历日）的事件里找最早一个重叠簇，生成 `ConflictAlertModel`。
+    ///
+    /// **纯函数**（不读 `@Observable` 属性、不 mutate、不 fetch），便于单测直接调；
+    /// `tick()` 把 fetch 到的全量事件 + `now` 传进来。
+    ///
+    /// 算法：
+    ///   1. 过滤出 `start` 落在「今天」（`now` 的 startOfDay ≤ start < 次日 startOfDay）的事件。
+    ///   2. 调 **U5 的 `CalendarViewModel.computeOverlapLayout(events:)`** 算列分配
+    ///      （不重复实现归簇逻辑），`columnCount > 1` 即处于冲突簇中。
+    ///   3. 在所有处于冲突簇的事件里取 **start 最早** 的那件，回溯它所在簇的全部成员，
+    ///      `atTime` = 簇内最早 start，`count` = 簇 size。只输出一条（最早簇），不堆叠。
+    ///   4. 无任何冲突 → nil。
+    static func computeConflictAlert(events: [Event], now: Date) -> ConflictAlertModel? {
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: now)
+        guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday) else {
+            return nil
+        }
+        let todayEvents = events.filter { $0.start >= startOfToday && $0.start < startOfTomorrow }
+        guard !todayEvents.isEmpty else { return nil }
+
+        // U5 列分配：columnCount > 1 = 处于冲突簇。
+        let layout = CalendarViewModel.computeOverlapLayout(events: todayEvents)
+
+        // 处于冲突簇的事件（按 start 升序，确定性），取最早一件锚定「最早簇」。
+        let conflicting = todayEvents
+            .filter { (layout[$0.id]?.columnCount ?? 1) > 1 }
+            .sorted { $0.start != $1.start ? $0.start < $1.start : $0.end < $1.end }
+        guard let earliest = conflicting.first else { return nil }
+
+        // 回溯 earliest 所在簇：传递性重叠（A.start < B.end && B.start < A.end）。
+        // 从 earliest 起向后扩张簇的最大 end，凡 start < clusterMaxEnd 的并入。
+        // todayEvents 先按 start 排序后线性归簇，与 computeOverlapLayout 同口径。
+        let sortedToday = todayEvents.sorted {
+            $0.start != $1.start ? $0.start < $1.start : $0.end < $1.end
+        }
+        guard let anchorIndex = sortedToday.firstIndex(where: { $0.id == earliest.id }) else {
+            return nil
+        }
+        var clusterMaxEnd = sortedToday[anchorIndex].end
+        var clusterCount = 1
+        var i = anchorIndex + 1
+        while i < sortedToday.count && sortedToday[i].start < clusterMaxEnd {
+            clusterMaxEnd = max(clusterMaxEnd, sortedToday[i].end)
+            clusterCount += 1
+            i += 1
+        }
+
+        return ConflictAlertModel(atTime: earliest.start, count: clusterCount)
     }
 }

@@ -53,6 +53,10 @@ public final class MainViewModel {
     /// 当前 Heads-up alert。computed 直接转发 service.currentAlert —— @Observable 自动追踪。
     public var headsUp: HeadsUpAlertModel? { headsUpService?.currentAlert }
 
+    /// U6：今日时间冲突提示。computed 直接转发 service.conflictAlert —— @Observable 自动追踪。
+    /// service 未注入时（mock / 早期 Phase）为 nil，Main 不渲染冲突 pill。
+    public var conflict: ConflictAlertModel? { headsUpService?.conflictAlert }
+
     /// YesterdayMissedService 实例（可选）。P4 起由 App 入口注入；不传时回退到本地 fetch
     /// （与 P3.2 行为一致）。
     private let yesterdayMissedService: YesterdayMissedService?

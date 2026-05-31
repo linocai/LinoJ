@@ -130,4 +130,116 @@ struct HeadsUpServiceTests {
         service.tick()
         #expect(service.currentAlert == nil)
     }
+
+    // MARK: - U6 今日时间冲突扫描
+
+    /// 工具：构造一个含 N 件「今天」事件的 service，并返回 (service, context, events)。
+    ///
+    /// 事件锚定到 **`LinoJTime.now()` 所在日历日的固定时-分**（startOfDay + hour:minute），
+    /// 而非「相对 now 的偏移」—— 这样无论测试在一天的什么时刻跑，事件都稳定落在「今天」
+    /// 这一日历日内（不跨午夜），冲突扫描的日过滤口径确定。
+    /// `events` spec：(hour, minute, durationMinutes, title)。
+    private func makeServiceWithTodayEvents(
+        _ specs: [(hour: Int, minute: Int, durationMinutes: Int, title: String)]
+    ) throws -> (HeadsUpService, ModelContext, [Event]) {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let calendar = Calendar.current
+        let startOfToday = calendar.startOfDay(for: LinoJTime.now())
+        var inserted: [Event] = []
+        for spec in specs {
+            let start = calendar.date(
+                byAdding: DateComponents(hour: spec.hour, minute: spec.minute),
+                to: startOfToday
+            )!
+            let end = start.addingTimeInterval(TimeInterval(spec.durationMinutes) * 60)
+            let event = Event(title: spec.title, start: start, end: end, location: "")
+            context.insert(event)
+            inserted.append(event)
+        }
+        try context.save()
+        let service = HeadsUpService(context: context, leadMinutes: 30)
+        return (service, context, inserted)
+    }
+
+    /// plan 验收：今天两件时间撞车 → conflictAlert 非 nil、count == 2、atTime = 较早 start。
+    @Test("Two overlapping events today → conflictAlert count == 2, atTime = earlier start")
+    func testConflictTwoOverlapping() throws {
+        let (service, _, events) = try makeServiceWithTodayEvents([
+            (hour: 16, minute: 0,  durationMinutes: 60, title: "Supermarket"),  // 16:00–17:00
+            (hour: 16, minute: 30, durationMinutes: 60, title: "444"),          // 16:30–17:30（重叠）
+        ])
+        service.tick()
+        let conflict = try #require(service.conflictAlert)
+        #expect(conflict.count == 2)
+        #expect(conflict.atTime == events[0].start)   // 簇内最早 start（16:00）
+    }
+
+    /// 今天无冲突（两件事件不重叠）→ conflictAlert == nil。
+    @Test("Non-overlapping events today → conflictAlert == nil")
+    func testNoConflict() throws {
+        let (service, _, _) = try makeServiceWithTodayEvents([
+            (hour: 9,  minute: 0, durationMinutes: 30, title: "A"),  // 09:00–09:30
+            (hour: 14, minute: 0, durationMinutes: 30, title: "B"),  // 14:00–14:30（不重叠）
+        ])
+        service.tick()
+        #expect(service.conflictAlert == nil)
+    }
+
+    /// 没有任何今天事件 → conflictAlert == nil。
+    @Test("No events at all → conflictAlert == nil")
+    func testNoEventsNoConflict() throws {
+        let (service, _, _) = try makeServiceWithTodayEvents([])
+        service.tick()
+        #expect(service.conflictAlert == nil)
+    }
+
+    /// 最早簇选取：今天有两个冲突簇（早簇 size 2 + 晚簇 size 3），取**最早**那个簇。
+    @Test("Two conflict clusters today → picks earliest cluster")
+    func testEarliestClusterPicked() throws {
+        let (service, _, events) = try makeServiceWithTodayEvents([
+            // 早簇 09:00–10:00 + 09:20–10:20（重叠）
+            (hour: 9,  minute: 0,  durationMinutes: 60, title: "Early-A"),
+            (hour: 9,  minute: 20, durationMinutes: 60, title: "Early-B"),
+            // 晚簇 15:00 / 15:10 / 15:20 各 60min（三件传递重叠），与早簇不相接
+            (hour: 15, minute: 0,  durationMinutes: 60, title: "Late-A"),
+            (hour: 15, minute: 10, durationMinutes: 60, title: "Late-B"),
+            (hour: 15, minute: 20, durationMinutes: 60, title: "Late-C"),
+        ])
+        service.tick()
+        let conflict = try #require(service.conflictAlert)
+        #expect(conflict.count == 2)                   // 早簇 size 2，不是晚簇的 3
+        #expect(conflict.atTime == events[0].start)    // 早簇最早 start（Early-A，09:00）
+    }
+
+    /// 三件传递性重叠的事件 → count == 3（复用 U5 computeOverlapLayout 的归簇语义）。
+    @Test("Three transitively overlapping events today → count == 3")
+    func testThreeOverlapCluster() throws {
+        let (service, _, events) = try makeServiceWithTodayEvents([
+            (hour: 10, minute: 0,  durationMinutes: 60, title: "A"),  // 10:00–11:00
+            (hour: 10, minute: 10, durationMinutes: 60, title: "B"),  // 10:10–11:10
+            (hour: 10, minute: 20, durationMinutes: 60, title: "C"),  // 10:20–11:20
+        ])
+        service.tick()
+        let conflict = try #require(service.conflictAlert)
+        #expect(conflict.count == 3)
+        #expect(conflict.atTime == events[0].start)
+    }
+
+    /// 端点相接（A.end == B.start）不算冲突 —— 与 U5 computeOverlapLayout 一致（区间相交，端点相接不算）。
+    @Test("Adjacent events (A.end == B.start) → no conflict")
+    func testAdjacentNoConflict() throws {
+        let (service, _, _) = try makeServiceWithTodayEvents([
+            (hour: 11, minute: 0, durationMinutes: 60, title: "A"),  // 11:00–12:00
+            (hour: 12, minute: 0, durationMinutes: 60, title: "B"),  // 12:00–13:00（端点相接）
+        ])
+        service.tick()
+        #expect(service.conflictAlert == nil)
+    }
+
+    /// computeConflictAlert 纯函数直测：注入空数组 → nil（不依赖 SwiftData）。
+    @Test("computeConflictAlert(events: []) → nil (pure function)")
+    func testComputeConflictAlertEmpty() {
+        #expect(HeadsUpService.computeConflictAlert(events: [], now: LinoJTime.now()) == nil)
+    }
 }

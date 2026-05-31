@@ -1260,6 +1260,23 @@
         }
       }
     },
+    "HeadsUp.conflict": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d events overlap at %2$@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%2$@ 有 %1$d 个日程冲突"
+          }
+        }
+      }
+    },
     "HeadsUp.inMinutes": {
       "extractionState": "manual",
       "localizations": {

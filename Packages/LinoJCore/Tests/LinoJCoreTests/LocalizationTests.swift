@@ -271,6 +271,19 @@ struct LocalizationTests {
         #expect(zh != en, "[Calendar.overlapsCount] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
     }
 
+    // MARK: - U6 冲突预警提示新增 key 双语验证（含位置参数）
+
+    @Test("U6 HeadsUp.conflict 含位置参数 %1$d/%2$@ 双语正确，且 zh ≠ en")
+    func u6HeadsUpConflict() {
+        let en = resolve(LJStrings.headsUpConflict(count: 2, time: "16:00"), locale: "en")
+        let zh = resolve(LJStrings.headsUpConflict(count: 2, time: "16:00"), locale: "zh-Hans")
+        // 英文「数量 … 时刻」：%1$d events overlap at %2$@
+        #expect(en == "2 events overlap at 16:00", "[HeadsUp.conflict] EN：得到 '\(en)'")
+        // 中文「时刻 … 数量」：%2$@ 有 %1$d 个日程冲突（位置参数倒序）
+        #expect(zh == "16:00 有 2 个日程冲突", "[HeadsUp.conflict] 中文：得到 '\(zh)'")
+        #expect(zh != en, "[HeadsUp.conflict] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
     // MARK: - Bundle 暴露验证
 
     @Test("LinoJCoreBundle.bundle 能查到 xcstrings 资源")

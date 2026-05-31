@@ -178,6 +178,14 @@ struct MainView_iOS: View {
                             .padding(.bottom, 16)
                         }
 
+                        // U6：今日时间冲突提示（中性色变体）。蓝色 heads-up 在上、conflict 在下，
+                        // 两者都有时都显示、不互相吞。conflict 是被动提示，无按钮。
+                        if let conflict = vm.conflict {
+                            ConflictAlert(atTime: conflict.atTime, count: conflict.count)
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 16)
+                        }
+
                         // Urgent bubbles
                         urgentSection(vm: vm)
                             .padding(.horizontal, 16)

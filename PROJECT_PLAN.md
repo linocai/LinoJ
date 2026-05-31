@@ -2974,6 +2974,23 @@ public enum LinoJStore {
 
 ---
 
+### [2026-05-31] U6 施工 —— 冲突预警进 Heads-up：共享 Service 冲突扫描 + 两端 Main 渲染
+
+- **变更内容**：
+  - **共享模型 + Service（`HeadsUpService.swift`）**：① 新增 `public struct ConflictAlertModel: Equatable, Sendable { let atTime: Date; let count: Int }`（簇内最早 start + 簇 size）。② `HeadsUpService` 加 `public var conflictAlert: ConflictAlertModel? = nil`（与既有 `currentAlert` 并列、语义独立、不受 snooze 影响）。③ 在既有 `tick()` 末尾**一并计算**冲突——复用本轮已 fetch 的全量 `all` 事件（不二次 fetch），调新增纯函数 `static func computeConflictAlert(events:now:)`。④ `computeConflictAlert` 算法：先过滤 `start` 落在「`now` 所在日历日」（startOfDay ≤ start < 次日）的事件 → 调 **U5 的 `CalendarViewModel.computeOverlapLayout(events:)`** 取 `columnCount > 1` 的冲突事件 → 在冲突事件里按 start 升序取最早一件锚定「最早簇」→ 从锚点线性向后归簇（`start < clusterMaxEnd` 并入，与 U5 同口径）得 `count`，`atTime` = 锚点 start；无冲突 nil（只输出一条最早簇，不堆叠）。**复用 U5 归簇，不重复实现。**
+  - **MainViewModel 转发（`MainViewModel.swift`）**：加 `public var conflict: ConflictAlertModel? { headsUpService?.conflictAlert }`（@Observable 自动追踪，service 未注入时 nil）。
+  - **中性色 pill 组件（新增 `DesignSystem/Components/ConflictAlert.swift`）**：复用 `HeadsUpAlert` 的 full-width pill 几何（`LJRadii.card` 圆角 + 同内边距 + HH:mm mono 时间），但**中性色变体**：静态 `inkMute` 小点（非脉冲蓝）、`chip` 底 + `border` 描边、`inkSoft` 文案、**无 Snooze/Open 按钮**（冲突是被动提示）。不抢蓝色 heads-up 视觉权重。
+  - **两端 Main 渲染**：macOS `MainView_macOS.swift` `leftColumn` —— 在既有蓝色 `headsUp` 分支**之后**追加 `if let conflict = vm.conflict { ConflictAlert(...) }`；iOS `MainView_iOS.swift` —— 在 heads-up 分支之后追加同款（带 `.padding(.horizontal,16).padding(.bottom,16)` 与 heads-up 对齐）。**蓝在上、conflict 中性在下，两者都有时都显示、不互相吞。**
+  - **不调度本地通知**：冲突只在 Main UI 冒泡，未碰 `NotificationService` 调度。
+  - **本地化（三轨三步）**：`Localizable.xcstrings` 加 `HeadsUp.conflict`（**位置参数**："%1$d events overlap at %2$@" / "%2$@ 有 %1$d 个日程冲突"，按字母序插入、纯 17 行 insertion）→ `xcrun xcstringstool compile` 重生 en/zh-Hans 两 lproj（XML plist 格式保留，各 +2 行）→ `Strings.swift` 加 `headsUpConflict(count:time:)`（`%1$d` 数量 / `%2$@` 时刻，中英位置不同靠位置参数定位）。
+- **新增本地化 key**：`HeadsUp.conflict`（位置参数 `%1$d` 数量 + `%2$@` 时刻；中文「时刻…数量」与英文「数量…时刻」语序相反，靠 `%1$`/`%2$` 显式定位）。
+- **偏离说明**：**冲突扫描的「今天」用 `LinoJTime.now()` 所在日历日，而非 `MainViewModel` 的 `LinoJTime.today()`（DEBUG 模拟日）。** plan 措辞为「与 Main 今天语境一致」+「用 service 已有的 now/context 取今日事件」，二者在 DEBUG 下不等价（`HeadsUpService` 既有 `tick()` 一直只用 `now()`，service 内不持 `today()` 锚点）。取后半句「用 service 已有的 now」——与既有 `tick()` 时间源一致、单测可控、且 Release 下 `now()==today()` 二者重合（用户真实「今天 4PM 冲突」场景两种口径结果相同）。记为时间源取舍。其余严格按 plan。
+- **验收**：`swift test --package-path Packages/LinoJCore` **201 → 209 全绿**（+7 `HeadsUpServiceTests` 冲突用例：两件撞车 count==2/atTime=较早 start、无冲突 nil、无事件 nil、最早簇选取、三件传递重叠 count==3、端点相接不算、纯函数空数组 nil；+1 `LocalizationTests` `HeadsUp.conflict` 位置参数 zh≠en）；`swift build -Xswiftc -warnings-as-errors` **0 warning**；**macOS App target `xcodebuild -scheme LinoJ-macOS -configuration Debug CODE_SIGNING_ALLOWED=NO build` BUILD SUCCEEDED**；**iOS App target `-scheme LinoJ-iOS -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` BUILD SUCCEEDED**。两端 0 新增源码 warning。
+- **headless 测不到、须出 macOS 包用户截图验证**：① **macOS Main 顶部冲突 pill**——中性灰底「16:00 有 2 个日程冲突」出现在蓝色 heads-up 下方（或单独出现）；用户已有「今天 4PM 超市 / 444」撞车数据可直接触发。② 同时存在「即将开始」与「冲突」时两条 pill 都在、蓝在上中性在下不互吞。③ iOS 同款（heads-up 下方追加中性 pill）。
+- **影响范围**：Phase U6。改 `HeadsUpService.swift`（`ConflictAlertModel` + `conflictAlert` + `computeConflictAlert` + tick 内一并算）、`MainViewModel.swift`（`conflict` 转发）、`MainView_macOS.swift` + `MainView_iOS.swift`（渲染 conflict pill）、`Strings.swift`（`headsUpConflict`）、`Localizable.xcstrings` + 两 lproj（`HeadsUp.conflict`）；新增 `ConflictAlert.swift` 组件；扩 `HeadsUpServiceTests`（+7）、`LocalizationTests`（+1）。**复用 U5 `computeOverlapLayout` 未重写归簇 / 未改 schema / 未新增 @Model / 未改 EventCard 内部 / 未碰 `NotificationService` 调度 / 未碰 U7 拖拽 / 未碰 entitlements/pbxproj/Widget / 未 bump 版本号。**
+
+---
+
 ## 🚀 v1.0 公开上线剩余清单（新会话从这里接）
 
 **必做（TestFlight / 上架前）**

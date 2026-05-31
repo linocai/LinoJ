@@ -220,6 +220,20 @@ public enum LJStrings {
         )
     }
 
+    /// U6：今日时间冲突提示「%1$d events overlap at %2$@ / %2$@ 有 %1$d 个日程冲突」。
+    /// **位置参数**：`%1$d` = 冲突事件数 `count`，`%2$@` = 冲突起始时刻字符串 `time`（mono 格式）。
+    /// 中英位置不同（英文「数量…时刻」、中文「时刻…数量」），靠 `%1$`/`%2$` 显式定位。
+    /// - Parameters:
+    ///   - count: 冲突簇 size（≥ 2）。
+    ///   - time: 已格式化的冲突起始时刻（如 "16:00"）。
+    public static func headsUpConflict(count: Int, time: String) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "HeadsUp.conflict",
+            defaultValue: "\(count) events overlap at \(time)",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
+
     // MARK: - Calendar specific
 
     /// 周视图表头 today 列的全大写小标签 "TODAY" / "今天"（取代周缩写 MON/TUE…）。

@@ -150,6 +150,8 @@
 	<string>标题</string>
 	<key>Format.italic</key>
 	<string>斜体</string>
+	<key>HeadsUp.conflict</key>
+	<string>%2$@ 有 %1$d 个日程冲突</string>
 	<key>HeadsUp.inMinutes</key>
 	<string>%d 分钟后</string>
 	<key>HeadsUp.open</key>

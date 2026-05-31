@@ -200,6 +200,12 @@ struct MainView_macOS: View {
                 }
             }
 
+            // U6：今日时间冲突提示（中性色变体）。蓝色 heads-up 在上、conflict 在下，
+            // 两者都有时都显示、不互相吞。conflict 是被动提示，无按钮。
+            if let conflict = vm.conflict {
+                ConflictAlert(atTime: conflict.atTime, count: conflict.count)
+            }
+
             // 标题 + 计数
             HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s16) {
                 Text(LJStrings.mainTitle).ljDisplayTitleStyle()
