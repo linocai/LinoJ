@@ -548,5 +548,9 @@
 	<string>Monday</string>
 	<key>Weekday.sunday</key>
 	<string>Sunday</string>
+	<key>Widget.description</key>
+	<string>Today's next events and your open todos.</string>
+	<key>Widget.displayName</key>
+	<string>LinoJ</string>
 </dict>
 </plist>

@@ -3049,6 +3049,21 @@ public enum LinoJStore {
 - **headless 抓不到、必须主控出签名包 + 用户真机验**：① v1.0 旧 store 升级路径——保留旧数据的 App 升级后旧数据全部出现、不丢；② App Group 容器内的 store 接 CloudKit `.private` 正常同步、不 crash、不重复（与 seed 竞态同源，已沿用 cloud ON 不 seed）；③ 签名是否因新增 App Group capability 正常通过（provisioning profile 须含该 App Group，用户已在 developer.apple.com 注册并关联 App ID）。
 - **影响范围**：Phase U9（前半 U9.1+U9.2）。改 `Packages/LinoJCore/Sources/LinoJCore/Persistence/ModelContainer+LinoJ.swift`（App Group URL + 迁移 + makeContainer 改造）、`Packages/LinoJCore/Sources/LinoJCore/CloudKit/LinoJCloudKit.swift`（新增 `LinoJAppGroup`）、两端 App init（调 migrate）、两端 entitlements（追加 application-groups）；新增 `StoreMigrationTests.swift`。**未碰 pbxproj、未建 Widget 扩展 target（留 U9b）、未 bump 版本号、未 commit（主控统一管）。**
 
+### [2026-05-31] U9b 施工（U9.3）—— Widget 扩展 target（iOS + macOS）+ 只读 timeline
+
+> **本组工具风险最高的一块：手改两个 `.xcodeproj` 各加一个 app-extension target。** @builder agent 实际已完成全部实现并自测「227 测试过、包 0 warning」，但在执行**多余的最后一轮四 target 全量复验**时运行超时被中断（累计 100+ 分钟，主因是每轮把 iOS app/iOS widget/macOS app/macOS widget 四个 target 全量 xcodebuild + 反复调 `PBXFileSystemSynchronizedRootGroup` 的 target membership）。**本变更日志由主控在中断后亲自复验并补写**（agent 未及写）。
+
+- **建了哪端**：**iOS + macOS 两端 widget target 都建成**。pbxproj 未改坏——`xcodebuild -list -workspace LinoJ.xcworkspace` 正常列出新 scheme `LinoJWidgets-iOS` / `LinoJWidgets-macOS`。动手前已备份两份 pbxproj 到 `/tmp/{ios,macos}.pbxproj.bak`（回退保险）。
+- **结构**：`LinoJWidgets/Shared/`（`LinoJWidgetBundle.swift` / `LinoJTimelineProvider.swift` / `LinoJWidgetViews.swift`，两端共享）+ `LinoJWidgets/{iOS,macOS}/`（各自 `Info.plist` + `.entitlements`）；widget 数据逻辑放共享包 `Packages/LinoJCore/Sources/LinoJCore/Widget/WidgetData.swift`（可单测）。
+- **timeline 只读打开（关键安全点）**：widget 进程用专门的 `LinoJStore.makeWidgetContainer()` 打开 App Group 内同一 store —— `cloudKitDatabase: .none` + `allowsSave: false`（**只读、不触发 CloudKit mirroring**，避免与 app 写竞争 / CloudKit setup 崩溃）；只 `fetch` `Event`/`Todo`，绝不写。容器打开失败兜底空 entry、不崩 widget。
+- **Widget 内容（calm 调性）**：今日事件 look-ahead（今天接下来 1-3 个事件，mono 时间 + 标题）+ open/urgent 计数（复用 Main 计数语义）。尺寸：`systemSmall` / `systemMedium` + 锁屏 `accessoryRectangular` / `accessoryInline`。视觉复用 `Color.lj.*`/Typography，蓝色仍只给 urgent。reload 策略 `.atEnd` + 每整点 / 下一个事件起点精确刷新。
+- **entitlements**：两端 widget target 各含 `com.apple.security.application-groups = [group.com.linocai.linoj]`（与 app 共用容器读同一 store）；macOS widget 另含 app-sandbox。
+- **新增本地化 key（三轨双填）**：`Widget.displayName` / `Widget.description`（widget gallery 名称/描述）。
+- **测试**：新增 `WidgetDataTests.swift`（今日事件取前 N / open·urgent 计数 / reload 时刻计算等纯函数）。217 → **227 全绿**（+10）。
+- **验收（主控补做的最后一轮复验）**：① `swift test` **227 全绿**；② `swift build --package-path Packages/LinoJCore -Xswiftc -warnings-as-errors` **0 warning**；③ **iOS** `xcodebuild -scheme LinoJWidgets-iOS -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` **BUILD SUCCEEDED**（app + widget）；④ **macOS** `xcodebuild -scheme LinoJWidgets-macOS CODE_SIGNING_ALLOWED=NO build` **BUILD SUCCEEDED**（app + widget）；⑤ `xcodebuild -list` 正常解析、列出两个 widget scheme。
+- **headless 抓不到、须主控出签名包 + 用户真机验**：把 widget 加到桌面 / 主屏 / 锁屏 → 显示今日事件 look-ahead 与 open/urgent 计数、数据与 app 一致；app 内改数据后下次 timeline 刷新更新。
+- **影响范围**：Phase U9（后半 U9.3）。新增 `LinoJWidgets/`（两端 target 源码 + Info.plist + entitlements）、`Packages/LinoJCore/Sources/LinoJCore/Widget/WidgetData.swift`、`WidgetDataTests.swift`；改两端 `project.pbxproj`（新 widget target + 嵌入 + App Group + LinoJCore 依赖）、`ModelContainer+LinoJ.swift`（`makeWidgetContainer()` 只读容器）、`Strings.swift` + xcstrings（widget 文案）。**未 bump 版本号（U10）、未 commit（主控统一管）。**
+
 ---
 
 ## 🚀 v1.0 公开上线剩余清单（新会话从这里接）

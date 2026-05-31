@@ -69,6 +69,18 @@ struct LocalizationTests {
         #expect(zh == "没有匹配 \"foo\"")
     }
 
+    @Test("U9.3 Widget 文案双语解析（displayName 双语同名、description 差异化）")
+    func widgetStrings() {
+        // displayName 是品牌名「LinoJ」，中英相同（不做 zh≠en 断言），只验非空且解析到位。
+        #expect(resolve(LJStrings.widgetDisplayName, locale: "en") == "LinoJ")
+        #expect(resolve(LJStrings.widgetDisplayName, locale: "zh-Hans") == "LinoJ")
+        // description 中英差异化，验证 zh-Hans 没 fallback 回 en。
+        let dEn = resolve(LJStrings.widgetDescription, locale: "en")
+        let dZh = resolve(LJStrings.widgetDescription, locale: "zh-Hans")
+        #expect(!dEn.isEmpty && !dZh.isEmpty)
+        #expect(dEn != dZh, "Widget.description zh-Hans 不应 fallback 回 en")
+    }
+
     // MARK: - 防漏译批量验证（15+ key）
 
     @Test("批量 15+ key 双语都有非空翻译，且 zh ≠ en")

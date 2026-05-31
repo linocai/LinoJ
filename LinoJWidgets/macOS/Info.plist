@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	U9.3：WidgetKit extension 的扩展点声明（macOS）。GENERATE_INFOPLIST_FILE=YES 合并标准 key；
+	本文件只放 NSExtension（WidgetKit 扩展点）。放在 LinoJWidgets/macOS 目录（App 同步文件夹之外），
+	用 INFOPLIST_FILE 指向，避免被 PBXFileSystemSynchronizedRootGroup 自动加进 Copy Bundle Resources。
+	-->
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.widgetkit-extension</string>
+	</dict>
+</dict>
+</plist>

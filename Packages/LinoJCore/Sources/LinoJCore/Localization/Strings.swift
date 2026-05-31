@@ -516,6 +516,13 @@ public enum LJStrings {
     public static let a11ySettings: LocalizedStringResource = r("A11y.settings")
     public static let a11yCompletedSuffix: LocalizedStringResource = r("Accessibility.completedSuffix")
     public static let a11yOpenSuffix: LocalizedStringResource = r("Accessibility.openSuffix")
+
+    // MARK: - Widget (U9.3)
+
+    /// Widget gallery 里的 widget 名称。
+    public static let widgetDisplayName: LocalizedStringResource = r("Widget.displayName")
+    /// Widget gallery 里的 widget 描述。
+    public static let widgetDescription: LocalizedStringResource = r("Widget.description")
 }
 
 // MARK: - Bundle.module helper

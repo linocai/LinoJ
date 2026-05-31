@@ -217,4 +217,44 @@ public enum LinoJStore {
         }
         return try ModelContainer(for: schema, configurations: [config])
     }
+
+    // MARK: - U9.3：Widget extension 只读容器
+
+    /// U9.3：为 **widget extension 进程**打开 App Group 共享 store 的**只读最小配置**容器。
+    ///
+    /// 与 App 的 `makeContainer` 的关键差异：
+    ///   - **`cloudKitDatabase: .none`**：widget 进程绝不触发 CloudKit mirroring（避免与 App 写竞争、
+    ///     避免在受限的 extension 沙盒里拉起 `NSPersistentCloudKitContainer` 而崩）。同步仍由 App 进程负责，
+    ///     widget 只读 App 已落盘的本地 store。
+    ///   - **`allowsSave: false`**：从配置层面声明只读，widget 永不写。
+    ///   - 必须用与 App **同一个 URL**（`appGroupStoreURL()`）打开同一物理 store。
+    ///
+    /// `appGroupStoreURL()` 取不到（widget entitlement 没配好等）→ 抛错；调用方（timeline provider）
+    /// 应捕获并回退到空快照（`WidgetSnapshot.placeholder`），不让 widget 崩。
+    @MainActor
+    public static func makeWidgetContainer() throws -> ModelContainer {
+        let schema = Schema([
+            Person.self,
+            Project.self,
+            Todo.self,
+            Event.self,
+            Note.self,
+        ])
+        guard let groupURL = appGroupStoreURL() else {
+            throw WidgetStoreError.appGroupUnavailable
+        }
+        let config = ModelConfiguration(
+            schema: schema,
+            url: groupURL,
+            allowsSave: false,            // 只读：widget 绝不写
+            cloudKitDatabase: .none       // widget 进程不连云，避免与 App 写竞争 / extension 崩
+        )
+        return try ModelContainer(for: schema, configurations: [config])
+    }
+
+    /// Widget 容器相关错误。
+    public enum WidgetStoreError: Error, Sendable {
+        /// App Group 容器 URL 取不到（entitlement 没配好 / containerURL nil）。
+        case appGroupUnavailable
+    }
 }

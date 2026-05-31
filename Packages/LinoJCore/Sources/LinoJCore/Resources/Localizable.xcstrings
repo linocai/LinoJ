@@ -4642,6 +4642,40 @@
           }
         }
       }
+    },
+    "Widget.description": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's next events and your open todos."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日接下来的事件与未完成的待办。"
+          }
+        }
+      }
+    },
+    "Widget.displayName": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LinoJ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "LinoJ"
+          }
+        }
+      }
     }
   }
 }

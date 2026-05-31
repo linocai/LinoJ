@@ -8,10 +8,29 @@
 
 /* Begin PBXBuildFile section */
 		6D2128A12FC716BE00EA0CFE /* LinoJCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6D2128A32FC716BE00EA0CFE /* LinoJCore */; };
+		6DEE000000000000000000C1 /* LinoJWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEE000000000000000000B1 /* LinoJWidgetBundle.swift */; };
+		6DEE000000000000000000C2 /* LinoJWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEE000000000000000000B2 /* LinoJWidgetViews.swift */; };
+		6DEE000000000000000000C3 /* LinoJTimelineProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DEE000000000000000000B3 /* LinoJTimelineProvider.swift */; };
+		6DEE000000000000000000D1 /* LinoJCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6DEE000000000000000000D2 /* LinoJCore */; };
+		6DEE000000000000000000E1 /* LinoJWidgets-iOS.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 6DEE000000000000000000A1 /* LinoJWidgets-iOS.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6DEE0000000000000000A011 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6D2127882FC716BE00EA0CFE /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6DEE0000000000000000A001;
+			remoteInfo = "LinoJWidgets-iOS";
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		6D2127902FC716BE00EA0CFE /* LinoJ-iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "LinoJ-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6DEE000000000000000000A1 /* LinoJWidgets-iOS.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "LinoJWidgets-iOS.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		6DEE000000000000000000B1 /* LinoJWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LinoJWidgetBundle.swift; path = "../LinoJWidgets/Shared/LinoJWidgetBundle.swift"; sourceTree = "<group>"; };
+		6DEE000000000000000000B2 /* LinoJWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LinoJWidgetViews.swift; path = "../LinoJWidgets/Shared/LinoJWidgetViews.swift"; sourceTree = "<group>"; };
+		6DEE000000000000000000B3 /* LinoJTimelineProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = LinoJTimelineProvider.swift; path = "../LinoJWidgets/Shared/LinoJTimelineProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -22,12 +41,34 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		6DEE0000000000000000F4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6DEE000000000000000000E1 /* LinoJWidgets-iOS.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		6D21278D2FC716BE00EA0CFE /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				6D2128A12FC716BE00EA0CFE /* LinoJCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6DEE0000000000000000F2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6DEE000000000000000000D1 /* LinoJCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -38,6 +79,7 @@
 			isa = PBXGroup;
 			children = (
 				6D2127922FC716BE00EA0CFE /* LinoJ-iOS */,
+				6DEE0000000000000000B0 /* LinoJWidgets */,
 				6D2127912FC716BE00EA0CFE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,8 +88,19 @@
 			isa = PBXGroup;
 			children = (
 				6D2127902FC716BE00EA0CFE /* LinoJ-iOS.app */,
+				6DEE000000000000000000A1 /* LinoJWidgets-iOS.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		6DEE0000000000000000B0 /* LinoJWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				6DEE000000000000000000B1 /* LinoJWidgetBundle.swift */,
+				6DEE000000000000000000B2 /* LinoJWidgetViews.swift */,
+				6DEE000000000000000000B3 /* LinoJTimelineProvider.swift */,
+			);
+			name = LinoJWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -60,10 +113,12 @@
 				6D21278C2FC716BE00EA0CFE /* Sources */,
 				6D21278D2FC716BE00EA0CFE /* Frameworks */,
 				6D21278E2FC716BE00EA0CFE /* Resources */,
+				6DEE0000000000000000F4 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				6DEE0000000000000000A012 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				6D2127922FC716BE00EA0CFE /* LinoJ-iOS */,
@@ -75,6 +130,26 @@
 			productName = "LinoJ-iOS";
 			productReference = 6D2127902FC716BE00EA0CFE /* LinoJ-iOS.app */;
 			productType = "com.apple.product-type.application";
+		};
+		6DEE0000000000000000A001 /* LinoJWidgets-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6DEE0000000000000000A021 /* Build configuration list for PBXNativeTarget "LinoJWidgets-iOS" */;
+			buildPhases = (
+				6DEE0000000000000000F1 /* Sources */,
+				6DEE0000000000000000F2 /* Frameworks */,
+				6DEE0000000000000000F3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "LinoJWidgets-iOS";
+			packageProductDependencies = (
+				6DEE000000000000000000D2 /* LinoJCore */,
+			);
+			productName = "LinoJWidgets-iOS";
+			productReference = 6DEE000000000000000000A1 /* LinoJWidgets-iOS.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -89,6 +164,9 @@
 					6D21278F2FC716BE00EA0CFE = {
 						CreatedOnToolsVersion = 26.5;
 						LastSwiftMigration = 2650;
+					};
+					6DEE0000000000000000A001 = {
+						CreatedOnToolsVersion = 26.5;
 					};
 				};
 			};
@@ -110,12 +188,20 @@
 			projectRoot = "";
 			targets = (
 				6D21278F2FC716BE00EA0CFE /* LinoJ-iOS */,
+				6DEE0000000000000000A001 /* LinoJWidgets-iOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		6D21278E2FC716BE00EA0CFE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6DEE0000000000000000F3 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -132,7 +218,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6DEE0000000000000000F1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6DEE000000000000000000C1 /* LinoJWidgetBundle.swift in Sources */,
+				6DEE000000000000000000C2 /* LinoJWidgetViews.swift in Sources */,
+				6DEE000000000000000000C3 /* LinoJTimelineProvider.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6DEE0000000000000000A012 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6DEE0000000000000000A001 /* LinoJWidgets-iOS */;
+			targetProxy = 6DEE0000000000000000A011 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		6D2127992FC716BF00EA0CFE /* Debug */ = {
@@ -329,6 +433,75 @@
 			};
 			name = Release;
 		};
+		6DEE0000000000000000A022 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = "../LinoJWidgets/iOS/LinoJWidgets-iOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = HX73DFL88G;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "../LinoJWidgets/iOS/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = LinoJ;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.linocai.linoj.widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6DEE0000000000000000A023 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = "../LinoJWidgets/iOS/LinoJWidgets-iOS.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = HX73DFL88G;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "../LinoJWidgets/iOS/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = LinoJ;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.linocai.linoj.widgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -350,6 +523,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		6DEE0000000000000000A021 /* Build configuration list for PBXNativeTarget "LinoJWidgets-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6DEE0000000000000000A022 /* Debug */,
+				6DEE0000000000000000A023 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -361,6 +543,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		6D2128A32FC716BE00EA0CFE /* LinoJCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LinoJCore;
+		};
+		6DEE000000000000000000D2 /* LinoJCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = LinoJCore;
 		};

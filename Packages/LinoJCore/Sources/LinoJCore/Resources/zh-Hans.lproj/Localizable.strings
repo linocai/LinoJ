@@ -548,5 +548,9 @@
 	<string>星期一</string>
 	<key>Weekday.sunday</key>
 	<string>星期日</string>
+	<key>Widget.description</key>
+	<string>今日接下来的事件与未完成的待办。</string>
+	<key>Widget.displayName</key>
+	<string>LinoJ</string>
 </dict>
 </plist>
