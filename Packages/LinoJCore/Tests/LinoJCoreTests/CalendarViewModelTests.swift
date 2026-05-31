@@ -230,4 +230,88 @@ struct CalendarViewModelTests {
         vm.unconfirmAttended(target)
         #expect(target.attendedConfirmed == false)
     }
+
+    // MARK: - U7: moveEvent（拖拽改期写回）
+
+    @Test("U7: moveEvent 把 event 平移到新 start/end，时长保持、context 中值正确")
+    func moveEventTranslatesKeepingDuration() throws {
+        let (vm, context) = try makeSeededVM()
+        guard let target = vm.eventsByDay[vm.weekStart]?.first else {
+            Issue.record("seed 应在 today 那天产生至少一个事件")
+            return
+        }
+        let targetID = target.id
+        let originalDuration = target.end.timeIntervalSince(target.start)
+
+        // 平移 +90 分钟（保持时长）。
+        let newStart = target.start.addingTimeInterval(90 * 60)
+        let newEnd = target.end.addingTimeInterval(90 * 60)
+        vm.moveEvent(target, newStart: newStart, newEnd: newEnd)
+
+        // 内存中的对象值已更新。
+        #expect(target.start == newStart)
+        #expect(target.end == newEnd)
+        // 时长保持不变。
+        #expect(target.end.timeIntervalSince(target.start) == originalDuration)
+
+        // 从 context 重新 fetch，确认持久化写回的值正确。
+        let fetched = try context.fetch(FetchDescriptor<Event>())
+            .first { $0.id == targetID }
+        #expect(fetched != nil)
+        #expect(fetched?.start == newStart)
+        #expect(fetched?.end == newEnd)
+    }
+
+    @Test("U7: moveEvent 拉伸语义——只改 end、start 不变（下边缘拉伸）")
+    func moveEventStretchKeepsStart() throws {
+        let (vm, context) = try makeSeededVM()
+        guard let target = vm.eventsByDay[vm.weekStart]?.first else {
+            Issue.record("seed 应在 today 那天产生至少一个事件")
+            return
+        }
+        let targetID = target.id
+        let originalStart = target.start
+
+        // 拉伸：start 不变，end + 30 分钟。
+        let newEnd = target.end.addingTimeInterval(30 * 60)
+        vm.moveEvent(target, newStart: originalStart, newEnd: newEnd)
+
+        #expect(target.start == originalStart)
+        #expect(target.end == newEnd)
+
+        let fetched = try context.fetch(FetchDescriptor<Event>())
+            .first { $0.id == targetID }
+        #expect(fetched?.start == originalStart)
+        #expect(fetched?.end == newEnd)
+    }
+
+    @Test("U7: moveEvent 改期跨天后 eventsByDay 归属随之变化（refresh 生效）")
+    func moveEventRefreshUpdatesEventsByDay() throws {
+        let (vm, _) = try makeSeededVM()
+        let calendar = CalendarViewModel.calendar
+        // 取 today 列第一个事件，整体平移到 today+1（保持当天时段，仅日期 +1）。
+        guard let target = vm.eventsByDay[vm.weekStart]?.first else {
+            Issue.record("seed 应在 today 那天产生至少一个事件")
+            return
+        }
+        let targetID = target.id
+        let day0Count = vm.eventsByDay[vm.weekStart]?.count ?? 0
+
+        guard
+            let nextDay = calendar.date(byAdding: .day, value: 1, to: vm.weekStart),
+            let newStart = calendar.date(byAdding: .day, value: 1, to: target.start),
+            let newEnd = calendar.date(byAdding: .day, value: 1, to: target.end)
+        else {
+            Issue.record("日期平移失败")
+            return
+        }
+        let day1CountBefore = vm.eventsByDay[nextDay]?.count ?? 0
+
+        vm.moveEvent(target, newStart: newStart, newEnd: newEnd)
+
+        // today 那天少一个，today+1 那天多一个；目标事件现在归属 today+1。
+        #expect(vm.eventsByDay[vm.weekStart]?.count == day0Count - 1)
+        #expect(vm.eventsByDay[nextDay]?.count == day1CountBefore + 1)
+        #expect(vm.eventsByDay[nextDay]?.contains { $0.id == targetID } == true)
+    }
 }

@@ -107,6 +107,18 @@ struct CalendarView_macOS: View {
         router.showQuickAdd = true
     }
 
+    /// U7：拖拽结束后把「已吸附到 15 分钟刻度的 Δ分钟」应用到事件——整块平移（保持时长），
+    /// 写回共享 VM 的 `moveEvent`（save + refresh）。deltaMinutes 由 DraggableEventCard 在
+    /// onEnded 时算好并吸附（Δy / pxPerHour * 60 → round 到最近 15 分钟）。
+    /// MVP 仅做上下平移改时刻；跨天（左右平移改日期）列为本期可选未做。
+    private func applyDragMove(event: Event, deltaMinutes: Int, vm: CalendarViewModel) {
+        guard deltaMinutes != 0 else { return }
+        let interval = TimeInterval(deltaMinutes * 60)
+        let newStart = event.start.addingTimeInterval(interval)
+        let newEnd = event.end.addingTimeInterval(interval)
+        vm.moveEvent(event, newStart: newStart, newEnd: newEnd)
+    }
+
     /// 事件卡 contextMenu 内容：Edit / Mark|Unmark attended（仅已结束事件）/ Delete。
     /// 「标记已出席」仅对已结束事件（end <= vm.now）出现；已确认则翻转为「取消已出席」。
     @ViewBuilder
@@ -535,6 +547,8 @@ struct CalendarView_macOS: View {
 
             // events：绝对定位。W4：外层套 onTap（打开编辑）+ contextMenu（Edit/Mark/Delete）。
             // U5：重叠事件按 overlap map 的 column / columnCount 等分列宽并排；不重叠仍满列宽。
+            // U7：每张卡抽成 DraggableEventCard（自带拖拽预览 @State + DragGesture），
+            // 拖动上下平移改期（保持时长，吸附 15 分钟）；轻点仍走 openEdit、右键仍出 contextMenu。
             ForEach(dayEvents, id: \.id) { event in
                 let slot = overlap[event.id] ?? (column: 0, columnCount: 1)
                 if let layout = eventLayout(
@@ -543,12 +557,16 @@ struct CalendarView_macOS: View {
                     column: slot.column,
                     columnCount: slot.columnCount
                 ) {
-                    EventCard(event: event, variant: .macWeekGrid)
-                        .frame(width: layout.width, height: layout.height)
-                        .contentShape(Rectangle())
-                        .onTapGesture { openEdit(event) }
-                        .contextMenu { eventActions(for: event, vm: vm) }
-                        .offset(x: layout.x, y: layout.y)
+                    DraggableEventCard(
+                        event: event,
+                        layout: layout,
+                        pxPerHour: pxPerHour,
+                        onTap: { openEdit(event) },
+                        onMove: { deltaMinutes in
+                            applyDragMove(event: event, deltaMinutes: deltaMinutes, vm: vm)
+                        },
+                        contextMenuContent: { AnyView(eventActions(for: event, vm: vm)) }
+                    )
                 }
             }
 
@@ -650,6 +668,70 @@ struct CalendarView_macOS: View {
     private func stopNowTimer() {
         nowTimer?.invalidate()
         nowTimer = nil
+    }
+}
+
+// MARK: - U7 可拖拽事件卡（拖拽改期）
+
+/// U7：单张周视图事件卡，封装拖拽改期手势 + 预览偏移。
+///
+/// 抽成独立 struct 的原因（见 CLAUDE.md）：拖拽手势 + 绝对定位 + 预览偏移叠在
+/// dayColumn 的 ForEach 长链里极易触发 Swift「unable to type-check this expression in
+/// reasonable time」；把单卡逻辑与本地 `@State` 提出来后 dayColumn body 恢复简单。
+///
+/// 点击/拖拽消歧（决策定死）：`DragGesture(minimumDistance: 4)` + `.highPriorityGesture`——
+///   - 拖动距离 < 4pt：drag 不触发，`.onTapGesture` 正常打开编辑（W4）。
+///   - 拖动距离 ≥ 4pt：highPriority 的 drag 抢占，进入拖拽预览；松手按 Δy 改期。
+/// 右键 `.contextMenu` 与 tap / drag 并存（contextMenu 走右键，不与左键 drag 冲突）。
+///
+/// 吸附：onEnded 时 Δy → Δ分钟 = `Δy / pxPerHour * 60`，round 到最近 15 分钟刻度
+/// （15min = 11.5pt @ pxPerHour 46）。MVP 仅上下平移（保持时长）；跨天为可选未做。
+private struct DraggableEventCard: View {
+    let event: Event
+    let layout: (x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat)
+    let pxPerHour: CGFloat
+    let onTap: () -> Void
+    /// 传入「已吸附到 15 分钟刻度」的 Δ分钟（正=往后/下，负=往前/上）。
+    let onMove: (Int) -> Void
+    let contextMenuContent: () -> AnyView
+
+    /// 拖拽中的临时纵向偏移（仅视觉预览，不每帧 save）。松手清零。
+    @State private var dragOffsetY: CGFloat = 0
+    /// 是否正在拖拽（拖拽中略提亮卡片，给手感反馈）。
+    @State private var isDragging = false
+
+    var body: some View {
+        EventCard(event: event, variant: .macWeekGrid)
+            .frame(width: layout.width, height: layout.height)
+            .contentShape(Rectangle())
+            .opacity(isDragging ? 0.85 : 1)
+            .zIndex(isDragging ? 5 : 0)
+            .onTapGesture { onTap() }
+            .highPriorityGesture(dragGesture)
+            .contextMenu { contextMenuContent() }
+            .offset(x: layout.x, y: layout.y + dragOffsetY)
+    }
+
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                isDragging = true
+                dragOffsetY = value.translation.height
+            }
+            .onEnded { value in
+                let deltaMinutes = snappedDeltaMinutes(forY: value.translation.height)
+                // 先清预览偏移，再写回——写回后 VM refresh，layout.y 落到新位置（无回弹闪烁）。
+                dragOffsetY = 0
+                isDragging = false
+                onMove(deltaMinutes)
+            }
+    }
+
+    /// Δy（pt）→ Δ分钟，吸附到最近 15 分钟刻度。
+    private func snappedDeltaMinutes(forY deltaY: CGFloat) -> Int {
+        let rawMinutes = Double(deltaY) / Double(pxPerHour) * 60.0
+        let snapped = (rawMinutes / 15.0).rounded() * 15.0
+        return Int(snapped)
     }
 }
 

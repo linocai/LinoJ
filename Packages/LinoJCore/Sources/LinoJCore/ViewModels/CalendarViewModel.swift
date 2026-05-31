@@ -215,6 +215,17 @@ public final class CalendarViewModel {
         refresh()
     }
 
+    /// U7：拖拽改期写回。平移保持时长则传 newStart/newEnd（两者一起平移）；
+    /// 下边缘拉伸只改 newEnd（newStart 传原 start）。写回 Event 的 start/end 后 save + refresh
+    /// （与 confirmAttended/deleteEvent 同 VM、同 save+refresh 模式）。refresh 后 overlapLayout
+    /// 自动重算，事件进入/离开重叠簇的列分配随之更新（U5 协同，无需特殊处理）。
+    public func moveEvent(_ event: Event, newStart: Date, newEnd: Date) {
+        event.start = newStart
+        event.end = newEnd
+        try? context.save()
+        refresh()
+    }
+
     // MARK: - U5 重叠列分配（共享纯函数）
 
     /// U5：该天事件的重叠列分配。返回 `eventID → (column 0-based, 同簇总列数)`。

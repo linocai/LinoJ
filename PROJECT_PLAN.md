@@ -2991,6 +2991,21 @@ public enum LinoJStore {
 
 ---
 
+### [2026-05-31] U7 施工 —— macOS 周视图拖拽改期：共享 `moveEvent` + 拖拽手势 + 点击消歧
+
+- **变更内容**：
+  - **共享 VM（`CalendarViewModel.swift`）**：新增 `public func moveEvent(_ event:newStart:newEnd:)`——`event.start = newStart; event.end = newEnd; try? context.save(); refresh()`，与既有 `confirmAttended`/`deleteEvent` 同 VM、同 save+refresh 模式。语义：平移保持时长则 newStart/newEnd 一起平移；下边缘拉伸只改 newEnd（newStart 传原 start）。refresh 后 `overlapLayout` 自动重算（U5 协同，无需特殊处理）。
+  - **macOS 拖拽移动（`CalendarView_macOS.swift`）**：① `dayColumn` 的 `ForEach` 内把原来的内联 `EventCard(...).onTapGesture.contextMenu.offset` 替换为新抽出的 `private struct DraggableEventCard`——卡片自带 `@State dragOffsetY`（拖拽中纵向预览偏移，只改这个 state、**不每帧 save**）+ `@State isDragging`（拖拽中 opacity 0.85 / zIndex 提到 5 给手感反馈）。② 手势用 `DragGesture(minimumDistance: 4)`：`onChanged` 只更新 `dragOffsetY = value.translation.height`（卡片视觉跟随）；`onEnded` 把 Δy 经 `snappedDeltaMinutes` 算成「已吸附到最近 15 分钟刻度」的 Δ分钟（`Δy / pxPerHour * 60` → `(/15).rounded()*15`），先清预览偏移再回调 `onMove(deltaMinutes)`（写回后 VM refresh、`layout.y` 落到新位置，无回弹闪烁）。③ View 侧 `applyDragMove(event:deltaMinutes:vm:)` 把 Δ分钟整块平移到 start/end（保持时长）→ 调 `vm.moveEvent`。
+  - **点击/拖拽消歧（决策定死）**：`.onTapGesture { onTap }`（W4 打开编辑）+ `.highPriorityGesture(dragGesture)`——拖动 < 4pt 时 drag 不触发、tap 正常开编辑；≥ 4pt 时 highPriority 的 drag 抢占进入拖拽。`.contextMenu` 走右键、与左键 drag/tap 并存不冲突。
+- **是否做了可选下边缘拉伸**：**未做（按 plan 降级为下一增量）。** plan 明确「下边缘拉伸改时长」为本 Phase 可选项，若与移动手势/type-check 冲突复杂则降级。本期只做「拖拽移动整块平移」以确保手势 + 绝对定位 body 稳、type-check 不超时。`moveEvent` 接口已设计为支持拉伸语义（只改 newEnd），后续增量直接接下边缘手势即可，VM 无需再改（已加 `moveEventStretchKeepsStart` 测试覆盖拉伸语义路径）。
+- **跨天（左右平移改日期）**：**未做（plan 列为可选，MVP 只做上下平移）。** `applyDragMove` 注释已标注。
+- **偏离说明**：无功能性偏离。施工细节：按 CLAUDE.md「拖拽手势 + 绝对定位 body 易 type-check 超时，必抽子视图」的硬经验，**主动**把单卡逻辑抽成 `DraggableEventCard` struct（plan 第 5 点列为「若超时则抽」的可选措施，本期前置执行以规避风险）。实测 macOS App target 一次 BUILD SUCCEEDED、无 type-check 超时。
+- **验收**：`swift test --package-path Packages/LinoJCore` **209 → 212 全绿**（+3 `CalendarViewModelTests`：`moveEvent` 平移保持时长 + context 写回值正确、拉伸只改 end start 不变、改期跨天后 `eventsByDay` 归属随 refresh 变化）；`swift build -Xswiftc -warnings-as-errors` **0 warning**；**macOS App target `xcodebuild -scheme LinoJ-macOS -configuration Debug CODE_SIGNING_ALLOWED=NO build` BUILD SUCCEEDED**（拖拽手势 + 绝对定位 + 预览偏移，无 type-check 超时）；**iOS App target `-scheme LinoJ-iOS -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build` BUILD SUCCEEDED**（仅消费更新后的共享 VM，iOS UI 未涉及拖拽）。两端 0 新增源码 warning。
+- **headless 测不到、须出 macOS 包真机/桌面验证**：① **拖拽手感**——拖动事件卡上下平移、松手后卡片落到新时刻、SwiftData 持久化、重启仍在；② **吸附**——落点吸附到 15 分钟刻度（不落秒级）；③ **点击不误触拖拽**——轻点事件卡仍打开 W4 编辑、右键仍出 contextMenu、轻微抖动不误触发拖拽；④ **拖入重叠后并排**——把事件拖进与另一事件重叠的时段、松手后两者按 U5 自动并排分列。
+- **影响范围**：Phase U7。改 `CalendarViewModel.swift`（新增 `moveEvent`）、`CalendarView_macOS.swift`（`dayColumn` 内联卡片改用 `DraggableEventCard` + 新增 `applyDragMove` 辅助 + 新增 `private struct DraggableEventCard`）；扩 `CalendarViewModelTests`（+3）。**未做可选下边缘拉伸（降级下一增量）/ 未做跨天平移（MVP 只上下）/ 未碰 iOS UI / 未碰 U8/U9 / 未碰灵感/EventCard 内部/entitlements/pbxproj/Widget / 未 bump 版本号。**
+
+---
+
 ## 🚀 v1.0 公开上线剩余清单（新会话从这里接）
 
 **必做（TestFlight / 上架前）**
