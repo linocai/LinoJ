@@ -83,6 +83,18 @@ struct RootTabView: View {
                         Image(systemName: "calendar")
                     }
                 }
+                // U4：第 5 个 Tab「灵感 / Inspiration」。iOS 26 原生 Liquid Glass tab bar
+                // 自动容纳第 5 个 tab（无 macOS 那种单行宽度风险）。照搬既有 4 个 Tab 写法，
+                // 不自渲 capsule、不 `.toolbar(.hidden, for: .tabBar)`（否则两条 bar 叠加，见 CLAUDE.md）。
+                Tab(value: AppTab.inspiration) {
+                    InspirationView_iOS()
+                } label: {
+                    Label {
+                        Text(LJStrings.tabInspiration)
+                    } icon: {
+                        Image(systemName: "lightbulb")
+                    }
+                }
             }
             // 用 iOS 26 原生 Liquid Glass tab bar（带文字 label 那条）。
             // 不再 `.toolbar(.hidden, for: .tabBar)` + 自渲浮动 capsule —— 二者在 iOS 26

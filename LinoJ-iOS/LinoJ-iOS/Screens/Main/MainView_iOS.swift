@@ -30,8 +30,13 @@ struct MainView_iOS: View {
     @Query private var todos: [Todo]
     @Query private var events: [Event]
     @Query private var projects: [Project]
+    /// U4：Main 角块「最近灵感」用 —— @Query 触发 invalidation，noteListVM 取 recentNotes(3)。
+    @Query private var notes: [Note]
 
     @State private var vm: MainViewModel?
+
+    /// U4：Main 角块「最近灵感」自持的轻量 NoteListViewModel（**不污染 MainViewModel**，与 macOS 同模式）。
+    @State private var noteListVM: NoteListViewModel?
 
     /// W2：本屏自有 SettingsViewModel，用于读 `showCompletedInCounts`（影响 open 计数）与
     /// `yesterdayMissedReminderEnabled`（影响 yesterday-missed 短路）注入到 MainViewModel。
@@ -52,7 +57,17 @@ struct MainView_iOS: View {
             if vm == nil {
                 vm = makeVM()
             }
+            // U4：Main 角块自持的 NoteListViewModel（轻量，不进 MainViewModel）。
+            if noteListVM == nil {
+                noteListVM = NoteListViewModel(context: modelContext)
+            }
         }
+        // U4：note 数据变化 → 让角块 VM 重算。抽成 modifier 减轻 body 类型检查负担（见 CLAUDE.md）。
+        .modifier(NoteInvalidationModifier_iOS(
+            noteCount: notes.count,
+            noteUpdatedAts: notes.map(\.updatedAt),
+            onChange: { noteListVM?.refresh() }
+        ))
         // services.headsUp 从 nil 变成实际 service 时重建 vm。
         .onChange(of: services.headsUp == nil) { _, _ in
             vm = makeVM()
@@ -178,6 +193,10 @@ struct MainView_iOS: View {
 
                         // Projects
                         projectsSection(vm: vm)
+                            .padding(.top, 22)
+
+                        // U4：「最近灵感」角块（在 Projects 之后、底部留白之前）。
+                        recentInspirationSection()
                             .padding(.top, 22)
 
                         // 底部让出 tab bar
@@ -385,6 +404,111 @@ struct MainView_iOS: View {
         }
     }
 
+    // MARK: - U4 最近灵感角块
+
+    /// 「最近灵感」section：小节头 + 横向 1-3 条 note 卡（点击 → 切 Inspiration tab）
+    /// + 「随手记一条」入口（→ 切 tab + createNote 打开新编辑器）。
+    /// 数据用自持的 noteListVM.recentNotes(3)，**不污染 MainViewModel**。
+    @ViewBuilder
+    private func recentInspirationSection() -> some View {
+        let recent = noteListVM?.recentNotes(limit: 3) ?? []
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                sectionHeader(label: LJStrings.inspirationRecent, count: recent.count, withBlueDot: false)
+            }
+            .padding(.horizontal, 16)
+
+            if recent.isEmpty {
+                // 无 note：只给「随手记一条」入口（单卡）。
+                jotEntryCard()
+                    .padding(.horizontal, 16)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(recent, id: \.id) { note in
+                            recentNoteCard(note: note)
+                        }
+                        jotEntryCard()
+                    }
+                    .padding(.horizontal, 16)
+                }
+            }
+        }
+    }
+
+    /// 单条「最近灵感」mini 卡（点击 → 切到 Inspiration tab）。
+    @ViewBuilder
+    private func recentNoteCard(note: Note) -> some View {
+        Button {
+            router.current = .inspiration
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
+                    if note.isPinned {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(Color.lj.inkMute)
+                    }
+                    Image(systemName: "lightbulb")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(Color.lj.inkMute)
+                    Spacer()
+                }
+                Text(note.displayTitle)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.lj.ink)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .frame(width: 150, height: 86, alignment: .topLeading)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.lj.panel)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color.lj.border, lineWidth: 0.5)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 「随手记一条」入口卡（→ 切 Inspiration tab + createNote 打开新编辑器）。
+    @ViewBuilder
+    private func jotEntryCard() -> some View {
+        Button {
+            noteListVM?.createNote()
+            router.current = .inspiration
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.lj.inkSoft)
+                Spacer(minLength: 0)
+                Text(LJStrings.inspirationQuickJot)
+                    .font(.system(size: 13.5, weight: .semibold))
+                    .foregroundStyle(Color.lj.inkSoft)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(12)
+            .frame(width: 150, height: 86, alignment: .topLeading)
+            .background {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.lj.chip)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color.lj.border, style: StrokeStyle(lineWidth: 0.5, dash: [3, 3]))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Section header helper
 
     @ViewBuilder
@@ -406,6 +530,22 @@ struct MainView_iOS: View {
             Spacer()
         }
         .padding(.horizontal, 4)
+    }
+}
+
+// MARK: - U4 note 数据变化观察 modifier（iOS）
+
+/// 把「最近灵感」角块的两条 `@Query` note 失效观察抽成 modifier —— 直接挂在 MainView_iOS
+/// 已经很长的 body 链上会把它推过 Swift 类型检查阈值（unable to type-check in reasonable time）。
+private struct NoteInvalidationModifier_iOS: ViewModifier {
+    let noteCount: Int
+    let noteUpdatedAts: [Date]
+    let onChange: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: noteCount) { _, _ in onChange() }
+            .onChange(of: noteUpdatedAts) { _, _ in onChange() }
     }
 }
 
