@@ -3026,6 +3026,31 @@ public enum LinoJStore {
 
 ---
 
+### [2026-05-31] U9a 施工（U9.1 + U9.2）—— App Group entitlements + SwiftData store 迁到 App Group 容器
+
+> **本轮刻意只做 U9 前半（entitlements + store 迁移），不建 Widget 扩展 target、不碰 pbxproj 加 target——widget target 留 U9b 隔离风险。** v1.1 风险最高的改动，纪律：旧 store 永不删（只拷不移，作回退）；任何失败路径 App 仍能起；真机三者叠加（迁移 + CloudKit + App Group）单测抓不到，留主控出签名包给用户真机验。
+
+- **U9.1 entitlements 改了什么**：两端 App entitlements 各**追加** `com.apple.security.application-groups = [group.com.linocai.linoj]`，其余 key 一律不动：
+  - `LinoJ-macOS.entitlements`：保留 `com.apple.security.app-sandbox` + iCloud/CloudKit/ubiquity-kvstore/aps-environment(development)/applesignin/network.client 全部不动，仅追加 application-groups。
+  - `LinoJ-iOS.entitlements`：保留 iCloud/CloudKit/ubiquity-kvstore/aps-environment/applesignin 全部不动，仅追加 application-groups。
+  - 两份 `plutil -lint` 均 OK。**未建 widget target、未加 widget entitlements**（U9b）。
+- **U9.2 代码实现**：
+  - 新增常量 `LinoJAppGroup.id = "group.com.linocai.linoj"`（放 `LinoJCloudKit.swift` 同处）。
+  - `LinoJStore.appGroupStoreURL() -> URL?`：`FileManager.containerURL(forSecurityApplicationGroupIdentifier: LinoJAppGroup.id)?.appending(path: storeBaseName)`；取不到返回 nil。
+  - `@MainActor migrateStoreToAppGroupIfNeeded()`：幂等。取 group URL + 旧默认位置 URL，二者不同目录时调可测核心 `migrateStore(from:to:)`；group URL 取不到 / 默认位置取不到 → no-op。
+  - `static migrateStore(from:to:)`（可注入源/目标目录的可测核心）：目标已有主 store → no-op（幂等不覆盖）；源无主 store → no-op（干净安装）；否则逐个探测源目录下**实际存在**的条目拷到目标（主 store + sidecar + 辅助目录），**旧文件保留不删**，任一拷贝抛错吞掉不上抛（best-effort，绝不阻断启动）。
+  - `makeContainer` 改造：`inMemory == true` 路径**完全不变**（纯内存 + `.none`，不碰 App Group URL，测试不受影响）；`inMemory == false` 且 `appGroupStoreURL()` 非 nil → `ModelConfiguration(schema:url:cloudKitDatabase:)` 显式指定 group URL；`appGroupStoreURL()` 为 nil → **fallback** 回 named 配置默认位置（不带 url），保证 App 不因 App Group 没配好而起不来。
+  - 两端 App init：在 `makeContainerWithFallback()` **之前**调一次 `LinoJStore.migrateStoreToAppGroupIfNeeded()`（同 `MainActor.assumeIsolated` 块内）。
+- **旧默认 store 路径的判定与探测（迁移成败关键）**：真机/真容器探测（`find ~/Library -name 'LinoJStore*'`）结论——named 配置 `ModelConfiguration("LinoJStore", ...)` 的默认落盘是该进程 **Application Support 目录下的 `LinoJStore.store`**（扩展名 **`.store`，不是 plan 占位文本里的 `.sqlite`**），带 `LinoJStore.store-wal` / `LinoJStore.store-shm` 两个 sidecar，外加同目录的 `LinoJStore_ckAssets`（CloudKit 资源目录，cloud ON 时存在）与隐藏 `.LinoJStore_SUPPORT` 支持目录（命名均从 store 基础名派生）。迁移按这套清单逐个探测实际存在的才拷。
+- **偏离说明（plan 占位文件名 `.sqlite` → 实际 `.store`，二者均沿用同一基础名）**：plan 2186/2206 把 App Group store URL 占位写成 `LinoJStore.sqlite`；但 SwiftData 对 named 配置实际产物基础名是 `LinoJStore.store`，且辅助目录名从基础名派生。为让旧→新整套文件 **1:1 同名拷贝**、SwiftData 用同一基础名重算出一致的辅助目录名（避免「重命名 store 但辅助目录名对不上 → wal 无法回放」的迁移隐患），**App Group 目标 URL 也沿用 `LinoJStore.store`**（集中为 `LinoJStore.storeBaseName` 常量）。plan 里的 `.sqlite` 仅是占位文本，本偏离纯为迁移安全，对外行为一致。
+- **回退路径（双层）**：① `appGroupStoreURL()` 为 nil（entitlement 没配好 / containerURL 取不到）→ `makeContainer` 回退 named 配置默认位置，App 仍能起；② `migrateStore` best-effort，任一拷贝失败吞掉不阻断启动，且旧 store 永不删 → 最坏退化为「group 容器内重建空 store + CloudKit 拉回 / 旧位置数据仍在」。
+- **测试**：新增 `StoreMigrationTests.swift`（用临时目录桩，不依赖真实 group 容器）—— 无旧 store no-op / 有旧 store（含 sidecar + 辅助目录）全套拷且旧文件仍在 / 目标已存在不覆盖（幂等）/ 同目录优雅 no-op / `legacyDefaultStoreURL` 形状。把搬运核心抽成可注入 `migrateStore(from:to:)`，`migrateStoreToAppGroupIfNeeded()` 包一层喂真实 URL（后者依赖真 group 容器，headless 取不到，真机验收覆盖）。
+- **验收**：① `swift test --package-path Packages/LinoJCore` **217 全绿**（212 → 217，+5 迁移测试）；② `swift build --package-path Packages/LinoJCore -Xswiftc -warnings-as-errors` **0 warning**（Build complete）；③ **macOS App target** `xcodebuild -scheme LinoJ-macOS -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build` **BUILD SUCCEEDED**；④ **iOS App target** `xcodebuild -scheme LinoJ-iOS -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build` **BUILD SUCCEEDED**；两端 0 新增源码 warning（仅与本期无关的 `appintentsmetadataprocessor` 工具链提示）。
+- **headless 抓不到、必须主控出签名包 + 用户真机验**：① v1.0 旧 store 升级路径——保留旧数据的 App 升级后旧数据全部出现、不丢；② App Group 容器内的 store 接 CloudKit `.private` 正常同步、不 crash、不重复（与 seed 竞态同源，已沿用 cloud ON 不 seed）；③ 签名是否因新增 App Group capability 正常通过（provisioning profile 须含该 App Group，用户已在 developer.apple.com 注册并关联 App ID）。
+- **影响范围**：Phase U9（前半 U9.1+U9.2）。改 `Packages/LinoJCore/Sources/LinoJCore/Persistence/ModelContainer+LinoJ.swift`（App Group URL + 迁移 + makeContainer 改造）、`Packages/LinoJCore/Sources/LinoJCore/CloudKit/LinoJCloudKit.swift`（新增 `LinoJAppGroup`）、两端 App init（调 migrate）、两端 entitlements（追加 application-groups）；新增 `StoreMigrationTests.swift`。**未碰 pbxproj、未建 Widget 扩展 target（留 U9b）、未 bump 版本号、未 commit（主控统一管）。**
+
+---
+
 ## 🚀 v1.0 公开上线剩余清单（新会话从这里接）
 
 **必做（TestFlight / 上架前）**

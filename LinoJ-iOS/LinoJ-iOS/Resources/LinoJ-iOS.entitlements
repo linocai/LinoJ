@@ -18,5 +18,9 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.linocai.linoj</string>
+	</array>
 </dict>
 </plist>

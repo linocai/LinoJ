@@ -29,7 +29,11 @@ struct LinoJ_macOSApp: App {
     init() {
         // makeContainer 是 @MainActor —— init 在 @main entrypoint 等价主线程，可以直接 assumeIsolated。
         let container = MainActor.assumeIsolated {
-            Self.makeContainerWithFallback()
+            // U9（v1.1）：建容器前先做一次幂等的 App Group store 迁移（把旧默认位置的 v1.0 数据
+            // 拷到 App Group 共享容器，旧 store 保留不删作回退）。失败 / 已迁移 / 无旧 store 均 no-op，
+            // 不抛错，绝不阻断 App 启动。
+            LinoJStore.migrateStoreToAppGroupIfNeeded()
+            return Self.makeContainerWithFallback()
         }
         self.container = container
         #if DEBUG
