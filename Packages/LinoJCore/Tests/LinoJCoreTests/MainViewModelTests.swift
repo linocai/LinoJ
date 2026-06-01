@@ -25,7 +25,8 @@ struct MainViewModelTests {
         let container = try LinoJStore.makeContainer(inMemory: true)
         let context = ModelContext(container)
         try SeedData.seedIfEmpty(context)
-        let vm = MainViewModel(context: context)
+        // 显式注入 SeedData.todaySimulated()（2026-05-27）让派生量确定性、与系统真实日期无关。
+        let vm = MainViewModel(context: context, today: SeedData.todaySimulated())
         return (vm, context)
     }
 
@@ -54,7 +55,7 @@ struct MainViewModelTests {
         #expect(groups.count == 7)
         // 第一项应该 = startOfToday；之后每项严格 + 1 day。
         let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: LinoJTime.today())
+        let startOfToday = calendar.startOfDay(for: SeedData.todaySimulated())
         #expect(groups.first?.day == startOfToday)
         for index in 1..<groups.count {
             let prev = groups[index - 1].day
@@ -140,7 +141,7 @@ struct MainViewModelTests {
         let context = ModelContext(container)
         try SeedData.seedIfEmpty(context)
         let service = YesterdayMissedService(context: context)
-        let vm = MainViewModel(context: context, yesterdayMissedService: service)
+        let vm = MainViewModel(context: context, yesterdayMissedService: service, today: SeedData.todaySimulated())
         #expect(vm.yesterdayMissed.count == 2)
         vm.showYesterdayMissed = false
         #expect(vm.yesterdayMissed.isEmpty)

@@ -3100,3 +3100,21 @@ public enum LinoJStore {
 **v1.1+ 已明确延后**（见上方「v1.0 待办」节）：EventKit 真镜像、Widget（out of scope）、macOS 公开分发（Developer ID 公证 / MAS，本轮只做了 dev 签名桌面包）、远程推送服务端（当前是 CloudKit 订阅静默推送，无自建 APNs）。
 
 **视觉小尾巴**：iOS 各屏滚到底有 ~100pt 多余留白（原让位旧浮动 capsule，现原生 tab bar 系统处理安全区，可收）。
+
+### [2026-06-01] 修复：LinoJTime.today() 始终真实日期 + MainViewModel 加 today 注入
+
+> 根治性 bug 修复：日常 Debug 包「不知道今天几号」。无新功能，纯时间源根治 + 测试确定性。
+
+- **改了什么（today() 根治）**：`LinoJTime.today()` 删掉 `#if DEBUG return SeedData.todaySimulated() #else return Date() #endif` 整个分支，改为**永远 `return Date()`**，DEBUG/Release 一致——Debug 包从此显示真实日期。`now()` 本就永远真实，不动；`startOfToday()` 基于 today() 自动跟随，不单独改。同步更新 LinoJTime / CalendarViewModel / YesterdayMissedService 里把 DEBUG 默认描述成「2026-05-27」的过期文档注释。
+- **为何给 MainViewModel 加 today 参数【偏离说明】**：today() 不再冻结后，依赖「今天 = 2026-05-27」的派生量（todayEvents / next7DaysGrouped / yesterdayMissed）会随系统真实日期漂移，相关单测（todayEventsCount==4、yesterdayMissed.count==2、deleteEvent 取 vm.todayEvents.first 等强断言）不再确定。为恢复确定性，给真正的 `MainViewModel.init`（带 context/yesterdayMissedService 那个）加 `today: Date = LinoJTime.today()` 注入参数、存 `private let today`，并把三处 computed property 内部直接调 `LinoJTime.today()` 的地方改用 `self.today`。**这是 plan 未覆盖的功能代码改动，主控已批准**；与 `CalendarViewModel` 既有 `today:` 注入设计完全对称：默认参数 = 真实今天（生产行为不变），测试注入固定日期。
+- **测试如何注入确定性**：所有构造 ViewModel / 调 computeMissed 的测试改为显式锚定 `SeedData.todaySimulated()`，与系统真实日期无关——
+  - `MainViewModelTests`：`makeSeededVM()` 与 service-backed 用例传 `today: SeedData.todaySimulated()`；next7Days 断言的期望值改用 `SeedData.todaySimulated()`。
+  - `CalendarViewModelTests`：`makeSeededVM()` 与 service-backed 用例传 `today: SeedData.todaySimulated()`；weekStart/goToday 三处断言期望值由 `LinoJTime.today()` 换成 `SeedData.todaySimulated()`。
+  - `CalendarOverlapTests`（连带发现的第 4 处）：`instanceWrapperMatchesPureCore` 构造的 VM 旧时靠 DEBUG 冻结默认让窗口含 2026-05-27 事件，今须显式传 `today: SeedData.todaySimulated()`，否则真实窗口不含锚定在 05-27 的事件 → eventsByDay 空 → 断言挂（已修）。
+  - `YesterdayMissedServiceTests`：`computeMissed(now:)` 实参由 `LinoJTime.today()` 换成 `SeedData.todaySimulated()`。
+  - `HeadsUpServiceTests`：逻辑无需改（用 `LinoJTime.now()` 真实时间、相对锚定自洽）；仅修正头部把 `now() == todaySimulated()` 误描述的过期注释。
+  - `SeedDataTests`：本就用 `SeedData.todaySimulated()` 直接锚定，核对无需改。
+  - 全仓未发现「直接断言 today() == 2026-05-27」这类测冻结行为本身的断言，无删除。
+- **QuickAdd 核查结论**：`QuickAddViewModel` 新建事件的默认时间窗用的是 `let now = Date()`（真实 now），**本就不读 `LinoJTime.today()`**，故本修复不改变其行为——新建事件默认日期一直是真实今天，未受冻结影响、修复后亦正确。
+- **影响范围**：`LinoJTime.swift`、`MainViewModel.swift`（功能改动 today 注入）、`CalendarViewModel.swift` / `YesterdayMissedService.swift`（仅文档注释更正）、4 个测试文件。未动 SeedData 锚定逻辑 / now() / entitlements / pbxproj / widget。
+- **验收**：`swift test` **227 passed**（连跑两次稳定，与系统日期无关）；`swift build -Xswiftc -warnings-as-errors` 0 warning；macOS（-scheme LinoJ-macOS）与 iOS（-scheme LinoJ-iOS / generic iOS Simulator）App target 均 `BUILD SUCCEEDED`（CODE_SIGNING_ALLOWED=NO）。

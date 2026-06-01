@@ -2,11 +2,12 @@
 // 验证 YesterdayMissedService.computeMissed(now:) 的过滤窗口与 confirmAttended 的副作用。
 //
 // 用 SeedData 完整 seed 一遍，然后断言：
-//   - 注入 now = LinoJTime.today()（2026-05-27 09:00）时，结果包含且仅包含 yesterday 的 y1/y2；
+//   - 注入 now = SeedData.todaySimulated()（2026-05-27 09:00）时，结果包含且仅包含 yesterday 的 y1/y2；
 //   - confirmAttended(y1) 后再 compute，y1 不再出现，剩下 y2。
 //
-// 注：F1 修复后 LinoJTime.now() 始终返回真实时间（不再冻结），所以测试显式传
-// `LinoJTime.today()` 让窗口对齐 2026-05-26 yesterday seed。
+// 注：computeMissed(now:) 的窗口完全由注入的 now 决定。测试显式传
+// `SeedData.todaySimulated()`（而非 LinoJTime.today() 真实今天）让窗口对齐 2026-05-26
+// yesterday seed，断言与系统真实日期无关、确定性。
 
 import Foundation
 import SwiftData
@@ -31,7 +32,7 @@ struct YesterdayMissedServiceTests {
     @Test("computeMissed returns exactly yesterday's unconfirmed events (y1, y2)")
     func testFiltersOnlyYesterday() throws {
         let (service, _) = try makeService()
-        let missed = service.computeMissed(now: LinoJTime.today())
+        let missed = service.computeMissed(now: SeedData.todaySimulated())
         // SeedData 中昨日事件标题：y1 = "Engineering standup", y2 = "Coffee with Andrew"
         let titles = Set(missed.map(\.title))
         #expect(titles.contains("Engineering standup"))
@@ -45,14 +46,14 @@ struct YesterdayMissedServiceTests {
     @Test("confirmAttended removes that event from subsequent compute")
     func testConfirmAttendedRemoves() throws {
         let (service, _) = try makeService()
-        var missed = service.computeMissed(now: LinoJTime.today())
+        var missed = service.computeMissed(now: SeedData.todaySimulated())
         #expect(missed.count == 2)
 
         // 取第一条标为已参加
         let first = try #require(missed.first)
         service.confirmAttended(first)
 
-        missed = service.computeMissed(now: LinoJTime.today())
+        missed = service.computeMissed(now: SeedData.todaySimulated())
         #expect(missed.count == 1)
         #expect(!missed.contains(where: { $0.id == first.id }))
     }
@@ -62,7 +63,7 @@ struct YesterdayMissedServiceTests {
     @Test("computeMissed with now = today + 30d returns empty (all seed events far past)")
     func testComputeMissedWithFutureNow() throws {
         let (service, _) = try makeService()
-        let monthLater = LinoJTime.today().addingTimeInterval(30 * 24 * 60 * 60)
+        let monthLater = SeedData.todaySimulated().addingTimeInterval(30 * 24 * 60 * 60)
         let missed = service.computeMissed(now: monthLater)
         #expect(missed.isEmpty)
     }

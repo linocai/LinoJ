@@ -9,7 +9,7 @@
 //
 // 数据流照搬 MainViewModel 模式：
 //   - `@Observable @MainActor` final class；
-//   - init 拿 ModelContext + 可选的 `today`（默认 LinoJTime.today()：DEBUG = 2026-05-27 09:00；Release = 真实今天）；
+//   - init 拿 ModelContext + 可选的 `today`（默认 LinoJTime.today() = 真实今天，DEBUG/Release 一致；测试注入 SeedData.todaySimulated()）；
 //   - `tick` 用于驱动所有 computed property 在 View `.onChange` 时重新 fetch；
 //   - 状态变更（goNext / goPrev / goToday / selectDay / confirmAttended）写入 stored prop
 //     或 mutate Event，然后 refresh()。
@@ -30,8 +30,8 @@ public final class CalendarViewModel {
     /// SwiftData 上下文。View 通过 `@Environment(\.modelContext)` 拿到后注入。
     private let context: ModelContext
 
-    /// 该 vm 视角下的「今天」时刻。DEBUG 默认 = LinoJTime.today()（2026-05-27 09:00），
-    /// Release 默认 = `.now`。测试时可注入特定 Date。
+    /// 该 vm 视角下的「今天」时刻。默认 = LinoJTime.today()（真实今天，DEBUG/Release 一致）。
+    /// 测试注入 SeedData.todaySimulated() 锚定确定性。
     private let today: Date
 
     /// YesterdayMissedService 实例（可选）。P4 起由 App 注入；不传时 fallback 到本地 fetch。
@@ -56,8 +56,8 @@ public final class CalendarViewModel {
 
     /// - Parameters:
     ///   - context: SwiftData 上下文。
-    ///   - today: 可注入的「今天」时刻；测试用。默认值通过 `LinoJTime.today()` 计算
-    ///            （DEBUG → 2026-05-27 09:00；Release → `.now`）。
+    ///   - today: 可注入的「今天」时刻；测试用。默认 = `LinoJTime.today()`（真实今天，
+    ///            DEBUG/Release 一致）。测试注入 `SeedData.todaySimulated()` 锚定确定性。
     public init(
         context: ModelContext,
         today: Date = LinoJTime.today(),

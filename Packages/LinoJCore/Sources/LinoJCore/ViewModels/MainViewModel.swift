@@ -70,16 +70,23 @@ public final class MainViewModel {
     /// 为 false 时 `yesterdayMissed` getter 短路返回 `[]`，从而「From yesterday」box 不渲染。
     public var showYesterdayMissed: Bool = true
 
+    /// 该 VM 视角下的「今天」时刻。默认 = `LinoJTime.today()`（真实今天，生产行为不变）；
+    /// 测试注入 `SeedData.todaySimulated()` 让 seed 数据落入「今天」窗口、断言确定性。
+    /// 与 `CalendarViewModel` 的 `today:` 注入设计对称。
+    private let today: Date
+
     // MARK: Init
 
     public init(
         context: ModelContext,
         headsUpService: HeadsUpService? = nil,
-        yesterdayMissedService: YesterdayMissedService? = nil
+        yesterdayMissedService: YesterdayMissedService? = nil,
+        today: Date = LinoJTime.today()
     ) {
         self.context = context
         self.headsUpService = headsUpService
         self.yesterdayMissedService = yesterdayMissedService
+        self.today = today
     }
 
     // MARK: Refresh hook
@@ -134,11 +141,11 @@ public final class MainViewModel {
     }
 
     /// 今天落地的所有事件，按 start 升序。
-    /// 用 `LinoJTime.today()`：DEBUG 下取 2026-05-27 让 seed 数据落入今天。
+    /// 用注入的 `self.today`：生产 = 真实今天；测试注入 SeedData.todaySimulated() 锚定。
     public var todayEvents: [Event] {
         _ = tick
         let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: LinoJTime.today())
+        let startOfToday = calendar.startOfDay(for: today)
         guard let startOfTomorrow = calendar.date(byAdding: .day, value: 1, to: startOfToday) else {
             return []
         }
@@ -149,11 +156,11 @@ public final class MainViewModel {
 
     /// 「Next 7 days」分组：以今天为第 1 天，向后 7 天；每天的 events 按 start 升序。
     /// 始终返回 7 项（即使某天为空也保留 `events: []`），保证 UI 7-row 骨架稳定。
-    /// 用 `LinoJTime.today()`：DEBUG 下从 2026-05-27 开始的 7 天，让 seed 数据可见。
+    /// 用注入的 `self.today`：生产 = 真实今天起算 7 天；测试注入锚定让 seed 数据可见。
     public var next7DaysGrouped: [(day: Date, events: [Event])] {
         _ = tick
         let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: LinoJTime.today())
+        let startOfToday = calendar.startOfDay(for: today)
         let events = allEvents()
 
         var result: [(day: Date, events: [Event])] = []
@@ -173,19 +180,18 @@ public final class MainViewModel {
     /// 昨日已结束 + 未确认参加的事件，按 start 升序。
     /// P4 起优先委托 YesterdayMissedService；service 未注入时 fallback 到本地计算（保证
     /// 既有测试与 mock 路径不变）。
-    /// fallback 路径用 `LinoJTime.today()`：DEBUG 下取 2026-05-27 让 yesterday=05-26 的
-    /// seed 事件被识别。
+    /// 两条路径都用注入的 `self.today`：生产 = 真实今天；测试注入锚定让 yesterday 窗口对齐。
     public var yesterdayMissed: [Event] {
         _ = tick
         // W2：Settings 关掉「yesterday missed」提醒时短路返回空（box 自然不渲染）。
         guard showYesterdayMissed else { return [] }
         if let service = yesterdayMissedService {
-            // 显式传 LinoJTime.today()：DEBUG 下用 2026-05-27 让 seed 的 yesterday=05-26
-            // 事件能被识别为「昨天」；Release 下与真实 now 等价。
-            return service.computeMissed(now: LinoJTime.today())
+            // 用注入的 self.today 作为「现在」锚点：生产 = 真实今天；测试注入
+            // SeedData.todaySimulated() 让 seed 的 yesterday=05-26 事件被识别为「昨天」。
+            return service.computeMissed(now: today)
         }
         let calendar = Calendar.current
-        let startOfToday = calendar.startOfDay(for: LinoJTime.today())
+        let startOfToday = calendar.startOfDay(for: today)
         guard let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday) else {
             return []
         }

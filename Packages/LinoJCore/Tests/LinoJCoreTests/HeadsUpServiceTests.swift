@@ -1,12 +1,12 @@
 // HeadsUpServiceTests.swift
 // 验证 HeadsUpService.tick() 在 in-memory context + 手工 seed 的几个边界场景下计算正确。
 //
-// 注意「now」：HeadsUpService 内部用 LinoJTime.now() 取「现在」时刻。DEBUG 构建下
-// LinoJTime.now() == SeedData.todaySimulated() == 2026-05-27 09:00 local。
+// 注意「now」：HeadsUpService 内部用 LinoJTime.now() 取「现在」时刻。LinoJTime.now()
+// **始终** 返回真实物理时间（DEBUG/Release 一致，不冻结）。
 //
-// 因此测试方法是：插入一个 Event，让它的 start = LinoJTime.now() + N 分钟，
-// 然后 tick() 后断言 currentAlert.minutesUntil ≈ N。
-// 不需要 mock 时间源，也不需要等 Timer 周期触发 —— tick() 是 public 的。
+// 因此测试方法是：插入一个 Event，让它的 start = LinoJTime.now() + N 分钟（相对真实
+// now 锚定），然后 tick() 后断言 currentAlert.minutesUntil ≈ N。这套相对锚定与系统真实
+// 日期无关、自洽，不需要 mock 时间源，也不需要等 Timer 周期触发 —— tick() 是 public 的。
 
 import Foundation
 import SwiftData

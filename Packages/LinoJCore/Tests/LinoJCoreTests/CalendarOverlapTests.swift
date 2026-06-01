@@ -133,7 +133,9 @@ struct CalendarOverlapTests {
         context.insert(a)
         context.insert(b)
         try context.save()
-        let vm = CalendarViewModel(context: context)
+        // 事件锚定在 2026-05-27（见 event() 助手）；显式注入同一天作为「今天」，
+        // 让 7 天窗口包含这两个事件、断言与系统真实日期无关、确定性。
+        let vm = CalendarViewModel(context: context, today: SeedData.todaySimulated())
         vm.refresh()
         let cal = CalendarViewModel.calendar
         let dayStart = cal.startOfDay(for: a.start)

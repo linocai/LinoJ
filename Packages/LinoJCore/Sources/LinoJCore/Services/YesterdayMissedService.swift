@@ -6,9 +6,9 @@
 //   - @MainActor public final class YesterdayMissedService
 //   - init(context: ModelContext)
 //   - computeMissed(now: Date = LinoJTime.now()) -> [Event]
-//     调用方（MainViewModel / CalendarViewModel）在 DEBUG 下应显式传 LinoJTime.today()
-//     让 2026-05-26 yesterday-missed seed 数据能被识别。Service 自身默认用 `now()`（真实时间）
-//     保持服务接口的「物理时间」语义干净。
+//     调用方（MainViewModel / CalendarViewModel）传各自注入的 `today`（生产 = 真实今天；
+//     测试注入 SeedData.todaySimulated() 让 2026-05-26 yesterday-missed seed 数据能被识别）。
+//     Service 自身默认用 `now()`（真实时间）保持服务接口的「物理时间」语义干净。
 //   - confirmAttended(_ event: Event)
 //
 // 筛选条件（README 与 PROJECT_PLAN.md P4 验收一致）：
@@ -35,7 +35,8 @@ public final class YesterdayMissedService {
     /// 计算昨日已结束且未确认参加的事件，按 start 升序返回。
     ///
     /// - Parameter now: 用来推算「今天」与「昨天」的时刻；默认 `LinoJTime.now()`（始终真实时间）。
-    ///                  DEBUG 下调用方应显式传 `LinoJTime.today()`（2026-05-27）让 seed 数据可见。
+    ///                  调用方传各自注入的 `today`（生产 = 真实今天；测试注入
+    ///                  `SeedData.todaySimulated()` = 2026-05-27 让 seed 数据可见）。
     ///                  测试时可注入特定 Date 来覆盖边界 case。
     public func computeMissed(now: Date = LinoJTime.now()) -> [Event] {
         let calendar = Calendar.current

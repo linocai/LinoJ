@@ -22,7 +22,8 @@ struct CalendarViewModelTests {
         let container = try LinoJStore.makeContainer(inMemory: true)
         let context = ModelContext(container)
         try SeedData.seedIfEmpty(context)
-        let vm = CalendarViewModel(context: context)
+        // 显式注入 SeedData.todaySimulated()（2026-05-27）让窗口/派生量确定性、与系统真实日期无关。
+        let vm = CalendarViewModel(context: context, today: SeedData.todaySimulated())
         return (vm, context)
     }
 
@@ -32,7 +33,7 @@ struct CalendarViewModelTests {
     func weekStartIsToday() throws {
         let (vm, _) = try makeSeededVM()
         let calendar = CalendarViewModel.calendar
-        let todayStart = calendar.startOfDay(for: LinoJTime.today())
+        let todayStart = calendar.startOfDay(for: SeedData.todaySimulated())
         #expect(vm.weekStart == todayStart)
         // weekDays 第一项 == weekStart == today。
         #expect(vm.weekDays.first == todayStart)
@@ -97,11 +98,11 @@ struct CalendarViewModelTests {
         vm.goNextWeek()
         vm.goNextWeek()
         let calendar = CalendarViewModel.calendar
-        let todayWeek = CalendarViewModel.startOfWeek(containing: LinoJTime.today())
+        let todayWeek = CalendarViewModel.startOfWeek(containing: SeedData.todaySimulated())
         vm.goToday()
         #expect(calendar.isDate(vm.weekStart, inSameDayAs: todayWeek))
         // weekStart reset 后 == today 的 startOfDay。
-        let todayStart = calendar.startOfDay(for: LinoJTime.today())
+        let todayStart = calendar.startOfDay(for: SeedData.todaySimulated())
         #expect(vm.weekStart == todayStart)
         // selectedDay 也应回到 today 的 startOfDay。
         #expect(calendar.isDate(vm.selectedDay, inSameDayAs: todayStart))
@@ -178,7 +179,7 @@ struct CalendarViewModelTests {
         let context = ModelContext(container)
         try SeedData.seedIfEmpty(context)
         let service = YesterdayMissedService(context: context)
-        let vm = CalendarViewModel(context: context, yesterdayMissedService: service)
+        let vm = CalendarViewModel(context: context, today: SeedData.todaySimulated(), yesterdayMissedService: service)
         #expect(vm.yesterdayMissed.count == 2)
         vm.showYesterdayMissed = false
         #expect(vm.yesterdayMissed.isEmpty)
