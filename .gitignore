@@ -28,5 +28,7 @@ build/
 *.log
 *.tmp
 
-# 项目本地记忆文件（项目特定经验/坑，不入库）
+# 项目本地记忆 / 规划文件（项目特定经验、计划、历史归档，不入库）
 CLAUDE.md
+PROJECT_PLAN.md
+archive/
