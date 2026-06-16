@@ -1,5 +1,7 @@
 // Todo.swift
-// Todo 是无时间的待办。NON-NEGOTIABLE：不存任何时间字段（除 createdAt 用于排序）。
+// Todo 是无时间的待办。NON-NEGOTIABLE：**没有 due date / today / tomorrow / overdue**。
+// createdAt 仅用于排序；completedAt（v1.2）仅记录「何时完成」用于 CompletedBox 近 30 天分层 ——
+// 两者都不是「钟」（不参与提醒 / 不渲染为日程），墙不动：要绑钟就是 Event。
 //
 // 关于 urgency / scope：
 //   SwiftData 对 `@Model` 的 enum 属性支持取决于版本；为了稳妥地跨 light/dark schema 与
@@ -38,6 +40,12 @@ public final class Todo {
     /// V1：CloudKit 约束需默认值。
     public var createdAt: Date = Date.now
 
+    /// v1.2 P5：完成时刻。`toggleDone` 置 `done=true` 时写 `.now`，置 `false` 时清 `nil`。
+    /// 支撑 CompletedBox「近 30 天 recent / 更早 archive」分层（不删任何 completed todo）。
+    /// optional（`Date?`）→ CloudKit 合规；加此字段触发轻量 schema 演进（旧 store 升级见真机清单）。
+    /// 存量旧 done todo 的 `completedAt == nil` 归 recent（不丢失，见 VM 分层逻辑）。
+    public var completedAt: Date?
+
     public init(
         id: UUID = UUID(),
         title: String,
@@ -45,7 +53,8 @@ public final class Todo {
         scope: Scope,
         project: Project? = nil,
         done: Bool = false,
-        createdAt: Date = .now
+        createdAt: Date = .now,
+        completedAt: Date? = nil
     ) {
         self.id = id
         self.title = title
@@ -54,6 +63,7 @@ public final class Todo {
         self.project = project
         self.done = done
         self.createdAt = createdAt
+        self.completedAt = completedAt
     }
 
     /// 强类型 urgency。读取时若 raw 损坏，兜底为 `.normal`。

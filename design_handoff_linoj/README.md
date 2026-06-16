@@ -25,9 +25,9 @@ These shape the entire data model and UI. Don't deviate.
 
 1. **Todos never carry time.** A `Todo` has `title`, `urgency`, optional `project`, optional `done`. There is **no due date field, no "today", no "tomorrow", no "overdue"** on todos. If something must be tied to a clock, it is an **Event**, not a todo.
 
-2. **Events always carry time + place + people.** An `Event` has `title`, `start: Date`, `end: Date`, `location: String`, `attendees: [Person]`, optional `project`.
+2. **Events always carry time; location and attendees are optional** (still defaults to prompting for them). An `Event` has `title`, `start: Date`, `end: Date`, `location: String`, `attendees: [Person]`, optional `project`. The wall stays put: anything with a clock is an Event, anything without a clock is a Todo.
 
-3. **Urgency has exactly two levels.** `urgent` or `normal`. No high/medium/low. Urgent visualizes with blue accent (#2563eb).
+3. **Urgency has exactly two levels.** `urgent` or `normal`. No high/medium/low. Urgent visualizes with blue accent (#2563eb). No decay / auto-demote / countdown / gamified enforcement. When urgent count crosses a soft threshold, a passive, dismissible reflective nudge may appear — non-punishing, non-blocking, a mirror not a cop.
 
 4. **Projects belong to Company.** Projects are NOT a top-level tab. They live inside Company. Tapping a project card opens a detail view.
 

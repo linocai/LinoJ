@@ -37,6 +37,9 @@ struct CalendarView_iOS: View {
     /// W4：当前待删除确认的事件（驱动 `.confirmationDialog`）。nil 表示无弹窗。
     @State private var eventPendingDelete: Event?
 
+    /// v1.2 P2：From-yesterday 截断「+N earlier」的展开态。
+    @State private var showAllYesterday = false
+
     var body: some View {
         Group {
             if let vm {
@@ -422,6 +425,9 @@ struct CalendarView_iOS: View {
 
     @ViewBuilder
     private func yesterdayBox(vm: CalendarViewModel) -> some View {
+        // v1.2 P2：截断 —— 默认最近 5 条；更多则折成「+N earlier」点开展开全部。
+        let split = YesterdayMissedService.truncateForDisplay(vm.yesterdayMissed)
+        let rows = showAllYesterday ? vm.yesterdayMissed : split.visible
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Text(LJStrings.fromYesterday)
@@ -436,11 +442,30 @@ struct CalendarView_iOS: View {
                     .foregroundStyle(Color.lj.inkMute)
             }
             VStack(spacing: 6) {
-                ForEach(vm.yesterdayMissed, id: \.id) { event in
+                ForEach(rows, id: \.id) { event in
+                    yesterdayRow(
+                        event: event,
+                        onConfirm: { vm.confirmAttended(event) },
+                        onDismiss: { vm.dismissMissed(event) }
+                    )
+                }
+                // v1.2 P2：「+N earlier」展开/收起行（仅 earlierCount > 0 时显示）。
+                if split.earlierCount > 0 {
                     Button {
-                        vm.confirmAttended(event)
+                        withAnimation(.easeOut(duration: 0.18)) { showAllYesterday.toggle() }
                     } label: {
-                        yesterdayRow(event: event)
+                        HStack(spacing: 8) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(Color.lj.inkMute)
+                                .rotationEffect(.degrees(showAllYesterday ? 90 : 0))
+                            Text(LJStrings.fromYesterdayEarlier(split.earlierCount))
+                                .font(.system(size: 11.5, weight: .semibold, design: .default))
+                                .foregroundStyle(Color.lj.inkMute)
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -454,14 +479,21 @@ struct CalendarView_iOS: View {
     }
 
     @ViewBuilder
-    private func yesterdayRow(event: Event) -> some View {
+    private func yesterdayRow(
+        event: Event,
+        onConfirm: @escaping () -> Void,
+        onDismiss: @escaping () -> Void
+    ) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            // Checkbox 占位（点击整行即 confirm；勾选后 vm 把 attendedConfirmed=true，
-            // 整条事件下次就不在 vm.yesterdayMissed 里了，所以这里 done 状态恒为 false）。
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .strokeBorder(Color.lj.inkMute, lineWidth: 1.4)
-                .frame(width: 14, height: 14)
-                .padding(.top, 2)
+            // 「我参加了」勾选：点 checkbox 确认出席。
+            Button(action: onConfirm) {
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .strokeBorder(Color.lj.inkMute, lineWidth: 1.4)
+                    .frame(width: 14, height: 14)
+                    .padding(.top, 2)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
             VStack(alignment: .leading, spacing: 2) {
                 Text(event.title)
                     .font(.system(size: 13, weight: .medium, design: .default))
@@ -471,6 +503,19 @@ struct CalendarView_iOS: View {
                     .foregroundStyle(Color.lj.inkMute)
             }
             Spacer()
+            // v1.2 P2：第三态出口「忽略 / Dismiss」—— 移出框但不撒谎打勾。
+            Button(action: onDismiss) {
+                Text(LJStrings.fromYesterdayDismiss)
+                    .font(.system(size: 11, weight: .medium, design: .default))
+                    .foregroundStyle(Color.lj.inkMute)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background {
+                        Capsule(style: .continuous).fill(Color.lj.panel)
+                    }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
         .contentShape(Rectangle())

@@ -39,10 +39,14 @@ public final class CompanyViewModel {
     /// 「全部 company todo（含 done）」计数；false 维持「仅未完成」。注入式（VM 不读 UserDefaults）。
     public var includeCompletedInCounts: Bool = false
 
+    /// v1.2 P5：「近 30 天」分层的「现在」锚点。默认 `LinoJTime.now()`；测试注入固定时刻。
+    private let now: Date
+
     // MARK: Init
 
-    public init(context: ModelContext) {
+    public init(context: ModelContext, now: Date = LinoJTime.now()) {
         self.context = context
+        self.now = now
     }
 
     // MARK: Refresh
@@ -88,6 +92,26 @@ public final class CompanyViewModel {
             .sorted { $0.createdAt < $1.createdAt }
     }
 
+    /// v1.2 P5：过滤后 + done，按 createdAt 升序（CompletedBox 数据源）。
+    public var completed: [Todo] {
+        _ = tick
+        return filteredWorkTodos()
+            .filter { $0.done }
+            .sorted { $0.createdAt < $1.createdAt }
+    }
+
+    /// v1.2 P5：近 30 天完成（或 `completedAt == nil` 存量旧 done）的 company todos。
+    public var completedRecent: [Todo] {
+        _ = tick
+        return completed.filter { PersonalViewModel.isRecent($0, now: now) }
+    }
+
+    /// v1.2 P5：超过 30 天完成的 company todos（archive，二级折叠）。
+    public var completedArchive: [Todo] {
+        _ = tick
+        return completed.filter { !PersonalViewModel.isRecent($0, now: now) }
+    }
+
     /// 统计区显示的 todos count —— 全部 company 的 open todos，不被 chip filter 影响。
     /// 这与设计稿一致（"X todos · Y projects" 是站在 Company 整体维度）。
     /// W2：`includeCompletedInCounts == true` 时改为「全部 company todo（含 done）」计数。
@@ -124,6 +148,8 @@ public final class CompanyViewModel {
     /// P6：iOS 真机触发 light haptic。
     public func toggleDone(_ todo: Todo) {
         todo.done.toggle()
+        // v1.2 P5：维护 completedAt —— 置完成时写 now（注入锚点），取消完成时清 nil。
+        todo.completedAt = todo.done ? now : nil
         try? context.save()
         LinoJHaptics.lightTap()
         refresh()

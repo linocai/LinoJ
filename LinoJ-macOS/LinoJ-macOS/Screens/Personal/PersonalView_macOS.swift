@@ -96,20 +96,29 @@ struct PersonalView_macOS: View {
                 }
                 .frame(maxWidth: 1100, alignment: .leading)
 
-                // 底部 CompletedBox
-                CompletedBox(count: vm.completed.count) {
-                    if vm.completed.isEmpty {
-                        Text(LJStrings.nothingFinishedYet)
-                            .font(.system(size: 12, weight: .medium, design: .default))
-                            .italic()
-                            .foregroundStyle(Color.lj.inkDim)
-                            .padding(.vertical, LJSpacing.s8)
-                    } else {
-                        ForEach(vm.completed, id: \.id) { todo in
+                // 底部 CompletedBox（v1.2 P5：近 30 天 recent 默认展开 + 更早 archive 二级折叠）
+                CompletedBox(
+                    count: vm.completed.count,
+                    archiveCount: vm.completedArchive.count,
+                    content: {
+                        if vm.completed.isEmpty {
+                            Text(LJStrings.nothingFinishedYet)
+                                .font(.system(size: 12, weight: .medium, design: .default))
+                                .italic()
+                                .foregroundStyle(Color.lj.inkDim)
+                                .padding(.vertical, LJSpacing.s8)
+                        } else {
+                            ForEach(vm.completedRecent, id: \.id) { todo in
+                                completedRow(todo: todo, onToggle: { vm.toggleDone(todo) })
+                            }
+                        }
+                    },
+                    archiveContent: {
+                        ForEach(vm.completedArchive, id: \.id) { todo in
                             completedRow(todo: todo, onToggle: { vm.toggleDone(todo) })
                         }
                     }
-                }
+                )
                 .frame(maxWidth: 1100, alignment: .leading)
             }
             .padding(.horizontal, LJSpacing.s28)

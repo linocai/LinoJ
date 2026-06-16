@@ -73,7 +73,19 @@ public final class QuickAddViewModel {
             }
         }
     }
-    public var todoProject: Project?
+    public var todoProject: Project? {
+        didSet {
+            // P1：选了一个非 nil project ⇒ 自动锁 scope=.company（让「personal + project」
+            // 这个非法态从根上 unrepresentable）。与 `todoScope=.personal → todoProject=nil`
+            // 的 didSet 形成双向闭环。
+            //
+            // 防 didSet 互触发死循环：仅在「非 nil」时回设 company。切回 personal 时
+            // scope didSet 把 todoProject 清成 nil，nil 不命中这里的分支，故不会再反弹回 company。
+            if todoProject != nil {
+                todoScope = .company
+            }
+        }
+    }
 
     // MARK: Event fields
 

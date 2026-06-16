@@ -170,12 +170,23 @@ struct MainView_iOS: View {
                             HeadsUpAlert(
                                 event: event,
                                 minutesUntil: alert.minutesUntil,
+                                // v1.2 P4：进行中文案 + 「+N 更多」角标。
+                                isOngoing: alert.isOngoing,
+                                remainingMinutes: alert.remainingMinutes,
+                                moreCount: alert.moreCount,
                                 onSnooze: { vm.snoozeHeadsUp() },
                                 // I3: Open 通过 router 跳到 Calendar tab。
                                 onOpen:   { router.current = .calendar }
                             )
                             .padding(.horizontal, 16)
                             .padding(.bottom, 16)
+                        }
+
+                        // v1.2 P3：urgent 软反思 nudge（仅 Main，决策 D2）。非阻塞镜子 + 小 ×。
+                        if vm.urgentReflectionNudge {
+                            urgentNudge(count: vm.urgentCount, onDismiss: { vm.dismissUrgentNudge() })
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 16)
                         }
 
                         // U6：今日时间冲突提示（中性色变体）。蓝色 heads-up 在上、conflict 在下，
@@ -222,6 +233,42 @@ struct MainView_iOS: View {
         VStack(alignment: .leading, spacing: 6) {
             Text(LJStrings.mainTitle).ljDisplayTitleStyle()
             statsLine(open: vm.openCount, urgent: vm.urgentCount, events: vm.todayEventsCount)
+        }
+    }
+
+    // MARK: - v1.2 P3 urgent 软反思 nudge
+
+    /// 被动反思 pill：「N 件都标急了——还都急吗？」+ 一个小 ×。非阻塞，点 × 仅本次会话隐藏。
+    @ViewBuilder
+    private func urgentNudge(count: Int, onDismiss: @escaping () -> Void) -> some View {
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(Color.lj.blueInk)
+            Text(LJStrings.nudgeUrgentReflection(count))
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.lj.inkSoft)
+                    .padding(6)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(Text(LJStrings.fromYesterdayDismiss))
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .background {
+            RoundedRectangle(cornerRadius: LJRadii.card, style: .continuous)
+                .fill(Color.lj.blueSofter)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: LJRadii.card, style: .continuous)
+                .strokeBorder(Color.lj.blueBorder, lineWidth: 0.5)
         }
     }
 

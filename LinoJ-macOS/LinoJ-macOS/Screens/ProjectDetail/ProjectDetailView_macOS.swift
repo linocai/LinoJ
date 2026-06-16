@@ -353,28 +353,44 @@ struct ProjectDetailView_macOS: View {
                     onToggle: { vm.toggleDone($0) }
                 )
                 if !vm.completed.isEmpty {
-                    CompletedBox(count: vm.completed.count) {
-                        ForEach(vm.completed, id: \.id) { todo in
-                            HStack(spacing: 8) {
-                                Text(todo.title)
-                                    .font(.system(size: 12.5, weight: .medium))
-                                    .strikethrough(true, color: Color.lj.inkMute)
-                                    .foregroundStyle(Color.lj.inkMute)
-                                Text(LJStrings.doneSuffix)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .italic()
-                                    .foregroundStyle(Color.lj.inkDim)
-                                Spacer()
+                    // v1.2 P5：近 30 天 recent 默认展开 + 更早 archive 二级折叠。
+                    CompletedBox(
+                        count: vm.completed.count,
+                        archiveCount: vm.completedArchive.count,
+                        content: {
+                            ForEach(vm.completedRecent, id: \.id) { todo in
+                                completedTodoRow(todo: todo, vm: vm)
                             }
-                            .contentShape(Rectangle())
-                            .onTapGesture { vm.toggleDone(todo) }
+                        },
+                        archiveContent: {
+                            ForEach(vm.completedArchive, id: \.id) { todo in
+                                completedTodoRow(todo: todo, vm: vm)
+                            }
                         }
-                    }
+                    )
                 }
             }
         }
         .padding(.vertical, LJSpacing.s22)
         .padding(.horizontal, LJSpacing.s28)
+    }
+
+    /// v1.2 P5：CompletedBox 内单条完成 todo 行（recent / archive 复用）。
+    @ViewBuilder
+    private func completedTodoRow(todo: Todo, vm: ProjectDetailViewModel) -> some View {
+        HStack(spacing: 8) {
+            Text(todo.title)
+                .font(.system(size: 12.5, weight: .medium))
+                .strikethrough(true, color: Color.lj.inkMute)
+                .foregroundStyle(Color.lj.inkMute)
+            Text(LJStrings.doneSuffix)
+                .font(.system(size: 11, weight: .medium))
+                .italic()
+                .foregroundStyle(Color.lj.inkDim)
+            Spacer()
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { vm.toggleDone(todo) }
     }
 
     @ViewBuilder

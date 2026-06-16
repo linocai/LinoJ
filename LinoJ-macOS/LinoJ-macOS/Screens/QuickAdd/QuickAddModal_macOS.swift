@@ -46,6 +46,10 @@ struct QuickAddModal_macOS: View {
     /// W1：标识当前展开哪个选人器（与 VM 的 PersonTarget 区分；UI 层枚举）。
     private enum PersonTargetUI { case attendee, member }
 
+    /// v1.2 P1：从 Company 切回 Personal 时若当前选了 project，弹轻确认（移出项目）。
+    /// 非 nil = 正在确认；存被移出的 project 标题用于文案。
+    @State private var pendingMoveOutProjectTitle: String?
+
     /// I5：Settings VM 用于读 defaultTodoScope —— Quick Add Todo 表单的默认 scope。
     /// 与 SettingsView 各自 own 一个 VM，反正都从 .standard UserDefaults 读，值同步。
     @State private var settings = SettingsViewModel()
@@ -300,11 +304,40 @@ struct QuickAddModal_macOS: View {
 
                 // Scope 双选
                 scopeChip(label: LJStrings.scopePersonal, active: vm.todoScope == .personal) {
-                    vm.todoScope = .personal
+                    // v1.2 P1：切回 personal 且当前选了 project → 先弹轻确认（移出项目）。
+                    if let project = vm.todoProject {
+                        pendingMoveOutProjectTitle = project.title
+                    } else {
+                        vm.todoScope = .personal
+                    }
                 }
                 scopeChip(label: LJStrings.scopeCompany, active: vm.todoScope == .company) {
                     vm.todoScope = .company
                 }
+            }
+            // v1.2 P1：移出项目轻确认 —— 确认后切 personal（didSet 清 project）；取消保持 company。
+            .confirmationDialog(
+                Text(LJStrings.quickAddMovedOutTitle),
+                isPresented: Binding(
+                    get: { pendingMoveOutProjectTitle != nil },
+                    set: { if !$0 { pendingMoveOutProjectTitle = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: pendingMoveOutProjectTitle
+            ) { title in
+                Button(role: .destructive) {
+                    vm.todoScope = .personal   // didSet 清 todoProject
+                    pendingMoveOutProjectTitle = nil
+                } label: {
+                    Text(LJStrings.quickAddMovedOutConfirm)
+                }
+                Button(role: .cancel) {
+                    pendingMoveOutProjectTitle = nil
+                } label: {
+                    Text(LJStrings.quickAddCancel)
+                }
+            } message: { title in
+                Text(LJStrings.quickAddMovedOutOf(title))
             }
 
             // Project chip row（scope == .personal 时整行 disabled + 0.5 opacity）

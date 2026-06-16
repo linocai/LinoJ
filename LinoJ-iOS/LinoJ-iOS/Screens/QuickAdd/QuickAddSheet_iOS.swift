@@ -42,6 +42,10 @@ struct QuickAddSheet_iOS: View {
         var id: Int { rawValue }
     }
 
+    /// v1.2 P1：从 Company 切回 Personal 时若当前选了 project，弹轻确认（移出项目）。
+    /// 非 nil = 正在确认；存被移出的 project 标题用于文案。
+    @State private var pendingMoveOutProjectTitle: String?
+
     var body: some View {
         Group {
             if let vm {
@@ -236,12 +240,41 @@ struct QuickAddSheet_iOS: View {
             iosFieldGroup(label: LJStrings.quickAddLabelScope) {
                 HStack(spacing: 8) {
                     iosToggleChipLocalized(label: LJStrings.scopePersonal, active: vm.todoScope == .personal, blue: false) {
-                        vm.todoScope = .personal
+                        // v1.2 P1：切回 personal 且当前选了 project → 先弹轻确认（移出项目）。
+                        if let project = vm.todoProject {
+                            pendingMoveOutProjectTitle = project.title
+                        } else {
+                            vm.todoScope = .personal
+                        }
                     }
                     iosToggleChipLocalized(label: LJStrings.scopeCompany, active: vm.todoScope == .company, blue: false) {
                         vm.todoScope = .company
                     }
                 }
+            }
+            // v1.2 P1：移出项目轻确认 —— 确认后切 personal（didSet 清 project）；取消保持 company。
+            .confirmationDialog(
+                Text(LJStrings.quickAddMovedOutTitle),
+                isPresented: Binding(
+                    get: { pendingMoveOutProjectTitle != nil },
+                    set: { if !$0 { pendingMoveOutProjectTitle = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: pendingMoveOutProjectTitle
+            ) { title in
+                Button(role: .destructive) {
+                    vm.todoScope = .personal
+                    pendingMoveOutProjectTitle = nil
+                } label: {
+                    Text(LJStrings.quickAddMovedOutConfirm)
+                }
+                Button(role: .cancel) {
+                    pendingMoveOutProjectTitle = nil
+                } label: {
+                    Text(LJStrings.quickAddCancel)
+                }
+            } message: { title in
+                Text(LJStrings.quickAddMovedOutOf(title))
             }
 
             iosFieldGroup(label: LJStrings.quickAddLabelProject, optional: true) {

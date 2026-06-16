@@ -40,11 +40,15 @@ public final class ProjectDetailViewModel {
     /// 「本 project 全部 todo（含 done）」计数；false 维持「仅未完成」。注入式（VM 不读 UserDefaults）。
     public var includeCompletedInCounts: Bool = false
 
+    /// v1.2 P5：「近 30 天」分层的「现在」锚点。默认 `LinoJTime.now()`；测试注入固定时刻。
+    private let now: Date
+
     // MARK: Init
 
-    public init(project: Project, context: ModelContext) {
+    public init(project: Project, context: ModelContext, now: Date = LinoJTime.now()) {
         self.project = project
         self.context = context
+        self.now = now
     }
 
     // MARK: Refresh
@@ -90,6 +94,18 @@ public final class ProjectDetailViewModel {
     public var completed: [Todo] {
         _ = tick
         return projectTodos().filter { $0.done }
+    }
+
+    /// v1.2 P5：近 30 天完成（或 `completedAt == nil` 存量旧 done）的本 project todos。
+    public var completedRecent: [Todo] {
+        _ = tick
+        return completed.filter { PersonalViewModel.isRecent($0, now: now) }
+    }
+
+    /// v1.2 P5：超过 30 天完成的本 project todos（archive，二级折叠）。
+    public var completedArchive: [Todo] {
+        _ = tick
+        return completed.filter { !PersonalViewModel.isRecent($0, now: now) }
     }
 
     /// open todos 数量（urgent + normal）。
@@ -158,6 +174,8 @@ public final class ProjectDetailViewModel {
     /// P6：iOS 真机触发 light haptic。
     public func toggleDone(_ todo: Todo) {
         todo.done.toggle()
+        // v1.2 P5：维护 completedAt —— 置完成时写 now（注入锚点），取消完成时清 nil。
+        todo.completedAt = todo.done ? now : nil
         try? context.save()
         LinoJHaptics.lightTap()
         refresh()

@@ -296,6 +296,88 @@ struct LocalizationTests {
         #expect(zh != en, "[HeadsUp.conflict] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
     }
 
+    // MARK: - v1.2 P3 urgent nudge 新增 key
+
+    @Test("v1.2 P3: Nudge.urgentReflection 含 %d 占位双语正确，且 zh ≠ en")
+    func v12NudgeUrgentReflection() {
+        let en = resolve(LJStrings.nudgeUrgentReflection(6), locale: "en")
+        let zh = resolve(LJStrings.nudgeUrgentReflection(6), locale: "zh-Hans")
+        #expect(en == "6 marked urgent — all still urgent?", "[Nudge.urgentReflection] EN：得到 '\(en)'")
+        #expect(zh == "6 件都标急了——还都急吗？", "[Nudge.urgentReflection] 中文：得到 '\(zh)'")
+        #expect(zh != en, "[Nudge.urgentReflection] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
+    // MARK: - v1.2 P4 heads-up 进行中 / +N 角标 新增 key
+
+    @Test("v1.2 P4: HeadsUp.ongoing 含 %d 占位双语正确，且 zh ≠ en")
+    func v12HeadsUpOngoing() {
+        let en = resolve(LJStrings.headsUpOngoing(25), locale: "en")
+        let zh = resolve(LJStrings.headsUpOngoing(25), locale: "zh-Hans")
+        #expect(en == "now · 25 min left", "[HeadsUp.ongoing] EN：得到 '\(en)'")
+        #expect(zh == "进行中 · 还剩 25 分", "[HeadsUp.ongoing] 中文：得到 '\(zh)'")
+        #expect(zh != en, "[HeadsUp.ongoing] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
+    @Test("v1.2 P4: HeadsUp.moreCount 含 %d 占位双语正确，且 zh ≠ en")
+    func v12HeadsUpMoreCount() {
+        let en = resolve(LJStrings.headsUpMoreCount(2), locale: "en")
+        let zh = resolve(LJStrings.headsUpMoreCount(2), locale: "zh-Hans")
+        #expect(en == "+2 more", "[HeadsUp.moreCount] EN：得到 '\(en)'")
+        #expect(zh == "+2 更多", "[HeadsUp.moreCount] 中文：得到 '\(zh)'")
+        #expect(zh != en, "[HeadsUp.moreCount] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
+    // MARK: - v1.2 P2 From-yesterday 第三态 / 截断 新增 key
+
+    @Test("v1.2 P2: FromYesterday.dismiss + earlier 双语正确，且 zh ≠ en")
+    func v12FromYesterdayKeys() {
+        let dismissEn = resolve(LJStrings.fromYesterdayDismiss, locale: "en")
+        let dismissZh = resolve(LJStrings.fromYesterdayDismiss, locale: "zh-Hans")
+        #expect(dismissEn == "Dismiss", "[FromYesterday.dismiss] EN：得到 '\(dismissEn)'")
+        #expect(dismissZh == "忽略", "[FromYesterday.dismiss] 中文：得到 '\(dismissZh)'")
+        #expect(dismissZh != dismissEn)
+
+        let earlierEn = resolve(LJStrings.fromYesterdayEarlier(3), locale: "en")
+        let earlierZh = resolve(LJStrings.fromYesterdayEarlier(3), locale: "zh-Hans")
+        #expect(earlierEn == "+3 earlier", "[FromYesterday.earlier] EN：得到 '\(earlierEn)'")
+        #expect(earlierZh == "更早 3 条", "[FromYesterday.earlier] 中文：得到 '\(earlierZh)'")
+        #expect(earlierZh != earlierEn)
+    }
+
+    // MARK: - v1.2 P5 Completed box archive 新增 key
+
+    @Test("v1.2 P5: Completed.earlier 含 %d 占位双语正确，且 zh ≠ en")
+    func v12CompletedEarlier() {
+        let en = resolve(LJStrings.completedEarlier(4), locale: "en")
+        let zh = resolve(LJStrings.completedEarlier(4), locale: "zh-Hans")
+        #expect(en == "+4 earlier", "[Completed.earlier] EN：得到 '\(en)'")
+        #expect(zh == "更早 4 条", "[Completed.earlier] 中文：得到 '\(zh)'")
+        #expect(zh != en, "[Completed.earlier] zh-Hans 与 en 相同 —— 可能 fallback 回了 en（漏译）")
+    }
+
+    // MARK: - v1.2 P1 Quick Add 移出项目确认 新增 key
+
+    @Test("v1.2 P1: QuickAdd movedOut 3 个 key 双语正确，且 zh ≠ en")
+    func v12QuickAddMovedOut() {
+        let titleEn = resolve(LJStrings.quickAddMovedOutTitle, locale: "en")
+        let titleZh = resolve(LJStrings.quickAddMovedOutTitle, locale: "zh-Hans")
+        #expect(titleEn == "Move out of project?", "[QuickAdd.movedOutTitle] EN：得到 '\(titleEn)'")
+        #expect(titleZh == "移出项目？", "[QuickAdd.movedOutTitle] 中文：得到 '\(titleZh)'")
+        #expect(titleZh != titleEn)
+
+        let bodyEn = resolve(LJStrings.quickAddMovedOutOf("LinoJ v2"), locale: "en")
+        let bodyZh = resolve(LJStrings.quickAddMovedOutOf("LinoJ v2"), locale: "zh-Hans")
+        #expect(bodyEn == "Moved out of LinoJ v2", "[QuickAdd.movedOutOf] EN：得到 '\(bodyEn)'")
+        #expect(bodyZh == "已移出项目 LinoJ v2", "[QuickAdd.movedOutOf] 中文：得到 '\(bodyZh)'")
+        #expect(bodyZh != bodyEn)
+
+        let confirmEn = resolve(LJStrings.quickAddMovedOutConfirm, locale: "en")
+        let confirmZh = resolve(LJStrings.quickAddMovedOutConfirm, locale: "zh-Hans")
+        #expect(confirmEn == "Move out", "[QuickAdd.movedOutConfirm] EN：得到 '\(confirmEn)'")
+        #expect(confirmZh == "移出", "[QuickAdd.movedOutConfirm] 中文：得到 '\(confirmZh)'")
+        #expect(confirmZh != confirmEn)
+    }
+
     // MARK: - Bundle 暴露验证
 
     @Test("LinoJCoreBundle.bundle 能查到 xcstrings 资源")

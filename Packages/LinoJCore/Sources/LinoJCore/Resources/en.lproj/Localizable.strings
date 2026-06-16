@@ -50,6 +50,8 @@
 	<string>TODAY</string>
 	<key>Common.done</key>
 	<string>Done</string>
+	<key>Completed.earlier</key>
+	<string>+%d earlier</string>
 	<key>Counts.eventCount.one</key>
 	<string>1 event</string>
 	<key>Counts.eventsCount</key>
@@ -150,10 +152,18 @@
 	<string>Heading</string>
 	<key>Format.italic</key>
 	<string>Italic</string>
+	<key>FromYesterday.dismiss</key>
+	<string>Dismiss</string>
+	<key>FromYesterday.earlier</key>
+	<string>+%d earlier</string>
 	<key>HeadsUp.conflict</key>
 	<string>%1$d events overlap at %2$@</string>
 	<key>HeadsUp.inMinutes</key>
 	<string>in %d min</string>
+	<key>HeadsUp.moreCount</key>
+	<string>+%d more</string>
+	<key>HeadsUp.ongoing</key>
+	<string>now · %d min left</string>
 	<key>HeadsUp.open</key>
 	<string>Open</string>
 	<key>HeadsUp.snooze</key>
@@ -192,6 +202,8 @@
 	<string>Unpin</string>
 	<key>Note.untitled</key>
 	<string>New note</string>
+	<key>Nudge.urgentReflection</key>
+	<string>%d marked urgent — all still urgent?</string>
 	<key>Project.addEvent</key>
 	<string>+ Add event</string>
 	<key>Project.addTodo</key>
@@ -292,6 +304,12 @@
 	<string>+ Add member</string>
 	<key>QuickAdd.membersEmpty</key>
 	<string>No members yet</string>
+	<key>QuickAdd.movedOutConfirm</key>
+	<string>Move out</string>
+	<key>QuickAdd.movedOutOf</key>
+	<string>Moved out of %@</string>
+	<key>QuickAdd.movedOutTitle</key>
+	<string>Move out of project?</string>
 	<key>QuickAdd.new</key>
 	<string>New</string>
 	<key>QuickAdd.optional</key>

@@ -149,25 +149,34 @@ public final class HeadsUpService {
         // 2. 拉所有事件，找窗口内最早的那场
         let windowEnd = now.addingTimeInterval(60 * 60) // now + 60 min
         let all = (try? context.fetch(FetchDescriptor<Event>())) ?? []
-        let candidate = all
+        let imminent = all
             .filter { event in
                 // event 已经开始但未结束 → 仍在「头顶上」窗口
                 // event 还未开始但 start 在 60 min 内
                 event.end > now && event.start <= windowEnd
             }
             .sorted { $0.start < $1.start }
-            .first
+        let candidate = imminent.first
 
         // 3 / 4. 构造或清空
         if let event = candidate {
             let secondsUntil = event.start.timeIntervalSince(now)
             // 向上取整到分钟。已开始（secondsUntil ≤ 0）的事件 minutesUntil = 0。
             let minutesUntil = max(0, Int(ceil(secondsUntil / 60.0)))
+            // v1.2 P4：进行中判定 + 剩余分钟 + 「+N 更多」角标。
+            let isOngoing = now >= event.start && now < event.end
+            let remainingSeconds = event.end.timeIntervalSince(now)
+            let remainingMinutes = max(0, Int(ceil(remainingSeconds / 60.0)))
+            // moreCount = 窗口内事件数 - 1（除当前这条外还有几条）。单条不堆叠，pill 仍只渲染这条。
+            let moreCount = max(0, imminent.count - 1)
             currentAlert = HeadsUpAlertModel(
                 eventID: event.id,
                 title: event.title,
                 location: event.location,
-                minutesUntil: minutesUntil
+                minutesUntil: minutesUntil,
+                moreCount: moreCount,
+                isOngoing: isOngoing,
+                remainingMinutes: remainingMinutes
             )
         } else {
             currentAlert = nil

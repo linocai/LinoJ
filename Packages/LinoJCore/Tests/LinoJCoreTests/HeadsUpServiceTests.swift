@@ -242,4 +242,55 @@ struct HeadsUpServiceTests {
     func testComputeConflictAlertEmpty() {
         #expect(HeadsUpService.computeConflictAlert(events: [], now: LinoJTime.now()) == nil)
     }
+
+    // MARK: - v1.2 P4: +N 更多角标 + 进行中文案
+
+    /// 窗口内 3 个事件 → moreCount == 2，currentAlert 仍是最早那条（单条不堆叠）。
+    @Test("P4: three events in window → moreCount == 2, currentAlert is earliest")
+    func testMoreCountThreeInWindow() throws {
+        let (service, _, events) = try makeService(events: [
+            (offset: 600,  duration: 1800, title: "First",  location: "L1"),  // +10 min
+            (offset: 1200, duration: 1800, title: "Second", location: "L2"),  // +20 min
+            (offset: 1800, duration: 1800, title: "Third",  location: "L3"),  // +30 min
+        ])
+        service.tick()
+        let alert = try #require(service.currentAlert)
+        // 仍只渲染最早那条。
+        #expect(alert.eventID == events[0].id)
+        #expect(alert.title == "First")
+        // 窗口内 3 条 → moreCount = 3 - 1 = 2。
+        #expect(alert.moreCount == 2)
+        // 未开始 → 非进行中。
+        #expect(alert.isOngoing == false)
+    }
+
+    /// 单个即将开始事件 → moreCount == 0（窗口内只有 1 条）。
+    @Test("P4: single upcoming event → moreCount == 0")
+    func testMoreCountSingle() throws {
+        let (service, _, _) = try makeService(events: [
+            (offset: 600, duration: 1800, title: "Solo", location: "L"),
+        ])
+        service.tick()
+        let alert = try #require(service.currentAlert)
+        #expect(alert.moreCount == 0)
+    }
+
+    /// 进行中事件（start 已过、end 未到）→ isOngoing == true，remainingMinutes 正确，
+    /// minutesUntil == 0（不出现负数 / 误导）。
+    @Test("P4: ongoing event → isOngoing true, remainingMinutes correct, minutesUntil 0")
+    func testOngoingRemainingMinutes() throws {
+        // 5 分钟前开始，总时长 30 分钟 → 还剩 ~25 分钟。
+        let (service, _, events) = try makeService(events: [
+            (offset: -300, duration: 1800, title: "Standup", location: "Zoom"),
+        ])
+        service.tick()
+        let alert = try #require(service.currentAlert)
+        #expect(alert.eventID == events[0].id)
+        #expect(alert.isOngoing == true)
+        #expect(alert.minutesUntil == 0)
+        // 还剩 25 分钟（ceil((1800-300)/60) = 25）。允许 ±1 容忍真实 now 漂移。
+        #expect(alert.remainingMinutes >= 24 && alert.remainingMinutes <= 25)
+        // 进行中事件唯一时不该有 +N。
+        #expect(alert.moreCount == 0)
+    }
 }

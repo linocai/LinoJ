@@ -50,6 +50,8 @@
 	<string>今天</string>
 	<key>Common.done</key>
 	<string>完成</string>
+	<key>Completed.earlier</key>
+	<string>更早 %d 条</string>
 	<key>Counts.eventCount.one</key>
 	<string>1 场事件</string>
 	<key>Counts.eventsCount</key>
@@ -150,10 +152,18 @@
 	<string>标题</string>
 	<key>Format.italic</key>
 	<string>斜体</string>
+	<key>FromYesterday.dismiss</key>
+	<string>忽略</string>
+	<key>FromYesterday.earlier</key>
+	<string>更早 %d 条</string>
 	<key>HeadsUp.conflict</key>
 	<string>%2$@ 有 %1$d 个日程冲突</string>
 	<key>HeadsUp.inMinutes</key>
 	<string>%d 分钟后</string>
+	<key>HeadsUp.moreCount</key>
+	<string>+%d 更多</string>
+	<key>HeadsUp.ongoing</key>
+	<string>进行中 · 还剩 %d 分</string>
 	<key>HeadsUp.open</key>
 	<string>打开</string>
 	<key>HeadsUp.snooze</key>
@@ -192,6 +202,8 @@
 	<string>取消置顶</string>
 	<key>Note.untitled</key>
 	<string>新笔记</string>
+	<key>Nudge.urgentReflection</key>
+	<string>%d 件都标急了——还都急吗？</string>
 	<key>Project.addEvent</key>
 	<string>+ 添加事件</string>
 	<key>Project.addTodo</key>
@@ -292,6 +304,12 @@
 	<string>+ 添加成员</string>
 	<key>QuickAdd.membersEmpty</key>
 	<string>暂无成员</string>
+	<key>QuickAdd.movedOutConfirm</key>
+	<string>移出</string>
+	<key>QuickAdd.movedOutOf</key>
+	<string>已移出项目 %@</string>
+	<key>QuickAdd.movedOutTitle</key>
+	<string>移出项目？</string>
 	<key>QuickAdd.new</key>
 	<string>新建</string>
 	<key>QuickAdd.optional</key>

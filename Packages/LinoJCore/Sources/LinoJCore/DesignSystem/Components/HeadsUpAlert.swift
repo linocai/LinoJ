@@ -12,6 +12,10 @@ import SwiftUI
 public struct HeadsUpAlert: View {
     private let event: Event
     private let minutesUntil: Int
+    /// v1.2 P4：进行中标志 + 剩余分钟 + 「+N 更多」角标数。
+    private let isOngoing: Bool
+    private let remainingMinutes: Int
+    private let moreCount: Int
     private let onSnooze: () -> Void
     private let onOpen: () -> Void
 
@@ -22,11 +26,17 @@ public struct HeadsUpAlert: View {
     public init(
         event: Event,
         minutesUntil: Int,
+        isOngoing: Bool = false,
+        remainingMinutes: Int = 0,
+        moreCount: Int = 0,
         onSnooze: @escaping () -> Void = {},
         onOpen: @escaping () -> Void = {}
     ) {
         self.event = event
         self.minutesUntil = minutesUntil
+        self.isOngoing = isOngoing
+        self.remainingMinutes = remainingMinutes
+        self.moreCount = moreCount
         self.onSnooze = onSnooze
         self.onOpen = onOpen
     }
@@ -50,7 +60,8 @@ public struct HeadsUpAlert: View {
                     .font(.system(size: 12.5, weight: .semibold, design: .default))
                     .foregroundStyle(Color.lj.blueInk)
                 dot
-                Text(LJStrings.headsUpInMinutes(minutesUntil))
+                // v1.2 P4：进行中 → 「now · 还剩 Y 分」；未开始 → 「in X min」。
+                Text(timeText)
                     .ljMonoStyle()
                     .foregroundStyle(Color.lj.blueInk)
                 dot
@@ -64,6 +75,10 @@ public struct HeadsUpAlert: View {
                         .font(.system(size: 12, weight: .medium, design: .default))
                         .foregroundStyle(Color.lj.inkSoft)
                         .lineLimit(1)
+                }
+                // v1.2 P4：窗口内还有其它即将开始事件时显示「+N 更多」角标（单条不堆叠）。
+                if moreCount > 0 {
+                    moreBadge
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -110,6 +125,25 @@ public struct HeadsUpAlert: View {
     /// 文案分隔小点。
     private var dot: some View {
         Text("·").foregroundStyle(Color.lj.inkDim)
+    }
+
+    /// v1.2 P4：时间文案 —— 进行中显示「now · 还剩 Y 分」，未开始显示「in X min」。
+    private var timeText: LocalizedStringResource {
+        isOngoing
+            ? LJStrings.headsUpOngoing(remainingMinutes)
+            : LJStrings.headsUpInMinutes(minutesUntil)
+    }
+
+    /// v1.2 P4：「+N 更多」角标 —— chip 样式小标签。
+    private var moreBadge: some View {
+        Text(LJStrings.headsUpMoreCount(moreCount))
+            .font(.system(size: 11, weight: .semibold, design: .default))
+            .foregroundStyle(Color.lj.blueInk)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background {
+                Capsule(style: .continuous).fill(Color.lj.blueSoft)
+            }
     }
 }
 

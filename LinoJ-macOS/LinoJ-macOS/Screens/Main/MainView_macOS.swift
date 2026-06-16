@@ -54,6 +54,9 @@ struct MainView_macOS: View {
     /// W4：当前待删除确认的事件（驱动 `.confirmationDialog`）。nil 表示无弹窗。
     @State private var eventPendingDelete: Event?
 
+    /// v1.2 P2：From-yesterday 截断「+N earlier」的展开态（点开显示全部过去未了结事件）。
+    @State private var showAllYesterday = false
+
     var body: some View {
         Group {
             if let vm {
@@ -193,6 +196,10 @@ struct MainView_macOS: View {
                     HeadsUpAlert(
                         event: event,
                         minutesUntil: alert.minutesUntil,
+                        // v1.2 P4：进行中文案 + 「+N 更多」角标。
+                        isOngoing: alert.isOngoing,
+                        remainingMinutes: alert.remainingMinutes,
+                        moreCount: alert.moreCount,
                         onSnooze: { vm.snoozeHeadsUp() },
                         // I3: Open 按钮直接通过 router 跳转到 Calendar tab（不必经过 VM）。
                         onOpen:   { router.current = .calendar }
@@ -211,6 +218,11 @@ struct MainView_macOS: View {
                 Text(LJStrings.mainTitle).ljDisplayTitleStyle()
                 countsLine(open: vm.openCount, urgent: vm.urgentCount)
                 Spacer()
+            }
+
+            // v1.2 P3：urgent 软反思 nudge（仅 Main，决策 D2）。非阻塞镜子，仅一个小 × 可 dismiss。
+            if vm.urgentReflectionNudge {
+                urgentNudge(count: vm.urgentCount, onDismiss: { vm.dismissUrgentNudge() })
             }
 
             if isEmpty {
@@ -271,6 +283,43 @@ struct MainView_macOS: View {
             Text(LJStrings.statUrgent)
                 .font(.system(size: 13, weight: .medium, design: .default))
                 .foregroundStyle(Color.lj.inkSoft)
+        }
+    }
+
+    // MARK: - v1.2 P3 urgent 软反思 nudge
+
+    /// 被动反思 pill：「N 件都标急了——还都急吗？」+ 一个小 ×。
+    /// **非阻塞、无降级、无倒计时**：点 × 仅本次会话隐藏（`dismissUrgentNudge()`），不改任何 todo。
+    @ViewBuilder
+    private func urgentNudge(count: Int, onDismiss: @escaping () -> Void) -> some View {
+        HStack(alignment: .center, spacing: LJSpacing.s10) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.lj.blueInk)
+            Text(LJStrings.nudgeUrgentReflection(count))
+                .font(.system(size: 12.5, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.ink)
+                .lineLimit(1)
+            Spacer()
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Color.lj.inkSoft)
+                    .padding(4)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(Text(LJStrings.fromYesterdayDismiss))
+        }
+        .padding(.horizontal, LJSpacing.s14)
+        .padding(.vertical, LJSpacing.s10)
+        .background {
+            RoundedRectangle(cornerRadius: LJRadii.card, style: .continuous)
+                .fill(Color.lj.blueSofter)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: LJRadii.card, style: .continuous)
+                .strokeBorder(Color.lj.blueBorder, lineWidth: 0.5)
         }
     }
 
@@ -446,8 +495,12 @@ struct MainView_macOS: View {
 
             // pinned "From yesterday"
             if !vm.yesterdayMissed.isEmpty {
-                yesterdayBox(events: vm.yesterdayMissed, onConfirm: { vm.confirmAttended($0) })
-                    .padding(.top, LJSpacing.s22)
+                yesterdayBox(
+                    events: vm.yesterdayMissed,
+                    onConfirm: { vm.confirmAttended($0) },
+                    onDismiss: { vm.dismissMissed($0) }
+                )
+                .padding(.top, LJSpacing.s22)
             }
 
             // U3：右栏最底「最近灵感」缩略卡。
@@ -592,7 +645,14 @@ struct MainView_macOS: View {
     // MARK: - "From yesterday"
 
     @ViewBuilder
-    private func yesterdayBox(events: [Event], onConfirm: @escaping (Event) -> Void) -> some View {
+    private func yesterdayBox(
+        events: [Event],
+        onConfirm: @escaping (Event) -> Void,
+        onDismiss: @escaping (Event) -> Void
+    ) -> some View {
+        // v1.2 P2：截断 —— 默认显示最近 5 条；更多则折成「+N earlier」点开展开全部。
+        let split = YesterdayMissedService.truncateForDisplay(events)
+        let rows = showAllYesterday ? events : split.visible
         VStack(alignment: .leading, spacing: LJSpacing.s8) {
             HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s8) {
                 Text(LJStrings.fromYesterday)
@@ -607,15 +667,31 @@ struct MainView_macOS: View {
                 Spacer()
             }
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(events, id: \.id) { event in
+                ForEach(rows, id: \.id) { event in
+                    yesterdayRow(event: event, onConfirm: onConfirm, onDismiss: onDismiss)
+                        // P6：macOS list row hover 背景。
+                        .ljHoverBackground()
+                }
+                // v1.2 P2：「+N earlier」展开/收起行（仅 earlierCount > 0 时显示）。
+                // 点击切换 showAllYesterday：折叠时显示「+N earlier」，展开时 chevron 旋转提示可收起。
+                if split.earlierCount > 0 {
                     Button {
-                        onConfirm(event)
+                        withAnimation(.easeOut(duration: 0.18)) { showAllYesterday.toggle() }
                     } label: {
-                        yesterdayRow(event: event)
+                        HStack(spacing: LJSpacing.s8) {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(Color.lj.inkMute)
+                                .rotationEffect(.degrees(showAllYesterday ? 90 : 0))
+                            Text(LJStrings.fromYesterdayEarlier(split.earlierCount))
+                                .font(.system(size: 11, weight: .semibold, design: .default))
+                                .foregroundStyle(Color.lj.inkMute)
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    // P6：macOS list row hover 背景。
-                    .ljHoverBackground()
                 }
             }
         }
@@ -629,13 +705,23 @@ struct MainView_macOS: View {
     }
 
     @ViewBuilder
-    private func yesterdayRow(event: Event) -> some View {
+    private func yesterdayRow(
+        event: Event,
+        onConfirm: @escaping (Event) -> Void,
+        onDismiss: @escaping (Event) -> Void
+    ) -> some View {
         HStack(alignment: .top, spacing: LJSpacing.s10) {
-            // 简化 checkbox：小方框
-            RoundedRectangle(cornerRadius: 3, style: .continuous)
-                .strokeBorder(Color.lj.inkMute, lineWidth: 1.2)
-                .frame(width: 13, height: 13)
-                .padding(.top, 1)
+            // 「我参加了」勾选：点 checkbox 行确认出席（attendedConfirmed = true）。
+            Button {
+                onConfirm(event)
+            } label: {
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .strokeBorder(Color.lj.inkMute, lineWidth: 1.2)
+                    .frame(width: 13, height: 13)
+                    .padding(.top, 1)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(event.title)
@@ -646,6 +732,22 @@ struct MainView_macOS: View {
                     .foregroundStyle(Color.lj.inkMute)
             }
             Spacer()
+
+            // v1.2 P2：第三态出口「忽略 / Dismiss」—— 移出框但不撒谎打勾。
+            Button {
+                onDismiss(event)
+            } label: {
+                Text(LJStrings.fromYesterdayDismiss)
+                    .font(.system(size: 10.5, weight: .medium, design: .default))
+                    .foregroundStyle(Color.lj.inkMute)
+                    .padding(.horizontal, LJSpacing.s8)
+                    .padding(.vertical, 3)
+                    .background {
+                        Capsule(style: .continuous).fill(Color.lj.chip)
+                    }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(.vertical, 5)
         .contentShape(Rectangle())

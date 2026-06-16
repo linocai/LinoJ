@@ -241,4 +241,95 @@ struct PersonalCompanyViewModelTests {
         vm.setFilter(.standalone)
         #expect(vm.todosCount == openOnly)
     }
+
+    // MARK: - v1.2 P5: completedAt 维护 + recent/archive 分层
+
+    /// toggleDone 置完成 → completedAt 写入；再 toggle 取消 → 清 nil。
+    @Test("P5: toggleDone writes completedAt on done, clears on undone")
+    func toggleDoneMaintainsCompletedAt() throws {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let t = Todo(title: "Task", urgency: .normal, scope: .personal)
+        context.insert(t)
+        try context.save()
+        #expect(t.completedAt == nil)
+
+        let fixedNow = SeedData.todaySimulated()
+        let vm = PersonalViewModel(context: context, now: fixedNow)
+        vm.toggleDone(t)
+        #expect(t.done == true)
+        #expect(t.completedAt == fixedNow)   // 写入注入的 now
+
+        vm.toggleDone(t)
+        #expect(t.done == false)
+        #expect(t.completedAt == nil)        // 清 nil
+    }
+
+    /// Personal recent/archive 分层：31 天前完成 → archive；29 天前 → recent；completedAt=nil → recent。
+    @Test("P5: Personal completedRecent / completedArchive split by 30-day boundary")
+    func personalRecentArchiveSplit() throws {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let now = SeedData.todaySimulated()
+        let day: TimeInterval = 24 * 60 * 60
+
+        // 三条 done personal todo：29 天前（recent）、31 天前（archive）、nil（recent，存量旧数据）。
+        let recentOne = Todo(title: "Recent29", urgency: .normal, scope: .personal,
+                             done: true, completedAt: now.addingTimeInterval(-29 * day))
+        let archiveOne = Todo(title: "Archive31", urgency: .normal, scope: .personal,
+                              done: true, completedAt: now.addingTimeInterval(-31 * day))
+        let legacyNil = Todo(title: "LegacyNil", urgency: .normal, scope: .personal,
+                             done: true, completedAt: nil)
+        context.insert(recentOne)
+        context.insert(archiveOne)
+        context.insert(legacyNil)
+        try context.save()
+
+        let vm = PersonalViewModel(context: context, now: now)
+        #expect(vm.completed.count == 3)
+
+        let recentTitles = Set(vm.completedRecent.map(\.title))
+        let archiveTitles = Set(vm.completedArchive.map(\.title))
+        // 29 天前 + nil 旧数据 → recent（不丢失）。
+        #expect(recentTitles == Set(["Recent29", "LegacyNil"]))
+        // 31 天前 → archive。
+        #expect(archiveTitles == Set(["Archive31"]))
+        // recent + archive == completed（无遗漏 / 无重复）。
+        #expect(vm.completedRecent.count + vm.completedArchive.count == vm.completed.count)
+    }
+
+    /// Company recent/archive 分层同样按 30 天边界（受 chip filter 联动）。
+    @Test("P5: Company completedRecent / completedArchive split by 30-day boundary")
+    func companyRecentArchiveSplit() throws {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let now = SeedData.todaySimulated()
+        let day: TimeInterval = 24 * 60 * 60
+
+        let recentOne = Todo(title: "CoRecent", urgency: .normal, scope: .company,
+                             done: true, completedAt: now.addingTimeInterval(-10 * day))
+        let archiveOne = Todo(title: "CoArchive", urgency: .normal, scope: .company,
+                              done: true, completedAt: now.addingTimeInterval(-40 * day))
+        context.insert(recentOne)
+        context.insert(archiveOne)
+        try context.save()
+
+        let vm = CompanyViewModel(context: context, now: now)
+        #expect(vm.completed.count == 2)
+        #expect(vm.completedRecent.map(\.title) == ["CoRecent"])
+        #expect(vm.completedArchive.map(\.title) == ["CoArchive"])
+    }
+
+    /// isRecent 纯函数边界：恰好 30 天前（>= now-30d）算 recent。
+    @Test("P5: isRecent boundary — exactly 30 days ago counts as recent")
+    func isRecentBoundary() throws {
+        let now = SeedData.todaySimulated()
+        let day: TimeInterval = 24 * 60 * 60
+        let exactly30 = Todo(title: "B", urgency: .normal, scope: .personal,
+                             done: true, completedAt: now.addingTimeInterval(-30 * day))
+        let justOver = Todo(title: "C", urgency: .normal, scope: .personal,
+                            done: true, completedAt: now.addingTimeInterval(-30 * day - 1))
+        #expect(PersonalViewModel.isRecent(exactly30, now: now) == true)
+        #expect(PersonalViewModel.isRecent(justOver, now: now) == false)
+    }
 }

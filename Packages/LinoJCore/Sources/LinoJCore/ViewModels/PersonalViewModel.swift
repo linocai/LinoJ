@@ -31,10 +31,15 @@ public final class PersonalViewModel {
     /// 「全部 personal todo（含 done）」计数；false 维持「仅未完成」。注入式（VM 不读 UserDefaults）。
     public var includeCompletedInCounts: Bool = false
 
+    /// v1.2 P5：「近 30 天」分层的「现在」锚点。默认 `LinoJTime.now()`（生产 = 真实现在）；
+    /// 测试注入固定时刻让 recent/archive 边界确定性。
+    private let now: Date
+
     // MARK: Init
 
-    public init(context: ModelContext) {
+    public init(context: ModelContext, now: Date = LinoJTime.now()) {
         self.context = context
+        self.now = now
     }
 
     // MARK: Refresh
@@ -78,6 +83,25 @@ public final class PersonalViewModel {
             .sorted { $0.createdAt < $1.createdAt }
     }
 
+    /// v1.2 P5：近 30 天完成（或 `completedAt == nil` 的存量旧 done 数据）的 personal todos。
+    /// CompletedBox 默认展开显示这一段。按 createdAt 升序。
+    public var completedRecent: [Todo] {
+        _ = tick
+        return completed.filter { Self.isRecent($0, now: now) }
+    }
+
+    /// v1.2 P5：超过 30 天完成的 personal todos（CompletedBox 二级 archive，点开才显示）。按 createdAt 升序。
+    public var completedArchive: [Todo] {
+        _ = tick
+        return completed.filter { !Self.isRecent($0, now: now) }
+    }
+
+    /// v1.2 P5：「近 30 天」判定（纯函数）。`completedAt == nil`（存量旧 done 数据）归 recent，不丢失。
+    static func isRecent(_ todo: Todo, now: Date) -> Bool {
+        guard let completedAt = todo.completedAt else { return true }
+        return completedAt >= now.addingTimeInterval(-30 * 24 * 60 * 60)
+    }
+
     /// open todos 数量（urgent + normal）。
     /// W2：`includeCompletedInCounts == true` 时改为「全部 personal todo（含 done）」计数。
     public var openCount: Int {
@@ -100,6 +124,8 @@ public final class PersonalViewModel {
     /// P6：iOS 真机触发 light haptic（macOS / 模拟器 no-op）。
     public func toggleDone(_ todo: Todo) {
         todo.done.toggle()
+        // v1.2 P5：维护 completedAt —— 置完成时写 now（注入锚点），取消完成时清 nil。
+        todo.completedAt = todo.done ? now : nil
         try? context.save()
         LinoJHaptics.lightTap()
         refresh()

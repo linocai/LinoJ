@@ -94,20 +94,29 @@ struct PersonalView_iOS: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 22)
 
-                    // Completed box
-                    CompletedBox(count: vm.completed.count) {
-                        if vm.completed.isEmpty {
-                            Text(LJStrings.completedUntilCrossOff)
-                                .font(.system(size: 12, weight: .medium, design: .default))
-                                .italic()
-                                .foregroundStyle(Color.lj.inkDim)
-                                .padding(.vertical, LJSpacing.s8)
-                        } else {
-                            ForEach(vm.completed, id: \.id) { todo in
+                    // Completed box（v1.2 P5：近 30 天 recent 默认展开 + 更早 archive 二级折叠）
+                    CompletedBox(
+                        count: vm.completed.count,
+                        archiveCount: vm.completedArchive.count,
+                        content: {
+                            if vm.completed.isEmpty {
+                                Text(LJStrings.completedUntilCrossOff)
+                                    .font(.system(size: 12, weight: .medium, design: .default))
+                                    .italic()
+                                    .foregroundStyle(Color.lj.inkDim)
+                                    .padding(.vertical, LJSpacing.s8)
+                            } else {
+                                ForEach(vm.completedRecent, id: \.id) { todo in
+                                    completedRow(todo: todo, onToggle: { vm.toggleDone(todo) })
+                                }
+                            }
+                        },
+                        archiveContent: {
+                            ForEach(vm.completedArchive, id: \.id) { todo in
                                 completedRow(todo: todo, onToggle: { vm.toggleDone(todo) })
                             }
                         }
-                    }
+                    )
                     .padding(.horizontal, 16)
                     .padding(.top, 24)
 

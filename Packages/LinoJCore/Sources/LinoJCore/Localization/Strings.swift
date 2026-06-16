@@ -100,6 +100,17 @@ public enum LJStrings {
     public static let projects: LocalizedStringResource = r("Section.projects")
     public static let next7Days: LocalizedStringResource = r("Section.next7Days")
     public static let fromYesterday: LocalizedStringResource = r("Section.fromYesterday")
+
+    /// v1.2 P2：From-yesterday 第三态出口按钮「忽略 / Dismiss」（移出框但不打勾）。
+    public static let fromYesterdayDismiss: LocalizedStringResource = r("FromYesterday.dismiss")
+    /// v1.2 P2：From-yesterday 截断折叠行「+%d earlier / 更早 %d 条」。%d = 被折叠的更早条数。
+    public static func fromYesterdayEarlier(_ count: Int) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "FromYesterday.earlier",
+            defaultValue: "+\(count) earlier",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
     public static let todos: LocalizedStringResource = r("Section.todos")
     public static let linkedEvents: LocalizedStringResource = r("Section.linkedEvents")
     public static let notes: LocalizedStringResource = r("Section.notes")
@@ -110,6 +121,15 @@ public enum LJStrings {
         LocalizedStringResource(
             "Section.completed",
             defaultValue: "Completed (\(count))",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
+
+    /// v1.2 P5：CompletedBox 二级 archive 折叠行「+%d earlier / 更早 %d 条」。%d = archive 条数。
+    public static func completedEarlier(_ count: Int) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "Completed.earlier",
+            defaultValue: "+\(count) earlier",
             bundle: .atURL(Bundle.module.bundleURL)
         )
     }
@@ -216,6 +236,34 @@ public enum LJStrings {
         LocalizedStringResource(
             "HeadsUp.inMinutes",
             defaultValue: "in \(minutes) min",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
+
+    /// v1.2 P4：进行中事件文案「now · %d min left / now · 还剩 %d 分」。%d = remainingMinutes。
+    public static func headsUpOngoing(_ minutes: Int) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "HeadsUp.ongoing",
+            defaultValue: "now · \(minutes) min left",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
+
+    /// v1.2 P4：「+N 更多」角标「+%d more / +%d 更多」。%d = moreCount（窗口内其它即将开始事件数）。
+    public static func headsUpMoreCount(_ count: Int) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "HeadsUp.moreCount",
+            defaultValue: "+\(count) more",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
+
+    /// v1.2 P3：urgent 软反思 nudge 文案「%d marked urgent — all still urgent? / %d 件都标急了——还都急吗？」。
+    /// %d = 当前 urgent todo 数。非阻塞镜子，不改任何 todo。
+    public static func nudgeUrgentReflection(_ count: Int) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "Nudge.urgentReflection",
+            defaultValue: "\(count) marked urgent — all still urgent?",
             bundle: .atURL(Bundle.module.bundleURL)
         )
     }
@@ -337,6 +385,19 @@ public enum LJStrings {
     public static let quickAddOptional: LocalizedStringResource = r("QuickAdd.optional")
     public static let quickAddTagHint: LocalizedStringResource = r("QuickAdd.tag.hint")
     public static let quickAddTagHintShort: LocalizedStringResource = r("QuickAdd.tag.hintShort")
+    /// v1.2 P1：Quick Add 表单内从 Company 切回 Personal 且当前选了 project 时的轻确认对话框标题。
+    public static let quickAddMovedOutTitle: LocalizedStringResource = r("QuickAdd.movedOutTitle")
+    /// v1.2 P1：「已移出项目 %@ / Moved out of %@」—— %@ = 被移出的 project 标题。
+    public static func quickAddMovedOutOf(_ projectTitle: String) -> LocalizedStringResource {
+        LocalizedStringResource(
+            "QuickAdd.movedOutOf",
+            defaultValue: "Moved out of \(projectTitle)",
+            bundle: .atURL(Bundle.module.bundleURL)
+        )
+    }
+    /// v1.2 P1：移出确认对话框的确认按钮文案。
+    public static let quickAddMovedOutConfirm: LocalizedStringResource = r("QuickAdd.movedOutConfirm")
+
     public static let quickAddChipNone: LocalizedStringResource = r("QuickAdd.chip.none")
     public static let quickAddChipAdd: LocalizedStringResource = r("QuickAdd.chip.add")
     public static let quickAddChipInvite: LocalizedStringResource = r("QuickAdd.chip.invite")

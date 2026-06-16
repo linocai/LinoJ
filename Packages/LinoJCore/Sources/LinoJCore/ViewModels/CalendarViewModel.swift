@@ -123,15 +123,14 @@ public final class CalendarViewModel {
         if let service = yesterdayMissedService {
             return service.computeMissed(now: today)
         }
+        // v1.2 P2：fallback 与 service 同步 —— 窗口扩为「全部过去未了结」
+        // （去掉 startOfYesterday 下界），并追加 `dismissedFromYesterday == false`。
         let startOfToday = Self.calendar.startOfDay(for: today)
-        guard let startOfYesterday = Self.calendar.date(byAdding: .day, value: -1, to: startOfToday) else {
-            return []
-        }
         return allEvents()
             .filter {
                 $0.end < startOfToday
-                && $0.end >= startOfYesterday
                 && $0.attendedConfirmed == false
+                && $0.dismissedFromYesterday == false
             }
             .sorted { $0.start < $1.start }
     }
@@ -198,6 +197,18 @@ public final class CalendarViewModel {
     public func confirmAttended(_ event: Event) {
         event.attendedConfirmed = true
         try? context.save()
+        refresh()
+    }
+
+    /// v1.2 P2：「From yesterday」第三态出口 —— 忽略 / 没去（不撒谎打勾）。
+    /// 优先委托 service；service 未注入时直接置字段 + save（fallback 与 service 等价）。
+    public func dismissMissed(_ event: Event) {
+        if let service = yesterdayMissedService {
+            service.dismissMissed(event)
+        } else {
+            event.dismissedFromYesterday = true
+            try? context.save()
+        }
         refresh()
     }
 

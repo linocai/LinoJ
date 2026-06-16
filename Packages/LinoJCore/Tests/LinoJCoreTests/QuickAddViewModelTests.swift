@@ -314,4 +314,116 @@ struct QuickAddViewModelTests {
         #expect(updated2?.memberCount == 1)
         #expect(updated2?.memberCount == (updated2?.members ?? []).count)
     }
+
+    // MARK: 11. P0 — 极简 Event（仅标题 + 时间）可创建（location/attendees 可跳过）
+
+    @Test("P0: event with title + time only (empty location, no attendees) → canSubmit == true")
+    func eventMinimalCanSubmit() throws {
+        let context = try makeEmptyContext()
+        let vm = QuickAddViewModel(context: context, defaultKind: .event)
+
+        vm.eventTitle = "Quick sync"
+        // location 留空、attendees 留空（即「可跳过」）。
+        vm.eventLocation = ""
+        vm.eventAttendees = []
+
+        let cal = Calendar.current
+        let day = cal.date(from: DateComponents(year: 2026, month: 6, day: 20))!
+        vm.eventDate = day
+        vm.eventStart = cal.date(byAdding: .hour, value: 10, to: day)!
+        vm.eventEnd   = cal.date(byAdding: .hour, value: 11, to: day)!
+
+        // title + 合法时间齐 → 可提交，location/attendees 空不阻挡（P0 松绑契约）。
+        #expect(vm.canSubmit == true)
+
+        // 真正提交也成功，落库一条空 location / 空 attendees 的 Event。
+        _ = try vm.submit()
+        let events = try context.fetch(FetchDescriptor<Event>())
+        #expect(events.count == 1)
+        #expect(events.first?.title == "Quick sync")
+        #expect(events.first?.location == "")
+        #expect((events.first?.attendees ?? []).isEmpty)
+    }
+
+    // MARK: 12. P1 — 选非 nil project 自动锁 scope=.company
+
+    @Test("P1: selecting a non-nil project auto-locks todoScope to .company")
+    func selectingProjectLocksCompany() throws {
+        let context = try makeEmptyContext()
+        let p = Project(
+            title: "Locking project",
+            intro: "",
+            notes: "",
+            tag: "",
+            members: [],
+            createdAt: .now
+        )
+        context.insert(p)
+        try context.save()
+
+        let vm = QuickAddViewModel(context: context, defaultKind: .todo)
+        // 默认 personal。
+        #expect(vm.todoScope == .personal)
+
+        // 选一个 project → didSet 应把 scope 锁成 .company。
+        vm.todoProject = p
+        #expect(vm.todoScope == .company)
+        #expect(vm.todoProject?.id == p.id)
+    }
+
+    // MARK: 13. P1 — 切回 personal 清 project + 不递归回设 company
+
+    @Test("P1: switching back to .personal clears project and does NOT re-lock company")
+    func switchBackToPersonalClearsProjectNoRecursion() throws {
+        let context = try makeEmptyContext()
+        let p = Project(
+            title: "P",
+            intro: "",
+            notes: "",
+            tag: "",
+            members: [],
+            createdAt: .now
+        )
+        context.insert(p)
+        try context.save()
+
+        let vm = QuickAddViewModel(context: context, defaultKind: .todo)
+        vm.todoProject = p          // 锁 company
+        #expect(vm.todoScope == .company)
+
+        // 切回 personal：scope didSet 清 project（→ nil），nil project 的 didSet 不该回设 company。
+        vm.todoScope = .personal
+        #expect(vm.todoProject == nil)
+        #expect(vm.todoScope == .personal)   // 没有被 project didSet 反弹回 company（无死循环 / 无回设）
+    }
+
+    // MARK: 14. P1 — submit 后 personal todo 的 project 为 nil（兜底）
+
+    @Test("P1: personal todo submit always persists project == nil even if a project was once set")
+    func personalSubmitClearsProject() throws {
+        let context = try makeEmptyContext()
+        let p = Project(
+            title: "P2",
+            intro: "",
+            notes: "",
+            tag: "",
+            members: [],
+            createdAt: .now
+        )
+        context.insert(p)
+        try context.save()
+
+        let vm = QuickAddViewModel(context: context, defaultKind: .todo)
+        vm.todoTitle = "Buy milk"
+        vm.todoProject = p          // 锁 company + 设 project
+        #expect(vm.todoScope == .company)
+        vm.todoScope = .personal    // 切回 personal → 清 project
+        #expect(vm.todoProject == nil)
+
+        _ = try vm.submit()
+        let todos = try context.fetch(FetchDescriptor<Todo>())
+        #expect(todos.count == 1)
+        #expect(todos.first?.scope == .personal)
+        #expect(todos.first?.project == nil)
+    }
 }

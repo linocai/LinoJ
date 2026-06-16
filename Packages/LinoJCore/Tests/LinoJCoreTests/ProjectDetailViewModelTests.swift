@@ -186,6 +186,53 @@ struct ProjectDetailViewModelTests {
         }
     }
 
+    // MARK: - P1: deleteProject nullify（隔离构造，精确 2 个 todo）
+
+    @Test("P1: deleting a project with exactly 2 todos leaves both alive with project == nil")
+    func deleteProjectNullifiesTwoTodos() throws {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+
+        // 一个全新 project，挂 2 个 company todo（其余库为空，断言确定性）。
+        let project = Project(
+            title: "Solo project",
+            intro: "",
+            notes: "",
+            tag: "",
+            members: [],
+            createdAt: .now
+        )
+        context.insert(project)
+        let t1 = Todo(title: "Task one", urgency: .urgent, scope: .company, project: project)
+        let t2 = Todo(title: "Task two", urgency: .normal, scope: .company, project: project)
+        context.insert(t1)
+        context.insert(t2)
+        try context.save()
+        let projectID = project.id
+        let t1ID = t1.id
+        let t2ID = t2.id
+
+        let vm = ProjectDetailViewModel(project: project, context: context)
+        vm.deleteProject()
+
+        // project 已删。
+        let projectsAfter = try context.fetch(FetchDescriptor<Project>())
+        #expect(projectsAfter.contains { $0.id == projectID } == false)
+
+        // 2 个 todo 仍在，且 project 被 nullify 为 nil（降级为 standalone company todo）。
+        let todosAfter = try context.fetch(FetchDescriptor<Todo>())
+        #expect(todosAfter.count == 2)
+        let survivor1 = todosAfter.first { $0.id == t1ID }
+        let survivor2 = todosAfter.first { $0.id == t2ID }
+        #expect(survivor1 != nil)
+        #expect(survivor2 != nil)
+        #expect(survivor1?.project == nil, "todo.project 应被 nullify")
+        #expect(survivor2?.project == nil, "todo.project 应被 nullify")
+        // scope 仍是 company（nullify 只清 project 关系，不动 scope）。
+        #expect(survivor1?.scope == .company)
+        #expect(survivor2?.scope == .company)
+    }
+
     // MARK: - membersSinceText
 
     @Test("membersSinceText contains '3 members' and includes 'since '")

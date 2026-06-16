@@ -16,7 +16,7 @@ import Foundation
 import Observation
 import SwiftData
 
-/// Heads-up alert 的展示数据。`HeadsUpService`（P4）在事件 60min 内 fire 时构造此模型。
+/// Heads-up alert 的展示数据。`HeadsUpService`（v1.0 P4）在事件 60min 内 fire 时构造此模型。
 public struct HeadsUpAlertModel: Equatable, Sendable {
     /// 事件实体的 `id`（用 UUID 而非 `Event` 引用，避免跨 actor 传递 `@Model` 类型）。
     public let eventID: UUID
@@ -24,11 +24,33 @@ public struct HeadsUpAlertModel: Equatable, Sendable {
     public let location: String
     public let minutesUntil: Int
 
-    public init(eventID: UUID, title: String, location: String, minutesUntil: Int) {
+    /// v1.2 P4：窗口 `[now, now+60min] && end>now` 内符合条件的事件数 - 1（即「除当前这条外还有几条」）。
+    /// >0 时 Main 在 heads-up pill 上显示「+N 更多」角标。单条不堆叠（pill 仍只渲染 currentAlert 这条）。
+    public let moreCount: Int
+
+    /// v1.2 P4：事件是否进行中（`now >= start && now < end`）。
+    /// true 时文案走「now · 还剩 Y 分」分支，避免 start 已过显示「in 0 min」的语义错。
+    public let isOngoing: Bool
+
+    /// v1.2 P4：进行中事件距 end 的剩余分钟（`ceil((end-now)/60)`）。仅 `isOngoing == true` 时有意义。
+    public let remainingMinutes: Int
+
+    public init(
+        eventID: UUID,
+        title: String,
+        location: String,
+        minutesUntil: Int,
+        moreCount: Int = 0,
+        isOngoing: Bool = false,
+        remainingMinutes: Int = 0
+    ) {
         self.eventID = eventID
         self.title = title
         self.location = location
         self.minutesUntil = minutesUntil
+        self.moreCount = moreCount
+        self.isOngoing = isOngoing
+        self.remainingMinutes = remainingMinutes
     }
 }
 
@@ -69,6 +91,16 @@ public final class MainViewModel {
     /// W2：Settings 的 `yesterdayMissedReminderEnabled` 注入值（View 灌入）。
     /// 为 false 时 `yesterdayMissed` getter 短路返回 `[]`，从而「From yesterday」box 不渲染。
     public var showYesterdayMissed: Bool = true
+
+    /// v1.2 P3：urgent 软反思 nudge 的阈值（注入式，可测、未来可放 Settings）。
+    /// 决策 D4：默认 `5` —— `urgentTodos.count > threshold`（即 6 件起）才出现 nudge。
+    /// 与 `includeCompletedInCounts` 同注入模式。
+    public var urgentNudgeThreshold: Int = 5
+
+    /// v1.2 P3：nudge 的 dismiss 态（**会话级**内存态，不持久化）。
+    /// 用户点 nudge 上的小 × 触发 `dismissUrgentNudge()` → true，本次会话内不再出现；
+    /// 下次启动若仍超阈值会再现（「定期照镜子」的预期行为，非烦扰，因为 nudge 非阻塞）。
+    private var nudgeDismissed: Bool = false
 
     /// 该 VM 视角下的「今天」时刻。默认 = `LinoJTime.today()`（真实今天，生产行为不变）；
     /// 测试注入 `SeedData.todaySimulated()` 让 seed 数据落入「今天」窗口、断言确定性。
@@ -140,6 +172,15 @@ public final class MainViewModel {
             .sorted { $0.createdAt < $1.createdAt }
     }
 
+    /// v1.2 P3：是否显示 urgent 软反思 nudge。
+    /// 规则（决策 D2：仅 Main；D4：阈值默认 >5）：`urgentTodos.count > urgentNudgeThreshold && !nudgeDismissed`。
+    /// **非阻塞、无降级、无倒计时**：它只是面镜子，不改任何 todo 的 urgency。
+    /// dismiss 后本次会话内为 false；urgentCount 降到 ≤ 阈值时自然为 false。
+    public var urgentReflectionNudge: Bool {
+        _ = tick
+        return urgentTodos.count > urgentNudgeThreshold && !nudgeDismissed
+    }
+
     /// 今天落地的所有事件，按 start 升序。
     /// 用注入的 `self.today`：生产 = 真实今天；测试注入 SeedData.todaySimulated() 锚定。
     public var todayEvents: [Event] {
@@ -190,16 +231,15 @@ public final class MainViewModel {
             // SeedData.todaySimulated() 让 seed 的 yesterday=05-26 事件被识别为「昨天」。
             return service.computeMissed(now: today)
         }
+        // v1.2 P2：fallback 路径与 service 同步 —— 窗口扩为「全部过去未了结」
+        // （去掉 startOfYesterday 下界），并追加 `dismissedFromYesterday == false`。
         let calendar = Calendar.current
         let startOfToday = calendar.startOfDay(for: today)
-        guard let startOfYesterday = calendar.date(byAdding: .day, value: -1, to: startOfToday) else {
-            return []
-        }
         return allEvents()
             .filter {
                 $0.end < startOfToday
-                && $0.end >= startOfYesterday
                 && $0.attendedConfirmed == false
+                && $0.dismissedFromYesterday == false
             }
             .sorted { $0.start < $1.start }
     }
@@ -218,6 +258,8 @@ public final class MainViewModel {
     /// P6：iOS 真机触发 light haptic。
     public func toggleDone(_ todo: Todo) {
         todo.done.toggle()
+        // v1.2 P5：维护 completedAt —— 置完成时写 .now，取消完成时清 nil。
+        todo.completedAt = todo.done ? LinoJTime.now() : nil
         try? context.save()
         LinoJHaptics.lightTap()
         refresh()
@@ -229,6 +271,19 @@ public final class MainViewModel {
     public func confirmAttended(_ event: Event) {
         event.attendedConfirmed = true
         try? context.save()
+        LinoJHaptics.lightTap()
+        refresh()
+    }
+
+    /// v1.2 P2：「From yesterday」第三态出口 —— 忽略 / 没去（不撒谎打勾）。
+    /// 优先委托 service；service 未注入时直接置字段 + save（fallback 行为与 service 等价）。
+    public func dismissMissed(_ event: Event) {
+        if let service = yesterdayMissedService {
+            service.dismissMissed(event)
+        } else {
+            event.dismissedFromYesterday = true
+            try? context.save()
+        }
         LinoJHaptics.lightTap()
         refresh()
     }
@@ -252,6 +307,13 @@ public final class MainViewModel {
     /// HeadsUp snooze 10 分钟。P4 起转发到 HeadsUpService；service 未注入时 noop。
     public func snoozeHeadsUp() {
         headsUpService?.snooze()
+    }
+
+    /// v1.2 P3：dismiss urgent 反思 nudge（点小 × 触发）。会话级 —— 不持久化。
+    /// **不做任何破坏性动作**（不改 todo urgency）；仅把本次会话的 nudge 关掉。
+    public func dismissUrgentNudge() {
+        nudgeDismissed = true
+        refresh()
     }
 
     /// HeadsUp open。P4 阶段仍 noop —— 与 Calendar 的「跳到那天」跳转留给 P5+（依赖

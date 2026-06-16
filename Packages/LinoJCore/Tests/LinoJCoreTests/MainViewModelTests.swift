@@ -178,4 +178,83 @@ struct MainViewModelTests {
         vm.unconfirmAttended(target)
         #expect(target.attendedConfirmed == false)
     }
+
+    // MARK: - v1.2 P2: dismissMissed 第三态（VM 层）
+
+    @Test("P2: dismissMissed removes event from yesterdayMissed (service-backed) keeping attended false")
+    func dismissMissedViaVM() throws {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        try SeedData.seedIfEmpty(context)
+        let service = YesterdayMissedService(context: context)
+        let vm = MainViewModel(context: context, yesterdayMissedService: service, today: SeedData.todaySimulated())
+        #expect(vm.yesterdayMissed.count == 2)
+        let first = try #require(vm.yesterdayMissed.first)
+        vm.dismissMissed(first)
+        #expect(vm.yesterdayMissed.count == 1)
+        #expect(!vm.yesterdayMissed.contains(where: { $0.id == first.id }))
+        #expect(first.attendedConfirmed == false)
+        #expect(first.dismissedFromYesterday == true)
+    }
+
+    // MARK: - v1.2 P3: urgent 软反思 nudge
+
+    /// 构造一个空 context + VM，插入 `urgentCount` 条 open urgent todo，可控阈值场景。
+    private func makeVMWithUrgent(_ urgentCount: Int) throws -> (MainViewModel, ModelContext) {
+        let container = try LinoJStore.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        for i in 0..<urgentCount {
+            let t = Todo(title: "U\(i)", urgency: .urgent, scope: .personal)
+            context.insert(t)
+        }
+        try context.save()
+        let vm = MainViewModel(context: context, today: SeedData.todaySimulated())
+        return (vm, context)
+    }
+
+    @Test("P3: urgentCount 6 (> default threshold 5) → nudge == true")
+    func nudgeAppearsAboveThreshold() throws {
+        let (vm, _) = try makeVMWithUrgent(6)
+        #expect(vm.urgentNudgeThreshold == 5)
+        #expect(vm.urgentCount == 6)
+        #expect(vm.urgentReflectionNudge == true)
+    }
+
+    @Test("P3: urgentCount 5 (== threshold) → nudge == false (strictly greater)")
+    func nudgeHiddenAtThreshold() throws {
+        let (vm, _) = try makeVMWithUrgent(5)
+        #expect(vm.urgentReflectionNudge == false)
+    }
+
+    @Test("P3: dismissUrgentNudge() hides nudge for the session without touching todo urgency")
+    func nudgeDismissHidesWithoutMutating() throws {
+        let (vm, _) = try makeVMWithUrgent(6)
+        #expect(vm.urgentReflectionNudge == true)
+        let urgentBefore = vm.urgentCount
+        vm.dismissUrgentNudge()
+        #expect(vm.urgentReflectionNudge == false)
+        // 不改任何 todo 的 urgency —— urgentCount 不变。
+        #expect(vm.urgentCount == urgentBefore)
+    }
+
+    @Test("P3: nudge naturally false when urgentCount drops to <= threshold (complete one)")
+    func nudgeClearsWhenCountDrops() throws {
+        let (vm, _) = try makeVMWithUrgent(6)
+        #expect(vm.urgentReflectionNudge == true)
+        // 完成一条 → urgentCount 6 → 5 → nudge 自然 false（非 dismiss 路径）。
+        let one = try #require(vm.urgentTodos.first)
+        vm.toggleDone(one)
+        #expect(vm.urgentCount == 5)
+        #expect(vm.urgentReflectionNudge == false)
+    }
+
+    @Test("P3: injected threshold respected (threshold 2 → 3 urgent triggers nudge)")
+    func nudgeInjectedThreshold() throws {
+        let (vm, _) = try makeVMWithUrgent(3)
+        // 默认阈值 5 → 3 不触发。
+        #expect(vm.urgentReflectionNudge == false)
+        // 注入阈值 2 → 3 > 2 → 触发。
+        vm.urgentNudgeThreshold = 2
+        #expect(vm.urgentReflectionNudge == true)
+    }
 }

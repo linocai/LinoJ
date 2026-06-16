@@ -410,6 +410,23 @@
         }
       }
     },
+    "Completed.earlier": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%d earlier"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更早 %d 条"
+          }
+        }
+      }
+    },
     "Counts.eventCount.one": {
       "extractionState": "manual",
       "localizations": {
@@ -1260,6 +1277,40 @@
         }
       }
     },
+    "FromYesterday.dismiss": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dismiss"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "忽略"
+          }
+        }
+      }
+    },
+    "FromYesterday.earlier": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%d earlier"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更早 %d 条"
+          }
+        }
+      }
+    },
     "HeadsUp.conflict": {
       "extractionState": "manual",
       "localizations": {
@@ -1290,6 +1341,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "%d 分钟后"
+          }
+        }
+      }
+    },
+    "HeadsUp.moreCount": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%d more"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+%d 更多"
+          }
+        }
+      }
+    },
+    "HeadsUp.ongoing": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "now · %d min left"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "进行中 · 还剩 %d 分"
           }
         }
       }
@@ -1613,6 +1698,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "新笔记"
+          }
+        }
+      }
+    },
+    "Nudge.urgentReflection": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d marked urgent — all still urgent?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%d 件都标急了——还都急吗？"
           }
         }
       }
@@ -2463,6 +2565,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "暂无成员"
+          }
+        }
+      }
+    },
+    "QuickAdd.movedOutConfirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move out"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移出"
+          }
+        }
+      }
+    },
+    "QuickAdd.movedOutOf": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moved out of %@"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已移出项目 %@"
+          }
+        }
+      }
+    },
+    "QuickAdd.movedOutTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move out of project?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移出项目？"
           }
         }
       }

@@ -5,7 +5,7 @@
 // event 会出现在 Main 与 Calendar 的 dashed-border 小框中等待 checkoff。
 //
 // V1（CloudKit）约束：
-//   - 所有非 optional 标量必须有默认值（`title/start/end/location/attendedConfirmed`）。
+//   - 所有非 optional 标量必须有默认值（`title/start/end/location/attendedConfirmed/dismissedFromYesterday`）。
 //   - to-many `attendees` 必须 optional（CloudKit 要求所有关系 optional，类型 `[Person]?`），
 //     且与 `Person.attending` 互为 inverse（inverse 声明在 Person 侧）。
 //   - to-one `project: Project?` 已 optional；其 inverse 在 `Project.events` 侧声明。
@@ -44,6 +44,13 @@ public final class Event {
     /// V1：CloudKit 约束需默认值。
     public var attendedConfirmed: Bool = false
 
+    /// v1.2 P2：「From yesterday」第三态出口 —— 用户在 yesterday-missed box 里点「忽略 / 没去」后置 true。
+    /// 语义 = 「用户已处理但未必出席」，**不撒谎打勾**（不污染 `attendedConfirmed` 的「真出席」语义）。
+    /// `YesterdayMissedService.computeMissed` 过滤条件追加 `dismissedFromYesterday == false`，
+    /// 使被忽略的事件从该框消失，但 Calendar 出席态不会误亮。
+    /// V1：标量带默认值 `false`，CloudKit 合规；加此列触发轻量 schema 演进（旧 store 升级见真机清单）。
+    public var dismissedFromYesterday: Bool = false
+
     public init(
         id: UUID = UUID(),
         title: String,
@@ -52,7 +59,8 @@ public final class Event {
         location: String,
         attendees: [Person]? = [],
         project: Project? = nil,
-        attendedConfirmed: Bool = false
+        attendedConfirmed: Bool = false,
+        dismissedFromYesterday: Bool = false
     ) {
         self.id = id
         self.title = title
@@ -62,5 +70,6 @@ public final class Event {
         self.attendees = attendees
         self.project = project
         self.attendedConfirmed = attendedConfirmed
+        self.dismissedFromYesterday = dismissedFromYesterday
     }
 }
