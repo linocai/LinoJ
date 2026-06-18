@@ -7,10 +7,10 @@
 //   - 两列 kanban：Urgent + Normal 各占 1fr，内部 ScrollView，flex 1 高度
 //   - 底部 pinned Projects strip：top-border + 每个 project 一行 1fr 200pt 110pt
 //
-// 右栏 360pt：
-//   - "Next 7 days" 标题 + 7 行 day-row（Today / Tomorrow / Wed 28...）
-//   - 每行：day 字 + 前 3 个事件（macRail variant）+ "+N more"
-//   - 底部 pinned "From yesterday" dashed-border 灰 box（checkable rows）
+// 右栏 360pt（v1.3 R1 重做，对原型重建）：
+//   - 玻璃面板：标题「未来 7 天」+ 日分组（每组 = 今日高亮圆角行：星期+日期号同行 +
+//     当日事件 mono 时间(34pt)+标题列表 + 「+N 更多」）+ 底部整合进同面板的「昨天遗漏」虚线框
+//   - 玻璃面板下方同级：「最近灵感」缩略卡（原型漏含、保留不删）
 //
 // 数据：MainViewModel 从 SwiftData 拉。View 同时 `@Query` 三类模型，仅用来触发 invalidation：
 // 数据变化时 onChange → vm.refresh()，让 ViewModel 的 computed property 重新 fetch。
@@ -62,7 +62,8 @@ struct MainView_macOS: View {
             if let vm {
                 content(vm: vm)
             } else {
-                Color.lj.bg.ignoresSafeArea()
+                // v1.3：背景由 RootWindow 的 ljScreenBackground 提供，此处用透明占位即可。
+                Color.clear
             }
         }
         .task {
@@ -167,17 +168,12 @@ struct MainView_macOS: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if !hideRightRail {
-                    // 360pt 右栏 + 左边线分隔
+                    // 360pt 右栏（v1.3：内部 rightRail 自带玻璃面板，外层不再画边线）。
                     rightRail(vm: vm)
                         .frame(width: 360)
-                        .overlay(alignment: .leading) {
-                            Rectangle()
-                                .fill(Color.lj.border)
-                                .frame(width: 0.5)
-                        }
                 }
             }
-            .background(Color.lj.bg)
+            // v1.3：背景由 RootWindow 的 ljScreenBackground 提供，透明让 orb/底色透上来。
         }
     }
 
@@ -354,7 +350,8 @@ struct MainView_macOS: View {
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: LJSpacing.s8) {
                     ForEach(items, id: \.id) { todo in
-                        TodoBubble(todo: todo, onToggleDone: { onToggle(todo) })
+                        // 主页：每条待办显示来源标签胶囊（个人灰 / 公司紫）+ 可选项目名（新功能）。
+                        TodoBubble(todo: todo, showSource: true, onToggleDone: { onToggle(todo) })
                     }
                     if items.isEmpty {
                         Text(LJStrings.nothingHere)
@@ -471,44 +468,56 @@ struct MainView_macOS: View {
 
     @ViewBuilder
     private func rightRail(vm: MainViewModel) -> some View {
-        let groups = vm.next7DaysGrouped
+        // v1.3 R1 重做：按原型重建右栏结构 —— 单玻璃面板内：标题「未来 7 天」+ 日分组行
+        // （今日高亮圆角行、星期+日期号同行、mono 时间+标题事件行、「+N 更多」）+ 底部
+        // 「昨天遗漏」虚线框整合进**同一**面板（不再独立 box）。
+        // 「最近灵感」缩略卡（原型漏含，保留不删）放在玻璃面板**下方**，作为同级兄弟。
+        VStack(alignment: .leading, spacing: LJSpacing.s12) {
+            next7DaysPanel(vm: vm)
+                .frame(maxHeight: .infinity, alignment: .top)
 
+            // U3：右栏最底「最近灵感」缩略卡（不挤进 7 天面板）。
+            recentInspirationCard()
+        }
+        .padding(.trailing, LJSpacing.s16)
+        .padding(.vertical, LJSpacing.s16)
+        .padding(.leading, LJSpacing.s8)
+    }
+
+    /// 「未来 7 天」玻璃面板（含日分组 + 整合进底部的「昨天遗漏」虚线框）。
+    @ViewBuilder
+    private func next7DaysPanel(vm: MainViewModel) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 标题
-            HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s10) {
-                Text(LJStrings.next7Days)
-                    .font(.system(size: 16, weight: .semibold, design: .default))
-                    .kerning(-0.24)
-                    .foregroundStyle(Color.lj.ink)
-                Spacer()
-            }
-            .padding(.bottom, LJSpacing.s8)
+            // 标题（原型 15pt/600/-0.015em）
+            Text(LJStrings.next7Days)
+                .font(.system(size: 15, weight: .semibold, design: .default))
+                .kerning(-0.225)
+                .foregroundStyle(Color.lj.ink)
+                .padding(.bottom, LJSpacing.s14)
 
+            // 日分组（可滚动）。原型 margin:0 -6px 让行高亮略出血到面板内缘。
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 0) {
-                    ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
-                        Rectangle().fill(Color.lj.border).frame(height: 0.5)
-                        dayRow(vm: vm, day: group.day, events: group.events)
+                VStack(spacing: 2) {
+                    ForEach(Array(vm.next7DaysGrouped.enumerated()), id: \.offset) { _, group in
+                        dayGroup(vm: vm, day: group.day, events: group.events)
                     }
                 }
+                .padding(.horizontal, -6)
             }
 
-            // pinned "From yesterday"
+            // 「昨天遗漏」整合进同一面板底部（原型 margin-top:14 的虚线框）。
             if !vm.yesterdayMissed.isEmpty {
                 yesterdayBox(
                     events: vm.yesterdayMissed,
                     onConfirm: { vm.confirmAttended($0) },
                     onDismiss: { vm.dismissMissed($0) }
                 )
-                .padding(.top, LJSpacing.s22)
+                .padding(.top, LJSpacing.s14)
             }
-
-            // U3：右栏最底「最近灵感」缩略卡。
-            recentInspirationCard()
-                .padding(.top, LJSpacing.s22)
         }
-        .padding(.horizontal, LJSpacing.s18)
-        .padding(.vertical, LJSpacing.s22)
+        .padding(LJSpacing.s18)
+        // v1.3：右栏整体玻璃面板（圆角 18 + hairline + 顶高光 + 深柔投影），从底色 / orb 上浮起。
+        .ljGlassPanel(radius: LJRadii.panel, padded: false)
     }
 
     // MARK: - U3 「最近灵感」缩略卡
@@ -585,61 +594,81 @@ struct MainView_macOS: View {
         .ljHoverLift()
     }
 
+    /// v1.3 R1 重做：日分组（对原型重建）。
+    /// 原型每组 = 一个圆角行（今日底高亮 rgba(110,110,230,0.08)）：
+    ///   头行 = 星期 label（今日 accentDeep / 周末 inkMute / 平日 ink）+ 日期号（小字 inkMute），同一行；
+    ///   下方 = 当日事件 `mono 时间(34pt 宽) + 标题`（baseline 对齐）列表，溢出显示「+N 更多」。
+    /// 事件取数 / 点击编辑 / contextMenu 全部保留（只重排呈现）。
     @ViewBuilder
-    private func dayRow(vm: MainViewModel, day: Date, events: [Event]) -> some View {
+    private func dayGroup(vm: MainViewModel, day: Date, events: [Event]) -> some View {
         let label = dayLabel(for: day)
         let dateNumber = dayDateNumber(for: day)
         let isToday = Calendar.current.isDateInToday(day)
+        let isWeekend = Calendar.current.isDateInWeekend(day)
 
-        HStack(alignment: .top, spacing: LJSpacing.s12) {
-            // 左 60pt：day label + 日期
-            VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: 6) {
+            // 头行：星期 + 日期号（原型同一行，gap 8）。
+            HStack(spacing: LJSpacing.s8) {
                 Text(label)
-                    .font(.system(size: 10.5, weight: .semibold, design: .default))
-                    .kerning(0.6)
-                    .textCase(.uppercase)
-                    .foregroundStyle(isToday ? Color.lj.ink : Color.lj.inkMute)
-                HStack(spacing: 5) {
-                    Text(dateNumber)
-                        .font(.system(size: 18, weight: .semibold, design: .default))
-                        .kerning(-0.36)
-                        .foregroundStyle(isToday ? Color.lj.ink : Color.lj.ink)
-                    if isToday {
-                        Circle()
-                            .fill(Color.lj.ink)
-                            .frame(width: 4, height: 4)
-                    }
-                }
+                    .font(.system(size: 12, weight: .semibold, design: .default))
+                    .kerning(-0.12)
+                    .foregroundStyle(dayLabelColor(isToday: isToday, isWeekend: isWeekend))
+                Text(dateNumber)
+                    .font(.system(size: 11, weight: .regular, design: .default))
+                    .monospacedDigit()
+                    .foregroundStyle(Color.lj.inkMute)
+                Spacer(minLength: 0)
             }
-            .frame(width: 60, alignment: .leading)
 
-            // 右：前 3 场事件 + "+N more"
-            VStack(alignment: .leading, spacing: 5) {
+            // 当日事件：mono 时间(34pt) + 标题。
+            VStack(alignment: .leading, spacing: 4) {
                 if events.isEmpty {
                     Text(LJStrings.nothingOnBooks)
                         .font(.system(size: 12, weight: .medium, design: .default))
                         .italic()
                         .foregroundStyle(Color.lj.inkDim)
-                        .padding(.top, 3)
                 }
                 ForEach(events.prefix(3), id: \.id) { event in
-                    // W4：macRail row 外层套 onTap（打开编辑）+ contextMenu（Edit/Mark/Delete）。
-                    EventCard(event: event, variant: .macRail)
-                        .contentShape(Rectangle())
-                        .onTapGesture { openEdit(event) }
-                        .contextMenu { eventActions(for: event, vm: vm) }
+                    // 事件行：mono 时间(34pt 宽) + 标题。保留点击编辑 + contextMenu（功能不丢）。
+                    HStack(alignment: .firstTextBaseline, spacing: 9) {
+                        Text(timeText(event.start))
+                            .font(.system(size: 11, weight: .medium, design: .monospaced))
+                            .monospacedDigit()
+                            .foregroundStyle(isToday ? Color.lj.accent : Color.lj.inkSoft)
+                            .frame(width: 34, alignment: .leading)
+                        Text(event.title)
+                            .font(.system(size: 12.5, weight: .regular, design: .default))
+                            .foregroundStyle(Color.lj.inkSoft)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { openEdit(event) }
+                    .contextMenu { eventActions(for: event, vm: vm) }
                 }
                 if events.count > 3 {
                     Text(String(localized: "Counts.moreEvents", defaultValue: "+\(events.count - 3) more", bundle: LinoJCoreBundle.bundle))
-                        .font(.system(size: 11, weight: .medium, design: .default))
+                        .font(.system(size: 11, weight: .regular, design: .default))
                         .foregroundStyle(Color.lj.inkMute)
-                        .padding(.leading, 52)
-                        .padding(.top, 2)
+                        .padding(.leading, 43)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.vertical, LJSpacing.s10)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // 今日组底色高亮（原型 rgba(110,110,230,0.08)），圆角 9。
+        .background {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .fill(isToday ? Color.lj.navSelected.opacity(0.62) : Color.clear)
+        }
+    }
+
+    /// 日分组星期 label 颜色：今日 = accentDeep（原型 #5B5BD6）/ 周末 = inkMute / 平日 = ink。
+    private func dayLabelColor(isToday: Bool, isWeekend: Bool) -> Color {
+        if isToday { return Color.lj.accentDeep }
+        if isWeekend { return Color.lj.inkMute }
+        return Color.lj.ink
     }
 
     // MARK: - "From yesterday"

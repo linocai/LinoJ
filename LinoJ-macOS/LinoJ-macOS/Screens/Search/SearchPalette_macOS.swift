@@ -70,7 +70,9 @@ struct SearchPalette_macOS: View {
             footer(vm: vm)
         }
         .frame(width: 640, height: 540)
-        .background(Color.lj.panel)
+        // v1.3 R6：玻璃卡（与 QuickAdd/Settings 一致；原型未单列 Search，套 R0 玻璃件对齐风格）。
+        .background(.regularMaterial)
+        .overlay { LJTopHighlight(radius: LJRadii.modalMac) }
         // ↑↓↵ 键盘行为。.onKeyPress 修饰必须作用在能拿到 key event 的 View 上，
         // 这里挂在最外层 VStack 即可。
         .onKeyPress(.downArrow) {

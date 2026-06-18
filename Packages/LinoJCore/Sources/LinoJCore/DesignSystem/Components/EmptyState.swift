@@ -1,7 +1,7 @@
 // EmptyState.swift
 // 通用空状态块：小几何 SVG 风 icon + display 标题 + 温和副标 + 可选 CTA。
 //
-// 设计参考：design_handoff_linoj/empty-states.jsx 中 `EmptyArt` 的 5 个 kind。
+// 设计参考：design_handoff_linoj_frontend/README.md（空状态）。
 // P2 实现其中 4 个 variant：
 //   inboxZero  → check 风 icon（虚线圈 + 钩号），标题 "Inbox zero."
 //   urgentEmpty → sparkle 风 icon，标题 "Nothing urgent." 副标 "Nice."

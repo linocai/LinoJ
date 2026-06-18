@@ -38,6 +38,8 @@
 	<string>+ 新建事件</string>
 	<key>Calendar.newEventAcc</key>
 	<string>新建事件</string>
+	<key>Calendar.newEventTitle</key>
+	<string>新建日程</string>
 	<key>Calendar.nextWeek</key>
 	<string>下一周</string>
 	<key>Calendar.overlapsCount</key>
@@ -50,6 +52,10 @@
 	<string>今天</string>
 	<key>Common.done</key>
 	<string>完成</string>
+	<key>Company.newItem</key>
+	<string>新建公司事项</string>
+	<key>Company.newProject</key>
+	<string>新建项目</string>
 	<key>Completed.earlier</key>
 	<string>更早 %d 条</string>
 	<key>Counts.eventCount.one</key>
@@ -182,8 +188,12 @@
 	<string>随手记一条</string>
 	<key>Inspiration.recent</key>
 	<string>最近灵感</string>
+	<key>Inspiration.recordIdea</key>
+	<string>记录灵感</string>
 	<key>Inspiration.searchPlaceholder</key>
 	<string>搜索笔记…</string>
+	<key>Inspiration.subtitle</key>
+	<string>随手记下的念头、清单与片段</string>
 	<key>Inspiration.title</key>
 	<string>灵感</string>
 	<key>Inspiration.titlePlaceholder</key>
@@ -204,6 +214,8 @@
 	<string>新笔记</string>
 	<key>Nudge.urgentReflection</key>
 	<string>%d 件都标急了——还都急吗？</string>
+	<key>Personal.newTodo</key>
+	<string>新建个人待办</string>
 	<key>Project.addEvent</key>
 	<string>+ 添加事件</string>
 	<key>Project.addTodo</key>

@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@keyframes pulseDot{0%,100%{opacity:.95;transform:scale(1)}50%{opacity:.4;transform:scale(.65)}}
+body{margin:0}
+*{box-sizing:border-box}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:rgba(60,60,67,0.18);border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+</style>
+</helmet>
+<div style="min-height:100%;background:#d6d7dd;padding:54px 60px 70px;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','PingFang SC','Helvetica Neue',sans-serif;color:#1C1C1E">
+
+  <div style="margin-bottom:34px;max-width:1700px">
+    <div style="font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#6E63E6">LinoJ · 前端重构</div>
+    <div style="display:flex;align-items:baseline;gap:16px;margin-top:8px">
+      <h1 style="font-size:30px;font-weight:700;letter-spacing:-0.025em;margin:0">主页 / Main</h1>
+      <span style="font-size:14px;color:rgba(60,60,67,0.55)">Liquid Glass · 亮色 · 靛蓝→紫品牌 · 可交互原型</span>
+    </div>
+    <p style="font-size:13.5px;line-height:1.6;color:rgba(60,60,67,0.6);max-width:780px;margin:12px 0 0">导航移到顶部（5 个目的地，主页图标特意做了区分）。<b style="color:#1C1C1E">主页只用来查看与勾选</b>，没有新建按钮；新增动作都在各自的子页面里完成（点子页面的「＋ 新建…」试试）。设置在右上角。</p>
+  </div>
+
+  <div style="display:flex;gap:60px;align-items:flex-start;flex-wrap:nowrap">
+
+    <!-- ===================== macOS ===================== -->
+    <div>
+      <div style="font-size:13px;font-weight:600;letter-spacing:0.04em;color:rgba(60,60,67,0.6);margin-bottom:14px;padding-left:4px">macOS · 1240 × 780</div>
+      <div style="width:1240px;height:780px;border-radius:14px;overflow:hidden;position:relative;box-shadow:0 50px 110px rgba(20,20,40,0.32),0 0 0 0.5px rgba(0,0,0,0.18)">
+
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg,#F7F8FB,#EEF0F6)"></div>
+        <sc-if value="{{ bloomOn }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 15% 12%,rgba(255,176,120,0.42),transparent 40%),radial-gradient(circle at 92% 22%,rgba(120,170,255,0.46),transparent 44%),radial-gradient(circle at 80% 94%,rgba(190,150,255,0.40),transparent 46%)"></div>
+        </sc-if>
+
+        <!-- top nav bar -->
+        <div style="position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;padding:0 16px;z-index:6;background:rgba(255,255,255,0.5);backdrop-filter:blur(24px) saturate(1.5);-webkit-backdrop-filter:blur(24px) saturate(1.5);border-bottom:0.5px solid rgba(60,60,67,0.08)">
+          <div style="display:flex;align-items:center;gap:8px;width:210px">
+            <div style="width:12px;height:12px;border-radius:50%;background:#FF5F57"></div>
+            <div style="width:12px;height:12px;border-radius:50%;background:#FEBC2E"></div>
+            <div style="width:12px;height:12px;border-radius:50%;background:#28C840"></div>
+            <span style="margin-left:8px;font-size:13px;font-weight:700;letter-spacing:-0.01em;color:rgba(60,60,67,0.5)">LinoJ</span>
+          </div>
+
+          <div style="flex:1;display:flex;justify-content:center">
+            <div style="display:flex;align-items:center;gap:2px;padding:4px;border-radius:13px;background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.85),0 2px 8px rgba(0,0,0,0.05)">
+              <div onClick="{{ goMacMain }}" style="display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:9px;cursor:pointer;background:{{ navMain.rowBg }}" style-hover="background:rgba(60,60,67,0.05)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="{{ navMain.icon }}"><path d="M12 3 2.6 10.7c-.3.2-.1.8.3.8H5v8.5c0 .6.4 1 1 1h3.5v-5.5c0-.6.4-1 1-1h3c.6 0 1 .4 1 1V21H18c.6 0 1-.4 1-1v-8.5h2.1c.4 0 .6-.5.3-.8L12 3z"/></svg>
+                <span style="font-size:13.5px;letter-spacing:-0.01em;color:{{ navMain.text }};font-weight:{{ navMain.weight }}">主页</span>
+              </div>
+              <div style="width:1px;height:18px;background:rgba(60,60,67,0.12);margin:0 5px"></div>
+              <div onClick="{{ goMacPersonal }}" style="display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:9px;cursor:pointer;background:{{ navPersonal.rowBg }}" style-hover="background:rgba(60,60,67,0.05)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ navPersonal.icon }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/></svg>
+                <span style="font-size:13.5px;letter-spacing:-0.01em;color:{{ navPersonal.text }};font-weight:{{ navPersonal.weight }}">个人</span>
+              </div>
+              <div onClick="{{ goMacCompany }}" style="display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:9px;cursor:pointer;background:{{ navCompany.rowBg }}" style-hover="background:rgba(60,60,67,0.05)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ navCompany.icon }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7.5" width="18" height="12.5" rx="2.2"/><path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5"/><path d="M3 12.5h18"/></svg>
+                <span style="font-size:13.5px;letter-spacing:-0.01em;color:{{ navCompany.text }};font-weight:{{ navCompany.weight }}">公司</span>
+              </div>
+              <div onClick="{{ goMacCalendar }}" style="display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:9px;cursor:pointer;background:{{ navCalendar.rowBg }}" style-hover="background:rgba(60,60,67,0.05)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ navCalendar.icon }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>
+                <span style="font-size:13.5px;letter-spacing:-0.01em;color:{{ navCalendar.text }};font-weight:{{ navCalendar.weight }}">日历</span>
+              </div>
+              <div onClick="{{ goMacInspiration }}" style="display:flex;align-items:center;gap:7px;padding:6px 13px;border-radius:9px;cursor:pointer;background:{{ navInspiration.rowBg }}" style-hover="background:rgba(60,60,67,0.05)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ navInspiration.icon }}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.8 10.7c.5.4.8 1 .8 1.6v.2h6v-.2c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3z"/></svg>
+                <span style="font-size:13.5px;letter-spacing:-0.01em;color:{{ navInspiration.text }};font-weight:{{ navInspiration.weight }}">灵感</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="width:210px;display:flex;justify-content:flex-end;align-items:center;gap:8px">
+            <button style="width:32px;height:32px;border-radius:9px;border:none;cursor:pointer;background:rgba(255,255,255,0.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.85),0 2px 6px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.7)" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+            </button>
+            <button onClick="{{ openSettingsMac }}" style="width:32px;height:32px;border-radius:9px;border:none;cursor:pointer;background:rgba(255,255,255,0.5);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.85),0 2px 6px rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.7)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H4a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V4a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H20a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            </button>
+            <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;box-shadow:0 2px 6px rgba(123,109,240,0.4)">L</div>
+          </div>
+        </div>
+
+        <!-- content -->
+        <div style="position:absolute;top:52px;left:0;right:0;bottom:0;overflow:hidden">
+          <sc-if value="{{ macIsMain }}" hint-placeholder-val="{{ true }}">
+          <div style="height:100%;display:grid;grid-template-columns:{{ macGridCols }};gap:22px;padding:22px 24px 0 24px">
+
+            <!-- left column -->
+            <div style="display:flex;flex-direction:column;min-height:0;overflow:hidden;padding-bottom:22px">
+              <sc-if value="{{ headsUpMac }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;gap:13px;padding:13px 16px;margin-bottom:16px;border-radius:14px;background:rgba(123,123,240,0.1);border:0.5px solid rgba(123,123,240,0.24);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">
+                  <div style="width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);animation:pulseDot 2s ease-in-out infinite;flex-shrink:0"></div>
+                  <div style="flex:1;min-width:0">
+                    <span style="font-size:13.5px;font-weight:600;letter-spacing:-0.01em">抬头看 · <span style="color:#6E63E6">{{ headsUp.inMin }} 分钟后</span></span>
+                    <span style="font-size:13px;color:rgba(60,60,67,0.62);margin-left:6px">{{ headsUp.title }} · {{ headsUp.where }}</span>
+                  </div>
+                  <button style="border:none;background:rgba(60,60,67,0.06);cursor:pointer;font-size:12px;font-weight:500;color:rgba(60,60,67,0.7);padding:5px 12px;border-radius:8px;font-family:inherit">稍后</button>
+                  <button onClick="{{ dismissHeadsUp }}" style="border:none;background:#1C1C1E;cursor:pointer;font-size:12px;font-weight:600;color:#fff;padding:5px 12px;border-radius:8px;font-family:inherit">打开</button>
+                </div>
+              </sc-if>
+
+              <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:18px">
+                <h2 style="font-size:26px;font-weight:700;letter-spacing:-0.025em;margin:0">待办</h2>
+                <span style="font-size:13.5px;color:rgba(60,60,67,0.5);white-space:nowrap">{{ openTotal }} 个待办 · <span style="color:#6E63E6;font-weight:600">{{ openUrgent }} 个紧急</span></span>
+              </div>
+
+              <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:18px;min-height:0">
+                <!-- urgent -->
+                <div style="display:flex;flex-direction:column;min-height:0">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                    <div style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0)"></div>
+                    <span style="font-size:14px;font-weight:600;letter-spacing:-0.01em">紧急</span>
+                    <span style="font-size:12px;color:rgba(60,60,67,0.4);font-variant-numeric:tabular-nums">{{ openUrgent }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px">
+                    <sc-for list="{{ urgentTodos }}" as="t" hint-placeholder-count="5">
+                      <div style="position:relative;display:flex;align-items:flex-start;gap:11px;padding:11px 13px 11px 16px;border-radius:13px;background:rgba(123,123,240,0.09);border:0.5px solid rgba(123,123,240,0.2);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6);cursor:default;transition:transform .12s" style-hover="transform:translateY(-1px)">
+                        <div style="position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:3px;background:linear-gradient(180deg,#5B8DEF,#8A6DF0)"></div>
+                        <div onClick="{{ t.toggle }}" style="width:18px;height:18px;border-radius:6px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                        </div>
+                        <div style="min-width:0;flex:1">
+                          <div style="font-size:14px;font-weight:600;letter-spacing:-0.005em;line-height:1.35;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
+                            <sc-if value="{{ t.hasScope }}" hint-placeholder-val="{{ true }}">
+                              <div style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:{{ t.scopeBg }}"><div style="width:5px;height:5px;border-radius:50%;background:{{ t.scopeDot }}"></div><span style="font-size:10.5px;font-weight:600;color:{{ t.scopeFg }}">{{ t.scopeLabel }}</span></div>
+                            </sc-if>
+                            <sc-if value="{{ t.hasProject }}" hint-placeholder-val="{{ false }}">
+                              <div style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:rgba(60,60,67,0.06)"><div style="width:5px;height:5px;border-radius:50%;background:#8A6DF0"></div><span style="font-size:10.5px;font-weight:600;color:rgba(60,60,67,0.6)">{{ t.project }}</span></div>
+                            </sc-if>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <!-- normal -->
+                <div style="display:flex;flex-direction:column;min-height:0">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                    <div style="width:8px;height:8px;border-radius:50%;background:rgba(60,60,67,0.3)"></div>
+                    <span style="font-size:14px;font-weight:600;letter-spacing:-0.01em">普通</span>
+                    <span style="font-size:12px;color:rgba(60,60,67,0.4);font-variant-numeric:tabular-nums">{{ openNormal }}</span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px;overflow-y:auto;padding-right:4px">
+                    <sc-for list="{{ normalTodos }}" as="t" hint-placeholder-count="9">
+                      <div style="display:flex;align-items:flex-start;gap:11px;padding:11px 13px;border-radius:13px;background:rgba(255,255,255,0.58);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7);cursor:default;transition:transform .12s" style-hover="transform:translateY(-1px)">
+                        <div onClick="{{ t.toggle }}" style="width:18px;height:18px;border-radius:6px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                        </div>
+                        <div style="min-width:0;flex:1">
+                          <div style="font-size:13.5px;font-weight:500;letter-spacing:-0.005em;line-height:1.35;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                          <div style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap">
+                            <sc-if value="{{ t.hasScope }}" hint-placeholder-val="{{ true }}">
+                              <div style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:{{ t.scopeBg }}"><div style="width:5px;height:5px;border-radius:50%;background:{{ t.scopeDot }}"></div><span style="font-size:10.5px;font-weight:600;color:{{ t.scopeFg }}">{{ t.scopeLabel }}</span></div>
+                            </sc-if>
+                            <sc-if value="{{ t.hasProject }}" hint-placeholder-val="{{ false }}">
+                              <div style="display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;background:rgba(60,60,67,0.05)"><div style="width:5px;height:5px;border-radius:50%;background:rgba(60,60,67,0.35)"></div><span style="font-size:10.5px;font-weight:600;color:rgba(60,60,67,0.55)">{{ t.project }}</span></div>
+                            </sc-if>
+                          </div>
+                        </div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+
+              <!-- projects strip -->
+              <div style="margin-top:18px;padding-top:16px;border-top:0.5px solid rgba(60,60,67,0.1)">
+                <div style="font-size:12px;font-weight:600;letter-spacing:0.04em;color:rgba(60,60,67,0.4);margin-bottom:12px">项目</div>
+                <div style="display:flex;flex-direction:column;gap:2px">
+                  <sc-for list="{{ projects }}" as="p" hint-placeholder-count="3">
+                    <div style="display:grid;grid-template-columns:1fr 130px 92px;align-items:center;gap:16px;padding:11px 12px;border-radius:11px;cursor:pointer" style-hover="background:rgba(60,60,67,0.04)">
+                      <div style="min-width:0">
+                        <div style="display:flex;align-items:center;gap:9px">
+                          <span style="font-size:14px;font-weight:600;letter-spacing:-0.015em;white-space:nowrap">{{ p.title }}</span>
+                          <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#6E63E6;background:rgba(123,123,240,0.12);padding:2px 7px;border-radius:5px;white-space:nowrap">{{ p.tag }}</span>
+                        </div>
+                        <div style="font-size:12px;color:rgba(60,60,67,0.5);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ p.intro }}</div>
+                      </div>
+                      <div style="display:flex;gap:16px;font-variant-numeric:tabular-nums">
+                        <div><div style="font-size:16px;font-weight:600;letter-spacing:-0.02em">{{ p.open }}</div><div style="font-size:10px;color:rgba(60,60,67,0.45)">待办</div></div>
+                        <div><div style="font-size:16px;font-weight:600;letter-spacing:-0.02em;color:#6E63E6">{{ p.urgent }}</div><div style="font-size:10px;color:rgba(60,60,67,0.45)">紧急</div></div>
+                      </div>
+                      <div style="display:flex;justify-content:flex-end">
+                        <sc-for list="{{ p.members }}" as="m" hint-placeholder-count="3">
+                          <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.85);border:0.5px solid rgba(60,60,67,0.12);box-shadow:0 1px 3px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:rgba(60,60,67,0.7);margin-left:-7px">{{ m }}</div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <!-- right rail -->
+            <sc-if value="{{ railOn }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;min-height:0;padding:18px;border-radius:18px;background:rgba(255,255,255,0.5);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7),0 9px 26px rgba(0,0,0,0.07);margin-bottom:22px">
+              <div style="font-size:15px;font-weight:600;letter-spacing:-0.015em;margin-bottom:14px">未来 7 天</div>
+              <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin:0 -6px">
+                <sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+                  <div style="padding:9px 6px;border-radius:9px;background:{{ d.rowBg }}">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                      <span style="font-size:12px;font-weight:600;letter-spacing:-0.01em;color:{{ d.labelColor }}">{{ d.label }}</span>
+                      <span style="font-size:11px;color:rgba(60,60,67,0.4);font-variant-numeric:tabular-nums">{{ d.date }}</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:4px">
+                      <sc-for list="{{ d.events }}" as="ev" hint-placeholder-count="2">
+                        <div style="display:flex;gap:9px;align-items:baseline">
+                          <span style="font-size:11px;font-weight:500;color:rgba(60,60,67,0.5);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-variant-numeric:tabular-nums;width:34px;flex-shrink:0">{{ ev.t }}</span>
+                          <span style="font-size:12.5px;color:rgba(60,60,67,0.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ev.title }}</span>
+                        </div>
+                      </sc-for>
+                      <sc-if value="{{ d.hasMore }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:11px;color:rgba(60,60,67,0.4);padding-left:43px">{{ d.moreText }}</span>
+                      </sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="margin-top:14px;padding:13px;border-radius:12px;border:1px dashed rgba(60,60,67,0.18);background:rgba(60,60,67,0.025)">
+                <div style="font-size:11px;font-weight:600;letter-spacing:0.03em;color:rgba(60,60,67,0.45);margin-bottom:9px">昨天遗漏</div>
+                <sc-for list="{{ yesterday }}" as="y" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:9px;padding:4px 0">
+                    <div onClick="{{ y.toggle }}" style="width:16px;height:16px;border-radius:5px;border:1.5px solid {{ y.boxBorder }};background:{{ y.boxBg }};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ y.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                    </div>
+                    <span style="font-size:11px;font-weight:500;color:rgba(60,60,67,0.5);font-family:ui-monospace,'SF Mono',Menlo,monospace;width:34px">{{ y.t }}</span>
+                    <span style="font-size:12.5px;color:rgba(60,60,67,0.75);text-decoration:{{ y.deco }};opacity:{{ y.op }}">{{ y.title }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+          </sc-if>
+
+          <!-- ===== 个人 ===== -->
+          <sc-if value="{{ macIsPersonal }}" hint-placeholder-val="{{ false }}">
+          <div style="height:100%;overflow-y:auto;padding:24px 28px">
+            <div style="display:flex;align-items:flex-start;margin-bottom:22px">
+              <div>
+                <h2 style="font-size:26px;font-weight:700;letter-spacing:-0.025em;margin:0">个人</h2>
+                <div style="font-size:13.5px;color:rgba(60,60,67,0.5);margin-top:6px">{{ personalOpenCount }} 个待办 · <span style="color:#6E63E6;font-weight:600">{{ personalUrgentCount }} 紧急</span> · {{ personalDoneCount }} 已完成</div>
+              </div>
+              <div style="flex:1"></div>
+              <button onClick="{{ addCurrentMac }}" style="border:none;cursor:pointer;display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:11px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);box-shadow:0 6px 16px rgba(123,109,240,0.35);color:#fff;font-size:13px;font-weight:600;font-family:inherit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建个人待办
+              </button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <div style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0)"></div>
+                  <span style="font-size:14px;font-weight:600;letter-spacing:-0.01em">紧急</span>
+                  <span style="font-size:12px;color:rgba(60,60,67,0.4)">{{ personalUrgentCount }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ personalUrgent }}" as="t" hint-placeholder-count="2">
+                    <div style="position:relative;display:flex;align-items:flex-start;gap:11px;padding:11px 13px 11px 16px;border-radius:13px;background:rgba(123,123,240,0.09);border:0.5px solid rgba(123,123,240,0.2);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6);transition:transform .12s" style-hover="transform:translateY(-1px)">
+                      <div style="position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:3px;background:linear-gradient(180deg,#5B8DEF,#8A6DF0)"></div>
+                      <div onClick="{{ t.toggle }}" style="width:18px;height:18px;border-radius:6px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                      </div>
+                      <div style="font-size:14px;font-weight:600;letter-spacing:-0.005em;line-height:1.35;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <div style="width:8px;height:8px;border-radius:50%;background:rgba(60,60,67,0.3)"></div>
+                  <span style="font-size:14px;font-weight:600;letter-spacing:-0.01em">普通</span>
+                  <span style="font-size:12px;color:rgba(60,60,67,0.4)">{{ personalNormalCount }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ personalNormal }}" as="t" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:flex-start;gap:11px;padding:11px 13px;border-radius:13px;background:rgba(255,255,255,0.58);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7);transition:transform .12s" style-hover="transform:translateY(-1px)">
+                      <div onClick="{{ t.toggle }}" style="width:18px;height:18px;border-radius:6px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                      </div>
+                      <div style="font-size:13.5px;font-weight:500;letter-spacing:-0.005em;line-height:1.35;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:20px;padding:14px 16px;border-radius:14px;border:1px dashed rgba(60,60,67,0.18);background:rgba(60,60,67,0.02)">
+              <div onClick="{{ togglePersonalDone }}" style="display:flex;align-items:center;gap:9px;cursor:pointer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.5)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform:{{ personalDoneChevron }};transition:transform .18s"><path d="M9 6l6 6-6 6"/></svg>
+                <span style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.55)">已完成</span>
+                <span style="font-size:12px;color:rgba(60,60,67,0.4)">{{ personalDoneCount }}</span>
+              </div>
+              <sc-if value="{{ personalDoneOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:11px;display:flex;flex-direction:column;gap:7px">
+                  <sc-for list="{{ personalDone }}" as="t" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <div style="width:16px;height:16px;border-radius:5px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);flex-shrink:0;display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                      <span style="font-size:13px;color:rgba(60,60,67,0.42);text-decoration:line-through">{{ t.title }}</span>
+                      <span style="font-size:11px;font-style:italic;color:rgba(60,60,67,0.32)">已完成</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- ===== 公司 ===== -->
+          <sc-if value="{{ macIsCompany }}" hint-placeholder-val="{{ false }}">
+          <div style="height:100%;overflow-y:auto;padding:24px 28px">
+            <div style="display:flex;align-items:flex-start;margin-bottom:18px">
+              <div>
+                <h2 style="font-size:26px;font-weight:700;letter-spacing:-0.025em;margin:0">公司</h2>
+                <div style="font-size:13.5px;color:rgba(60,60,67,0.5);margin-top:6px">{{ workOpenCount }} 个待办 · <span style="color:#6E63E6;font-weight:600">{{ workUrgentCount }} 紧急</span> · {{ projectCount }} 个项目</div>
+              </div>
+              <div style="flex:1"></div>
+              <button onClick="{{ addCurrentMac }}" style="border:none;cursor:pointer;display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:11px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);box-shadow:0 6px 16px rgba(123,109,240,0.35);color:#fff;font-size:13px;font-weight:600;font-family:inherit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建公司事项
+              </button>
+            </div>
+
+            <div style="display:flex;gap:7px;margin-bottom:20px;flex-wrap:wrap">
+              <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5">
+                <div onClick="{{ c.go }}" style="padding:6px 14px;border-radius:999px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;background:{{ c.bg }};color:{{ c.fg }};border:0.5px solid {{ c.bd }};box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">{{ c.label }}</div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;margin-bottom:26px">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <div style="width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0)"></div>
+                  <span style="font-size:14px;font-weight:600;letter-spacing:-0.01em">紧急</span>
+                  <span style="font-size:12px;color:rgba(60,60,67,0.4)">{{ workUrgentCount }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ workUrgent }}" as="t" hint-placeholder-count="3">
+                    <div style="position:relative;display:flex;align-items:flex-start;gap:11px;padding:11px 13px 11px 16px;border-radius:13px;background:rgba(123,123,240,0.09);border:0.5px solid rgba(123,123,240,0.2);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6);transition:transform .12s" style-hover="transform:translateY(-1px)">
+                      <div style="position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:3px;background:linear-gradient(180deg,#5B8DEF,#8A6DF0)"></div>
+                      <div onClick="{{ t.toggle }}" style="width:18px;height:18px;border-radius:6px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                      </div>
+                      <div style="min-width:0;flex:1">
+                        <div style="font-size:14px;font-weight:600;letter-spacing:-0.005em;line-height:1.35;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                        <sc-if value="{{ t.hasProject }}" hint-placeholder-val="{{ true }}">
+                          <div style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:2px 8px;border-radius:6px;background:rgba(60,60,67,0.06)"><div style="width:5px;height:5px;border-radius:50%;background:#8A6DF0"></div><span style="font-size:10.5px;font-weight:600;color:rgba(60,60,67,0.6)">{{ t.project }}</span></div>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+                  <div style="width:8px;height:8px;border-radius:50%;background:rgba(60,60,67,0.3)"></div>
+                  <span style="font-size:14px;font-weight:600;letter-spacing:-0.01em">普通</span>
+                  <span style="font-size:12px;color:rgba(60,60,67,0.4)">{{ workNormalCount }}</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ workNormal }}" as="t" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:flex-start;gap:11px;padding:11px 13px;border-radius:13px;background:rgba(255,255,255,0.58);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7);transition:transform .12s" style-hover="transform:translateY(-1px)">
+                      <div onClick="{{ t.toggle }}" style="width:18px;height:18px;border-radius:6px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                      </div>
+                      <div style="min-width:0;flex:1">
+                        <div style="font-size:13.5px;font-weight:500;letter-spacing:-0.005em;line-height:1.35;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                        <sc-if value="{{ t.hasProject }}" hint-placeholder-val="{{ false }}">
+                          <div style="display:inline-flex;align-items:center;gap:5px;margin-top:6px;padding:2px 8px;border-radius:6px;background:rgba(60,60,67,0.05)"><div style="width:5px;height:5px;border-radius:50%;background:rgba(60,60,67,0.35)"></div><span style="font-size:10.5px;font-weight:600;color:rgba(60,60,67,0.55)">{{ t.project }}</span></div>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;margin-bottom:12px">
+              <div style="font-size:12px;font-weight:600;letter-spacing:0.04em;color:rgba(60,60,67,0.4)">项目</div>
+              <div style="flex:1"></div>
+              <button onClick="{{ addProjectMac }}" style="border:none;cursor:pointer;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:9px;background:rgba(255,255,255,0.62);border:0.5px solid rgba(123,123,240,0.28);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7);color:#6E63E6;font-size:12px;font-weight:600;font-family:inherit"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6E63E6" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建项目</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:14px">
+              <sc-for list="{{ richProjects }}" as="p" hint-placeholder-count="3">
+                <div style="padding:18px;border-radius:16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7),0 6px 18px rgba(0,0,0,0.05)">
+                  <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:22px">
+                    <div>
+                      <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#6E63E6;background:rgba(123,123,240,0.12);padding:2px 8px;border-radius:5px">{{ p.tag }}</span>
+                      <div style="font-size:17px;font-weight:600;letter-spacing:-0.02em;margin:10px 0 6px">{{ p.title }}</div>
+                      <div style="font-size:12.5px;color:rgba(60,60,67,0.55);line-height:1.5">{{ p.intro }}</div>
+                      <div style="display:flex;align-items:center;gap:8px;margin-top:12px">
+                        <div style="display:flex">
+                          <sc-for list="{{ p.members }}" as="m" hint-placeholder-count="3">
+                            <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.9);border:0.5px solid rgba(60,60,67,0.12);box-shadow:0 1px 3px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:rgba(60,60,67,0.7);margin-left:-7px">{{ m }}</div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </div>
+                    <div>
+                      <div style="font-size:11px;font-weight:600;letter-spacing:0.03em;color:rgba(60,60,67,0.42);margin-bottom:9px">待办 <span style="color:#6E63E6">{{ p.open }}</span> · 紧急 {{ p.urgent }}</div>
+                      <div style="display:flex;flex-direction:column;gap:6px">
+                        <sc-for list="{{ p.todos }}" as="td" hint-placeholder-count="3">
+                          <div style="display:flex;align-items:center;gap:8px"><div style="width:13px;height:13px;border-radius:4px;border:1.5px solid rgba(60,60,67,0.28);flex-shrink:0"></div><span style="font-size:12.5px;color:rgba(60,60,67,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ td }}</span></div>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div>
+                      <div style="font-size:11px;font-weight:600;letter-spacing:0.03em;color:rgba(60,60,67,0.42);margin-bottom:9px">关联日程</div>
+                      <div style="display:flex;flex-direction:column;gap:6px">
+                        <sc-for list="{{ p.events }}" as="ev" hint-placeholder-count="2">
+                          <div style="display:flex;align-items:center;gap:8px"><div style="width:5px;height:5px;border-radius:50%;background:#8A6DF0;flex-shrink:0"></div><span style="font-size:12.5px;color:rgba(60,60,67,0.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ev }}</span></div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- ===== 日历 ===== -->
+          <sc-if value="{{ macIsCalendar }}" hint-placeholder-val="{{ false }}">
+          <div style="height:100%;display:flex;flex-direction:column;padding:24px 28px 0">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+              <h2 style="font-size:26px;font-weight:700;letter-spacing:-0.025em;margin:0">日历</h2>
+              <div style="display:flex;align-items:center;gap:8px;margin-left:6px">
+                <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.55);border:0.5px solid rgba(60,60,67,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.6)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></div>
+                <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.7);font-variant-numeric:tabular-nums">5月27 – 6月2</span>
+                <div style="width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,0.55);border:0.5px solid rgba(60,60,67,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.6)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></div>
+              </div>
+              <div style="flex:1"></div>
+              <button style="border:none;cursor:pointer;font-size:12.5px;font-weight:600;color:rgba(60,60,67,0.7);background:rgba(255,255,255,0.55);border:0.5px solid rgba(60,60,67,0.1);padding:8px 14px;border-radius:10px;font-family:inherit">今天</button>
+              <button onClick="{{ addCurrentMac }}" style="border:none;cursor:pointer;display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:11px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);box-shadow:0 6px 16px rgba(123,109,240,0.35);color:#fff;font-size:13px;font-weight:600;font-family:inherit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建日程
+              </button>
+            </div>
+
+            <div style="display:flex;padding-bottom:8px">
+              <div style="width:52px"></div>
+              <sc-for list="{{ calDays }}" as="d" hint-placeholder-count="7">
+                <div style="flex:1;text-align:center">
+                  <div style="font-size:12px;font-weight:600;letter-spacing:-0.01em;color:{{ d.headColor }}">{{ d.label }}</div>
+                  <div style="font-size:18px;font-weight:600;letter-spacing:-0.02em;color:{{ d.headColor }};font-variant-numeric:tabular-nums;margin-top:2px">{{ d.date }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="flex:1;overflow-y:auto;display:flex;border-top:0.5px solid rgba(60,60,67,0.1)">
+              <div style="width:52px;flex-shrink:0">
+                <sc-for list="{{ calHours }}" as="h" hint-placeholder-count="14">
+                  <div style="height:44px;font-size:10px;font-weight:500;color:rgba(60,60,67,0.4);text-align:right;padding-right:8px;font-family:ui-monospace,'SF Mono',Menlo,monospace">{{ h }}:00</div>
+                </sc-for>
+              </div>
+              <sc-for list="{{ calDays }}" as="d" hint-placeholder-count="7">
+                <div style="flex:1;position:relative;height:616px;border-left:0.5px solid rgba(60,60,67,0.07);background-color:{{ d.colBg }};background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 43px,rgba(60,60,67,0.06) 43px,rgba(60,60,67,0.06) 44px)">
+                  <sc-for list="{{ d.events }}" as="ev" hint-placeholder-count="2">
+                    <div style="position:absolute;left:4px;right:4px;top:{{ ev.top }};height:{{ ev.height }};border-radius:8px;background:{{ ev.bg }};border:0.5px solid rgba(60,60,67,0.1);border-left:2.5px solid {{ ev.accent }};padding:4px 7px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+                      <div style="font-size:9.5px;font-weight:600;color:rgba(60,60,67,0.5);font-family:ui-monospace,'SF Mono',Menlo,monospace">{{ ev.range }}</div>
+                      <div style="font-size:11.5px;font-weight:600;letter-spacing:-0.01em;line-height:1.25;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ ev.title }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- ===== 灵感 ===== -->
+          <sc-if value="{{ macIsInspiration }}" hint-placeholder-val="{{ false }}">
+          <div style="height:100%;overflow-y:auto;padding:24px 28px">
+            <div style="display:flex;align-items:flex-start;margin-bottom:22px">
+              <div>
+                <h2 style="font-size:26px;font-weight:700;letter-spacing:-0.025em;margin:0">灵感</h2>
+                <div style="font-size:13.5px;color:rgba(60,60,67,0.5);margin-top:6px">随手记下的念头、清单与片段</div>
+              </div>
+              <div style="flex:1"></div>
+              <button onClick="{{ addCurrentMac }}" style="border:none;cursor:pointer;display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:11px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);box-shadow:0 6px 16px rgba(123,109,240,0.35);color:#fff;font-size:13px;font-weight:600;font-family:inherit">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>记录灵感
+              </button>
+            </div>
+            <div style="column-count:3;column-gap:16px">
+              <sc-for list="{{ inspo }}" as="n" hint-placeholder-count="6">
+                <div style="break-inside:avoid;margin-bottom:16px;position:relative;padding:16px 16px 14px 19px;border-radius:14px;background:{{ n.bg }};border:0.5px solid rgba(60,60,67,0.08);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">
+                  <div style="position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:{{ n.bar }}"></div>
+                  <div style="font-size:15px;font-weight:600;letter-spacing:-0.015em;margin-bottom:6px">{{ n.title }}</div>
+                  <div style="font-size:13px;color:rgba(60,60,67,0.65);line-height:1.55">{{ n.body }}</div>
+                  <div style="font-size:11px;color:rgba(60,60,67,0.38);margin-top:11px;font-family:ui-monospace,'SF Mono',Menlo,monospace">{{ n.date }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+        </div>
+
+        <!-- macOS quick add modal (scoped) -->
+        <sc-if value="{{ sheetMac }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:20;background:rgba(20,20,30,0.32);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center">
+            <div onClick="{{ stop }}" style="width:520px;border-radius:18px;overflow:hidden;background:rgba(255,255,255,0.82);backdrop-filter:blur(40px) saturate(1.6);-webkit-backdrop-filter:blur(40px) saturate(1.6);border:0.5px solid rgba(60,60,67,0.14);box-shadow:0 30px 80px rgba(20,20,40,0.4),inset 0 0.5px 0 rgba(255,255,255,0.9)">
+              <div style="padding:20px 22px 4px;display:flex;align-items:center;gap:10px">
+                <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em">{{ sheetTitle }}</div>
+                <span style="font-size:10.5px;font-weight:700;letter-spacing:0.05em;color:#6E63E6;background:rgba(123,123,240,0.12);padding:3px 8px;border-radius:6px">{{ sheetScope }}</span>
+              </div>
+              <div style="padding:14px 22px 20px">
+                <!-- todo: 标题 + 紧急度 -->
+                <sc-if value="{{ sheetIsTodo }}" hint-placeholder-val="{{ true }}">
+                  <input placeholder="{{ sheetPh }}" style="width:100%;border:none;outline:none;background:transparent;font-size:22px;font-weight:600;letter-spacing:-0.02em;color:#1C1C1E;font-family:inherit;padding:0 0 16px" />
+                  <div style="display:flex;align-items:center;gap:14px">
+                    <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:48px">紧急度</span>
+                    <div style="display:flex;gap:6px">
+                      <div onClick="{{ setUrgent }}" style="padding:7px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;background:{{ urg.on.bg }};color:{{ urg.on.fg }};border:0.5px solid {{ urg.on.bd }}">紧急</div>
+                      <div onClick="{{ setNormal }}" style="padding:7px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;background:{{ urg.off.bg }};color:{{ urg.off.fg }};border:0.5px solid {{ urg.off.bd }}">普通</div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <!-- event: 标题 + 开始/结束 + 地点 + 参与人 + 项目（无 todo / 无 紧急度） -->
+                <sc-if value="{{ sheetIsEvent }}" hint-placeholder-val="{{ false }}">
+                  <input placeholder="{{ sheetPh }}" style="width:100%;border:none;outline:none;background:transparent;font-size:22px;font-weight:600;letter-spacing:-0.02em;color:#1C1C1E;font-family:inherit;padding:0 0 8px" />
+                  <div style="display:flex;flex-direction:column">
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0">开始</span>
+                      <div style="flex:1;display:flex;align-items:center;gap:7px;font-size:13.5px;color:#1C1C1E"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6E63E6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>5月27日 周二 · 14:00</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0">结束</span>
+                      <div style="flex:1;display:flex;align-items:center;gap:7px;font-size:13.5px;color:#1C1C1E"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6E63E6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>5月27日 周二 · 15:00</div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0">地点</span>
+                      <input placeholder="会议室 / Zoom / 地址…" style="flex:1;border:none;outline:none;background:transparent;font-size:13.5px;color:#1C1C1E;font-family:inherit" />
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0">参与人</span>
+                      <div style="flex:1;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ evtPeople }}" as="pp" hint-placeholder-count="5">
+                          <div onClick="{{ pp.toggle }}" title="{{ pp.name }}" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;font-weight:600;background:{{ pp.bg }};color:{{ pp.fg }};border:{{ pp.ring }}">{{ pp.initial }}</div>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0">项目</span>
+                      <div style="flex:1;display:flex;flex-wrap:wrap;gap:6px">
+                        <sc-for list="{{ evtProjects }}" as="pr" hint-placeholder-count="4">
+                          <div onClick="{{ pr.pick }}" style="padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;background:{{ pr.bg }};color:{{ pr.fg }};border:0.5px solid {{ pr.bd }}">{{ pr.label }}</div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <!-- note: 富文本正文（首行即标题），无单独标题字段 + 置顶 -->
+                <sc-if value="{{ sheetIsNote }}" hint-placeholder-val="{{ false }}">
+                  <textarea placeholder="{{ sheetPh }}" style="width:100%;min-height:128px;border:none;outline:none;background:transparent;font-size:15px;line-height:1.6;color:#1C1C1E;font-family:inherit;resize:none;padding:2px 0 14px"></textarea>
+                  <div style="display:flex;align-items:center;gap:11px;padding-top:12px;border-top:0.5px solid rgba(60,60,67,0.08)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E63E6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 15v5"/></svg>
+                    <span style="flex:1;font-size:13.5px;font-weight:500;color:#1C1C1E">置顶</span>
+                    <div onClick="{{ toggleNotePin }}" style="width:38px;height:23px;border-radius:12px;cursor:pointer;background:{{ notePinBg }};position:relative;transition:background .2s">
+                      <div style="position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transform:{{ notePinKnob }};transition:transform .2s"></div>
+                    </div>
+                  </div>
+                  <div style="font-size:11.5px;color:rgba(60,60,67,0.45);margin-top:10px">正文第一行将作为标题</div>
+                </sc-if>
+
+                <!-- project: 标题 + 简介 + 状态标签 + 成员 + 备注 -->
+                <sc-if value="{{ sheetIsProject }}" hint-placeholder-val="{{ false }}">
+                  <input placeholder="{{ sheetPh }}" style="width:100%;border:none;outline:none;background:transparent;font-size:22px;font-weight:600;letter-spacing:-0.02em;color:#1C1C1E;font-family:inherit;padding:0 0 8px" />
+                  <div style="display:flex;flex-direction:column">
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0">简介</span>
+                      <input placeholder="一两句说明这个项目…" style="flex:1;border:none;outline:none;background:transparent;font-size:13.5px;color:#1C1C1E;font-family:inherit" />
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0">状态</span>
+                      <input placeholder="如：6月发布 / 评审中 / 接近完成" style="flex:1;border:none;outline:none;background:transparent;font-size:13.5px;color:#1C1C1E;font-family:inherit" />
+                    </div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0">成员</span>
+                      <div style="flex:1;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                        <sc-for list="{{ evtPeople }}" as="pp" hint-placeholder-count="5">
+                          <div onClick="{{ pp.toggle }}" title="{{ pp.name }}" style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;font-weight:600;background:{{ pp.bg }};color:{{ pp.fg }};border:{{ pp.ring }}">{{ pp.initial }}</div>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-top:0.5px solid rgba(60,60,67,0.08)">
+                      <span style="font-size:12px;font-weight:600;color:rgba(60,60,67,0.5);width:52px;flex-shrink:0;margin-top:2px">备注</span>
+                      <textarea placeholder="更详细的说明（可选）…" style="flex:1;min-height:60px;border:none;outline:none;background:transparent;font-size:13.5px;line-height:1.55;color:#1C1C1E;font-family:inherit;resize:none"></textarea>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding:14px 22px;border-top:0.5px solid rgba(60,60,67,0.1);background:rgba(60,60,67,0.025)">
+                <span style="font-size:11px;color:rgba(60,60,67,0.4);font-family:ui-monospace,'SF Mono',Menlo,monospace">esc 取消 · ⌘↵ 创建</span>
+                <div style="flex:1"></div>
+                <button onClick="{{ closeSheet }}" style="border:none;cursor:pointer;font-size:13.5px;font-weight:500;color:#1C1C1E;background:rgba(60,60,67,0.1);padding:9px 18px;border-radius:11px;font-family:inherit">取消</button>
+                <button onClick="{{ closeSheet }}" style="border:none;cursor:pointer;font-size:13.5px;font-weight:600;color:#fff;background:#1C1C1E;padding:9px 22px;border-radius:11px;font-family:inherit">创建</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- macOS settings modal -->
+        <sc-if value="{{ settingsMac }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ closeSettings }}" style="position:absolute;inset:0;z-index:21;background:rgba(20,20,30,0.32);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center">
+            <div onClick="{{ stop }}" style="width:460px;border-radius:18px;overflow:hidden;background:rgba(255,255,255,0.86);backdrop-filter:blur(40px) saturate(1.6);-webkit-backdrop-filter:blur(40px) saturate(1.6);border:0.5px solid rgba(60,60,67,0.14);box-shadow:0 30px 80px rgba(20,20,40,0.4),inset 0 0.5px 0 rgba(255,255,255,0.9)">
+              <div style="padding:20px 22px 6px;font-size:18px;font-weight:700;letter-spacing:-0.02em">设置</div>
+              <div style="padding:8px 22px 14px">
+                <div style="display:flex;align-items:center;padding:13px 0;border-bottom:0.5px solid rgba(60,60,67,0.08)">
+                  <span style="flex:1;font-size:14px;font-weight:500">外观</span>
+                  <span style="font-size:13.5px;color:rgba(60,60,67,0.55);margin-right:9px">跟随系统</span>
+                  <span style="font-size:10px;font-weight:600;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:rgba(60,60,67,0.45);background:rgba(60,60,67,0.08);padding:2px 7px;border-radius:5px">锁定</span>
+                </div>
+                <div style="display:flex;align-items:center;padding:13px 0;border-bottom:0.5px solid rgba(60,60,67,0.08)">
+                  <span style="flex:1;font-size:14px;font-weight:500">iCloud 同步</span>
+                  <div style="width:38px;height:23px;border-radius:12px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);position:relative"><div style="position:absolute;top:2px;right:2px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div></div>
+                </div>
+                <div style="display:flex;align-items:center;padding:13px 0;border-bottom:0.5px solid rgba(60,60,67,0.08)">
+                  <span style="flex:1;font-size:14px;font-weight:500">默认页面</span>
+                  <span style="font-size:13.5px;color:rgba(60,60,67,0.55)">主页</span>
+                </div>
+                <div style="display:flex;align-items:center;padding:13px 0">
+                  <span style="flex:1;font-size:14px;font-weight:500">关于</span>
+                  <span style="font-size:13.5px;color:rgba(60,60,67,0.55);font-variant-numeric:tabular-nums">LinoJ v1.0</span>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;padding:14px 22px;border-top:0.5px solid rgba(60,60,67,0.1);background:rgba(60,60,67,0.025)">
+                <button onClick="{{ closeSettings }}" style="border:none;cursor:pointer;font-size:13.5px;font-weight:600;color:#fff;background:#1C1C1E;padding:9px 24px;border-radius:11px;font-family:inherit">完成</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <!-- ===================== iOS ===================== -->
+    <div>
+      <div style="font-size:13px;font-weight:600;letter-spacing:0.04em;color:rgba(60,60,67,0.6);margin-bottom:14px;padding-left:4px">iOS · iPhone 16 Pro</div>
+      <div style="width:402px;height:858px;border-radius:56px;padding:13px;background:linear-gradient(160deg,#3a3a40,#1a1a1e);box-shadow:0 50px 110px rgba(20,20,40,0.34),inset 0 0 0 1px rgba(255,255,255,0.06)">
+        <div style="width:100%;height:100%;border-radius:44px;overflow:hidden;position:relative;background:#EEF0F6">
+
+          <div style="position:absolute;inset:0;background:linear-gradient(160deg,#F4F3EF,#EBEDF3)"></div>
+          <sc-if value="{{ bloomOn }}" hint-placeholder-val="{{ true }}">
+            <div style="position:absolute;inset:0;background:radial-gradient(circle at 18% 10%,rgba(255,176,120,0.4),transparent 38%),radial-gradient(circle at 92% 16%,rgba(120,170,255,0.44),transparent 42%),radial-gradient(circle at 84% 90%,rgba(190,150,255,0.4),transparent 44%)"></div>
+          </sc-if>
+
+          <!-- status bar -->
+          <div style="position:absolute;top:0;left:0;right:0;height:54px;z-index:8;display:flex;align-items:center;justify-content:space-between;padding:0 30px 0 34px">
+            <span style="font-size:15px;font-weight:600;letter-spacing:-0.01em;margin-top:6px">9:41</span>
+            <div style="width:118px;height:34px;background:#000;border-radius:20px;margin-top:8px"></div>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+              <svg width="17" height="12" viewBox="0 0 18 12" fill="#1C1C1E"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="5" width="3" height="7" rx="1"/><rect x="9" y="2.5" width="3" height="9.5" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></svg>
+              <svg width="16" height="12" viewBox="0 0 16 12" fill="#1C1C1E"><path d="M8 2.5c2.3 0 4.4.9 6 2.4l-1.4 1.4C11.4 5.1 9.8 4.4 8 4.4s-3.4.7-4.6 1.9L2 4.9C3.6 3.4 5.7 2.5 8 2.5zm0 3.6c1.3 0 2.5.5 3.4 1.4L8 11 4.6 7.5C5.5 6.6 6.7 6.1 8 6.1z"/></svg>
+              <div style="width:25px;height:12px;border:1px solid rgba(60,60,67,0.4);border-radius:3px;position:relative"><div style="position:absolute;left:1.5px;top:1.5px;bottom:1.5px;width:74%;background:#1C1C1E;border-radius:1.5px"></div></div>
+            </div>
+          </div>
+
+          <!-- floating top-right actions (search + settings) -->
+          <div style="position:absolute;top:62px;right:18px;z-index:7;display:flex;gap:10px">
+            <button style="width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,0.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.8),0 4px 12px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1C1C1E" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+            </button>
+            <button onClick="{{ openSettingsIos }}" style="width:42px;height:42px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,0.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.8),0 4px 12px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1C1C1E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V20a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H4a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H10a1.7 1.7 0 0 0 1-1.5V4a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V10a1.7 1.7 0 0 0 1.5 1H20a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+            </button>
+          </div>
+
+          <sc-if value="{{ iosIsMain }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute;top:54px;left:0;right:0;bottom:0;overflow-y:auto;padding:8px 18px 130px">
+            <h2 style="font-size:34px;font-weight:700;letter-spacing:-0.03em;margin:14px 0 4px">待办</h2>
+            <div style="font-size:14px;color:rgba(60,60,67,0.55);margin-bottom:18px">{{ openTotal }} 个待办 · <span style="color:#6E63E6;font-weight:600">{{ openUrgent }} 个紧急</span> · 今天 {{ eventsToday }} 个日程</div>
+
+            <sc-if value="{{ headsUpIos }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:20px;border-radius:16px;background:rgba(123,123,240,0.11);border:0.5px solid rgba(123,123,240,0.24);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">
+                <div style="width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);animation:pulseDot 2s ease-in-out infinite;flex-shrink:0"></div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13.5px;font-weight:600;letter-spacing:-0.01em">抬头看 · <span style="color:#6E63E6">{{ headsUp.inMin }} 分钟后</span></div>
+                  <div style="font-size:12.5px;color:rgba(60,60,67,0.6);margin-top:2px">{{ headsUp.title }} · {{ headsUp.where }}</div>
+                </div>
+                <button onClick="{{ dismissHeadsUp }}" style="border:none;background:#1C1C1E;cursor:pointer;font-size:12px;font-weight:600;color:#fff;padding:6px 13px;border-radius:9px;font-family:inherit">打开</button>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px">
+              <div style="width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0)"></div>
+              <span style="font-size:17px;font-weight:700;letter-spacing:-0.02em">紧急</span>
+              <span style="font-size:13px;color:rgba(60,60,67,0.4);font-variant-numeric:tabular-nums">{{ openUrgent }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:26px">
+              <sc-for list="{{ urgentTodos }}" as="t" hint-placeholder-count="5">
+                <div style="position:relative;display:flex;align-items:flex-start;gap:13px;padding:15px 16px 15px 19px;border-radius:16px;background:rgba(123,123,240,0.1);border:0.5px solid rgba(123,123,240,0.22);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">
+                  <div style="position:absolute;left:0;top:13px;bottom:13px;width:3px;border-radius:3px;background:linear-gradient(180deg,#5B8DEF,#8A6DF0)"></div>
+                  <div onClick="{{ t.toggle }}" style="width:22px;height:22px;border-radius:7px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                  </div>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:15.5px;font-weight:600;letter-spacing:-0.005em;line-height:1.35;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                    <div style="display:flex;align-items:center;gap:7px;margin-top:7px;flex-wrap:wrap">
+                      <sc-if value="{{ t.hasScope }}" hint-placeholder-val="{{ true }}">
+                        <div style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:7px;background:{{ t.scopeBg }}"><div style="width:5px;height:5px;border-radius:50%;background:{{ t.scopeDot }}"></div><span style="font-size:11px;font-weight:600;color:{{ t.scopeFg }}">{{ t.scopeLabel }}</span></div>
+                      </sc-if>
+                      <sc-if value="{{ t.hasProject }}" hint-placeholder-val="{{ false }}">
+                        <div style="display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:7px;background:rgba(60,60,67,0.06)"><div style="width:5px;height:5px;border-radius:50%;background:#8A6DF0"></div><span style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.6)">{{ t.project }}</span></div>
+                      </sc-if>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px">
+              <div style="width:9px;height:9px;border-radius:50%;background:rgba(60,60,67,0.3)"></div>
+              <span style="font-size:17px;font-weight:700;letter-spacing:-0.02em">普通</span>
+              <span style="font-size:13px;color:rgba(60,60,67,0.4);font-variant-numeric:tabular-nums">{{ openNormal }}</span>
+            </div>
+            <div style="border-radius:16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7),0 9px 26px rgba(0,0,0,0.06);overflow:hidden;margin-bottom:26px">
+              <sc-for list="{{ normalTodos }}" as="t" hint-placeholder-count="9">
+                <div style="display:flex;align-items:center;gap:13px;padding:13px 16px;border-top:0.5px solid {{ t.rowDivider }}">
+                  <div onClick="{{ t.toggle }}" style="width:21px;height:21px;border-radius:7px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                  </div>
+                  <div style="font-size:14.5px;font-weight:500;letter-spacing:-0.005em;text-decoration:{{ t.deco }};opacity:{{ t.op }};flex:1;min-width:0">{{ t.title }}</div>
+                  <sc-if value="{{ t.hasScope }}" hint-placeholder-val="{{ true }}">
+                    <span style="font-size:10.5px;font-weight:600;color:{{ t.scopeFg }};background:{{ t.scopeBg }};padding:3px 8px;border-radius:6px;white-space:nowrap">{{ t.scopeLabel }}</span>
+                  </sc-if>
+                  <sc-if value="{{ t.hasProject }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size:10.5px;font-weight:600;color:rgba(60,60,67,0.5);background:rgba(60,60,67,0.05);padding:3px 8px;border-radius:6px;white-space:nowrap">{{ t.project }}</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-size:17px;font-weight:700;letter-spacing:-0.02em;margin-bottom:13px">今天</div>
+            <div style="display:flex;gap:12px;overflow-x:auto;margin:0 -18px 26px;padding:0 18px 4px">
+              <sc-for list="{{ todayEvents }}" as="ev" hint-placeholder-count="4">
+                <div style="flex-shrink:0;width:200px;padding:15px;border-radius:16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7),0 6px 18px rgba(0,0,0,0.06)">
+                  <div style="font-size:13px;font-weight:600;color:#6E63E6;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-variant-numeric:tabular-nums;margin-bottom:8px">{{ ev.t }}</div>
+                  <div style="font-size:15px;font-weight:600;letter-spacing:-0.015em;line-height:1.3;margin-bottom:5px">{{ ev.title }}</div>
+                  <div style="font-size:12px;color:rgba(60,60,67,0.5);margin-bottom:12px">{{ ev.where }}</div>
+                  <div style="display:flex">
+                    <sc-for list="{{ ev.who }}" as="m" hint-placeholder-count="2">
+                      <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,0.9);border:0.5px solid rgba(60,60,67,0.12);box-shadow:0 1px 3px rgba(0,0,0,0.08);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:rgba(60,60,67,0.7);margin-left:-7px">{{ m }}</div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-size:17px;font-weight:700;letter-spacing:-0.02em;margin-bottom:13px">项目</div>
+            <div style="display:flex;gap:12px;overflow-x:auto;margin:0 -18px;padding:0 18px 4px">
+              <sc-for list="{{ projects }}" as="p" hint-placeholder-count="3">
+                <div style="flex-shrink:0;width:248px;padding:16px;border-radius:16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7),0 6px 18px rgba(0,0,0,0.06)">
+                  <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#6E63E6;background:rgba(123,123,240,0.12);padding:3px 8px;border-radius:6px">{{ p.tag }}</span>
+                  <div style="font-size:16px;font-weight:600;letter-spacing:-0.02em;margin:11px 0 6px">{{ p.title }}</div>
+                  <div style="font-size:12.5px;color:rgba(60,60,67,0.55);line-height:1.45;height:54px;overflow:hidden">{{ p.intro }}</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+                    <span style="font-size:12px;color:rgba(60,60,67,0.55);font-variant-numeric:tabular-nums">{{ p.open }} 待办 · <span style="color:#6E63E6;font-weight:600">{{ p.urgent }} 紧急</span></span>
+                    <div style="display:flex">
+                      <sc-for list="{{ p.members }}" as="m" hint-placeholder-count="3">
+                        <div style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.9);border:0.5px solid rgba(60,60,67,0.12);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:rgba(60,60,67,0.7);margin-left:-6px">{{ m }}</div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- ===== iOS 个人 ===== -->
+          <sc-if value="{{ iosIsPersonal }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:54px;left:0;right:0;bottom:0;overflow-y:auto;padding:8px 18px 130px">
+            <h2 style="font-size:34px;font-weight:700;letter-spacing:-0.03em;margin:14px 0 4px">个人</h2>
+            <div style="font-size:14px;color:rgba(60,60,67,0.55);margin-bottom:16px">{{ personalOpenCount }} 个待办 · <span style="color:#6E63E6;font-weight:600">{{ personalUrgentCount }} 紧急</span> · {{ personalDoneCount }} 已完成</div>
+            <button onClick="{{ addCurrentIos }}" style="border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:12px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);box-shadow:0 6px 16px rgba(123,109,240,0.4);color:#fff;font-size:13.5px;font-weight:600;font-family:inherit;margin-bottom:24px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建个人待办</button>
+
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px">
+              <div style="width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0)"></div>
+              <span style="font-size:17px;font-weight:700;letter-spacing:-0.02em">紧急</span>
+              <span style="font-size:13px;color:rgba(60,60,67,0.4)">{{ personalUrgentCount }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:26px">
+              <sc-for list="{{ personalUrgent }}" as="t" hint-placeholder-count="2">
+                <div style="position:relative;display:flex;align-items:center;gap:13px;padding:15px 16px 15px 19px;border-radius:16px;background:rgba(123,123,240,0.1);border:0.5px solid rgba(123,123,240,0.22);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">
+                  <div style="position:absolute;left:0;top:13px;bottom:13px;width:3px;border-radius:3px;background:linear-gradient(180deg,#5B8DEF,#8A6DF0)"></div>
+                  <div onClick="{{ t.toggle }}" style="width:22px;height:22px;border-radius:7px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                  <div style="font-size:15.5px;font-weight:600;letter-spacing:-0.005em;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px">
+              <div style="width:9px;height:9px;border-radius:50%;background:rgba(60,60,67,0.3)"></div>
+              <span style="font-size:17px;font-weight:700;letter-spacing:-0.02em">普通</span>
+              <span style="font-size:13px;color:rgba(60,60,67,0.4)">{{ personalNormalCount }}</span>
+            </div>
+            <div style="border-radius:16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7),0 9px 26px rgba(0,0,0,0.06);overflow:hidden;margin-bottom:24px">
+              <sc-for list="{{ personalNormal }}" as="t" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:13px;padding:13px 16px;border-top:0.5px solid {{ t.rowDivider }}">
+                  <div onClick="{{ t.toggle }}" style="width:21px;height:21px;border-radius:7px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                  <div style="font-size:14.5px;font-weight:500;letter-spacing:-0.005em;text-decoration:{{ t.deco }};opacity:{{ t.op }};flex:1">{{ t.title }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="padding:15px 16px;border-radius:16px;border:1px dashed rgba(60,60,67,0.18);background:rgba(60,60,67,0.02)">
+              <div onClick="{{ togglePersonalDone }}" style="display:flex;align-items:center;gap:9px;cursor:pointer">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(60,60,67,0.5)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="transform:{{ personalDoneChevron }};transition:transform .18s"><path d="M9 6l6 6-6 6"/></svg>
+                <span style="font-size:14px;font-weight:600;color:rgba(60,60,67,0.55)">已完成</span>
+                <span style="font-size:12.5px;color:rgba(60,60,67,0.4)">{{ personalDoneCount }}</span>
+              </div>
+              <sc-if value="{{ personalDoneOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:12px;display:flex;flex-direction:column;gap:9px">
+                  <sc-for list="{{ personalDone }}" as="t" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:center;gap:11px">
+                      <div style="width:19px;height:19px;border-radius:6px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);flex-shrink:0;display:flex;align-items:center;justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                      <span style="font-size:14px;color:rgba(60,60,67,0.42);text-decoration:line-through">{{ t.title }}</span>
+                      <span style="font-size:11.5px;font-style:italic;color:rgba(60,60,67,0.32)">已完成</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- ===== iOS 公司 ===== -->
+          <sc-if value="{{ iosIsCompany }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:54px;left:0;right:0;bottom:0;overflow-y:auto;padding:8px 18px 130px">
+            <h2 style="font-size:34px;font-weight:700;letter-spacing:-0.03em;margin:14px 0 4px">公司</h2>
+            <div style="font-size:14px;color:rgba(60,60,67,0.55);margin-bottom:16px">{{ workOpenCount }} 个待办 · <span style="color:#6E63E6;font-weight:600">{{ workUrgentCount }} 紧急</span> · {{ projectCount }} 个项目</div>
+            <button onClick="{{ addCurrentIos }}" style="border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:12px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);box-shadow:0 6px 16px rgba(123,109,240,0.4);color:#fff;font-size:13.5px;font-weight:600;font-family:inherit;margin-bottom:18px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建公司事项</button>
+
+            <div style="display:flex;gap:8px;overflow-x:auto;margin:0 -18px 22px;padding:0 18px 4px">
+              <sc-for list="{{ chips }}" as="c" hint-placeholder-count="5">
+                <div onClick="{{ c.go }}" style="flex-shrink:0;padding:8px 15px;border-radius:999px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;background:{{ c.bg }};color:{{ c.fg }};border:0.5px solid {{ c.bd }};box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">{{ c.label }}</div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px">
+              <div style="width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,#5B8DEF,#8A6DF0)"></div>
+              <span style="font-size:17px;font-weight:700;letter-spacing:-0.02em">紧急</span>
+              <span style="font-size:13px;color:rgba(60,60,67,0.4)">{{ workUrgentCount }}</span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:24px">
+              <sc-for list="{{ workUrgent }}" as="t" hint-placeholder-count="3">
+                <div style="position:relative;display:flex;align-items:flex-start;gap:13px;padding:15px 16px 15px 19px;border-radius:16px;background:rgba(123,123,240,0.1);border:0.5px solid rgba(123,123,240,0.22);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">
+                  <div style="position:absolute;left:0;top:13px;bottom:13px;width:3px;border-radius:3px;background:linear-gradient(180deg,#5B8DEF,#8A6DF0)"></div>
+                  <div onClick="{{ t.toggle }}" style="width:22px;height:22px;border-radius:7px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:15.5px;font-weight:600;letter-spacing:-0.005em;line-height:1.35;text-decoration:{{ t.deco }};opacity:{{ t.op }}">{{ t.title }}</div>
+                    <sc-if value="{{ t.hasProject }}" hint-placeholder-val="{{ true }}"><div style="display:inline-flex;align-items:center;gap:5px;margin-top:7px;padding:3px 9px;border-radius:7px;background:rgba(60,60,67,0.06)"><div style="width:5px;height:5px;border-radius:50%;background:#8A6DF0"></div><span style="font-size:11px;font-weight:600;color:rgba(60,60,67,0.6)">{{ t.project }}</span></div></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px">
+              <div style="width:9px;height:9px;border-radius:50%;background:rgba(60,60,67,0.3)"></div>
+              <span style="font-size:17px;font-weight:700;letter-spacing:-0.02em">普通</span>
+              <span style="font-size:13px;color:rgba(60,60,67,0.4)">{{ workNormalCount }}</span>
+            </div>
+            <div style="border-radius:16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7),0 9px 26px rgba(0,0,0,0.06);overflow:hidden;margin-bottom:26px">
+              <sc-for list="{{ workNormal }}" as="t" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:13px;padding:13px 16px;border-top:0.5px solid {{ t.rowDivider }}">
+                  <div onClick="{{ t.toggle }}" style="width:21px;height:21px;border-radius:7px;border:1.5px solid {{ t.boxBorder }};background:{{ t.boxBg }};flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:{{ t.checkOp }}"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                  <div style="font-size:14.5px;font-weight:500;letter-spacing:-0.005em;text-decoration:{{ t.deco }};opacity:{{ t.op }};flex:1;min-width:0">{{ t.title }}</div>
+                  <sc-if value="{{ t.hasProject }}" hint-placeholder-val="{{ false }}"><span style="font-size:10.5px;font-weight:600;color:rgba(60,60,67,0.5);background:rgba(60,60,67,0.05);padding:3px 8px;border-radius:6px;white-space:nowrap">{{ t.project }}</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:flex;align-items:center;margin-bottom:13px">
+              <div style="font-size:17px;font-weight:700;letter-spacing:-0.02em">项目</div>
+              <div style="flex:1"></div>
+              <button onClick="{{ addProjectIos }}" style="border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:11px;background:rgba(255,255,255,0.65);border:0.5px solid rgba(123,123,240,0.3);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7);color:#6E63E6;font-size:13px;font-weight:600;font-family:inherit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6E63E6" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建项目</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ richProjects }}" as="p" hint-placeholder-count="3">
+                <div style="padding:16px;border-radius:16px;background:rgba(255,255,255,0.55);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.7),0 6px 18px rgba(0,0,0,0.06)">
+                  <span style="font-size:10px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#6E63E6;background:rgba(123,123,240,0.12);padding:3px 8px;border-radius:6px">{{ p.tag }}</span>
+                  <div style="font-size:16px;font-weight:600;letter-spacing:-0.02em;margin:11px 0 6px">{{ p.title }}</div>
+                  <div style="font-size:12.5px;color:rgba(60,60,67,0.55);line-height:1.45">{{ p.intro }}</div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:13px">
+                    <span style="font-size:12px;color:rgba(60,60,67,0.55)">{{ p.open }} 待办 · <span style="color:#6E63E6;font-weight:600">{{ p.urgent }} 紧急</span></span>
+                    <div style="display:flex">
+                      <sc-for list="{{ p.members }}" as="m" hint-placeholder-count="3"><div style="width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.9);border:0.5px solid rgba(60,60,67,0.12);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;color:rgba(60,60,67,0.7);margin-left:-6px">{{ m }}</div></sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- ===== iOS 日历 ===== -->
+          <sc-if value="{{ iosIsCalendar }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:54px;left:0;right:0;bottom:0;overflow-y:auto;padding:8px 18px 130px">
+            <h2 style="font-size:34px;font-weight:700;letter-spacing:-0.03em;margin:14px 0 14px">日历</h2>
+            <button onClick="{{ addCurrentIos }}" style="border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:12px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);box-shadow:0 6px 16px rgba(123,109,240,0.4);color:#fff;font-size:13.5px;font-weight:600;font-family:inherit;margin-bottom:18px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新建日程</button>
+
+            <div style="display:flex;gap:8px;overflow-x:auto;margin:0 -18px 22px;padding:0 18px 4px">
+              <sc-for list="{{ calStrip }}" as="d" hint-placeholder-count="7">
+                <div onClick="{{ d.go }}" style="flex-shrink:0;width:50px;padding:10px 0;border-radius:15px;text-align:center;cursor:pointer;background:{{ d.pillBg }}">
+                  <div style="font-size:11px;font-weight:600;color:{{ d.labelColor }}">{{ d.label }}</div>
+                  <div style="font-size:18px;font-weight:700;color:{{ d.dateColor }};margin-top:3px;font-variant-numeric:tabular-nums">{{ d.date }}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="font-size:15px;font-weight:600;letter-spacing:-0.015em;color:rgba(60,60,67,0.7);margin-bottom:14px">{{ iosCalLabel }}</div>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ iosCalEvents }}" as="ev" hint-placeholder-count="3">
+                <div style="position:relative;padding:15px 16px 15px 19px;border-radius:16px;background:{{ ev.bg }};border:0.5px solid rgba(60,60,67,0.09);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">
+                  <div style="position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:{{ ev.accent }}"></div>
+                  <div style="font-size:13px;font-weight:600;color:#6E63E6;font-family:ui-monospace,'SF Mono',Menlo,monospace;font-variant-numeric:tabular-nums">{{ ev.range }}</div>
+                  <div style="font-size:16px;font-weight:600;letter-spacing:-0.015em;margin-top:4px">{{ ev.title }}</div>
+                  <div style="font-size:12.5px;color:rgba(60,60,67,0.5);margin-top:4px">{{ ev.where }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- ===== iOS 灵感 ===== -->
+          <sc-if value="{{ iosIsInspiration }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:54px;left:0;right:0;bottom:0;overflow-y:auto;padding:8px 18px 130px">
+            <h2 style="font-size:34px;font-weight:700;letter-spacing:-0.03em;margin:14px 0 4px">灵感</h2>
+            <div style="font-size:14px;color:rgba(60,60,67,0.55);margin-bottom:16px">随手记下的念头、清单与片段</div>
+            <button onClick="{{ addCurrentIos }}" style="border:none;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:12px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);box-shadow:0 6px 16px rgba(123,109,240,0.4);color:#fff;font-size:13.5px;font-weight:600;font-family:inherit;margin-bottom:22px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>记录灵感</button>
+
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <sc-for list="{{ inspo }}" as="n" hint-placeholder-count="6">
+                <div style="position:relative;padding:16px 16px 14px 19px;border-radius:16px;background:{{ n.bg }};border:0.5px solid rgba(60,60,67,0.08);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.6)">
+                  <div style="position:absolute;left:0;top:15px;bottom:15px;width:3px;border-radius:3px;background:{{ n.bar }}"></div>
+                  <div style="font-size:16px;font-weight:600;letter-spacing:-0.015em;margin-bottom:6px">{{ n.title }}</div>
+                  <div style="font-size:13.5px;color:rgba(60,60,67,0.65);line-height:1.55">{{ n.body }}</div>
+                  <div style="font-size:11.5px;color:rgba(60,60,67,0.38);margin-top:11px;font-family:ui-monospace,'SF Mono',Menlo,monospace">{{ n.date }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <!-- iOS tab bar (5 destinations, no FAB) -->
+          <div style="position:absolute;left:16px;right:16px;bottom:10px;z-index:9;height:62px;display:flex;align-items:center;padding:0 6px;border-radius:28px;background:rgba(255,255,255,0.62);backdrop-filter:blur(30px) saturate(1.7);-webkit-backdrop-filter:blur(30px) saturate(1.7);border:0.5px solid rgba(60,60,67,0.1);box-shadow:inset 0 0.5px 0 rgba(255,255,255,0.85),0 14px 34px rgba(20,20,40,0.18)">
+            <div onClick="{{ goIosMain }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ tabMain }}">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2.6 10.7c-.3.2-.1.8.3.8H5v8.5c0 .6.4 1 1 1h3.5v-5.5c0-.6.4-1 1-1h3c.6 0 1 .4 1 1V21H18c.6 0 1-.4 1-1v-8.5h2.1c.4 0 .6-.5.3-.8L12 3z"/></svg>
+              <span style="font-size:10px;font-weight:600">主页</span>
+            </div>
+            <div onClick="{{ goIosPersonal }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ tabPersonal }}">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.3"/><path d="M5.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/></svg>
+              <span style="font-size:10px;font-weight:600">个人</span>
+            </div>
+            <div onClick="{{ goIosCompany }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ tabCompany }}">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7.5" width="18" height="12.5" rx="2.2"/><path d="M8.5 7.5V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v1.5"/><path d="M3 12.5h18"/></svg>
+              <span style="font-size:10px;font-weight:600">公司</span>
+            </div>
+            <div onClick="{{ goIosCalendar }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ tabCalendar }}">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.2"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/></svg>
+              <span style="font-size:10px;font-weight:600">日历</span>
+            </div>
+            <div onClick="{{ goIosInspiration }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:{{ tabInspiration }}">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.8 10.7c.5.4.8 1 .8 1.6v.2h6v-.2c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3z"/></svg>
+              <span style="font-size:10px;font-weight:600">灵感</span>
+            </div>
+          </div>
+
+          <!-- iOS quick add sheet (scoped) -->
+          <sc-if value="{{ sheetIos }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;z-index:20;background:rgba(20,20,30,0.34);display:flex;align-items:flex-end">
+              <div onClick="{{ stop }}" style="width:100%;border-radius:30px 30px 44px 44px;background:rgba(248,248,250,0.9);backdrop-filter:blur(40px) saturate(1.6);-webkit-backdrop-filter:blur(40px) saturate(1.6);border-top:0.5px solid rgba(255,255,255,0.9);box-shadow:0 -20px 60px rgba(20,20,40,0.3);padding-bottom:24px">
+                <div style="display:flex;justify-content:center;padding:10px 0 4px"><div style="width:38px;height:5px;border-radius:3px;background:rgba(60,60,67,0.22)"></div></div>
+                <div style="display:flex;align-items:center;padding:8px 20px 16px">
+                  <button onClick="{{ closeSheet }}" style="border:none;background:none;cursor:pointer;font-size:15px;color:rgba(60,60,67,0.7);font-family:inherit">取消</button>
+                  <div style="flex:1;text-align:center;font-size:16px;font-weight:700;letter-spacing:-0.01em">{{ sheetTitle }}</div>
+                  <button onClick="{{ closeSheet }}" style="border:none;cursor:pointer;font-size:15px;font-weight:600;color:#fff;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);padding:7px 16px;border-radius:11px;font-family:inherit">创建</button>
+                </div>
+                <div style="padding:0 20px">
+                  <!-- todo -->
+                  <sc-if value="{{ sheetIsTodo }}" hint-placeholder-val="{{ true }}">
+                    <input placeholder="{{ sheetPh }}" style="width:100%;border:none;outline:none;background:transparent;font-size:24px;font-weight:600;letter-spacing:-0.02em;color:#1C1C1E;font-family:inherit;padding:0 0 20px" />
+                    <div style="display:flex;align-items:center;gap:14px">
+                      <span style="font-size:13px;font-weight:600;color:rgba(60,60,67,0.5);width:52px">紧急度</span>
+                      <div style="display:flex;gap:8px;flex:1">
+                        <div onClick="{{ setUrgent }}" style="flex:1;text-align:center;padding:10px;border-radius:11px;font-size:14px;font-weight:600;cursor:pointer;background:{{ urg.on.bg }};color:{{ urg.on.fg }};border:0.5px solid {{ urg.on.bd }}">紧急</div>
+                        <div onClick="{{ setNormal }}" style="flex:1;text-align:center;padding:10px;border-radius:11px;font-size:14px;font-weight:600;cursor:pointer;background:{{ urg.off.bg }};color:{{ urg.off.fg }};border:0.5px solid {{ urg.off.bd }}">普通</div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <!-- event -->
+                  <sc-if value="{{ sheetIsEvent }}" hint-placeholder-val="{{ false }}">
+                    <input placeholder="{{ sheetPh }}" style="width:100%;border:none;outline:none;background:transparent;font-size:24px;font-weight:600;letter-spacing:-0.02em;color:#1C1C1E;font-family:inherit;padding:0 0 8px" />
+                    <div style="display:flex;flex-direction:column">
+                      <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0">开始</span>
+                        <div style="flex:1;display:flex;align-items:center;gap:7px;font-size:14.5px;color:#1C1C1E"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E63E6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>5月27日 · 14:00</div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0">结束</span>
+                        <div style="flex:1;display:flex;align-items:center;gap:7px;font-size:14.5px;color:#1C1C1E"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6E63E6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>5月27日 · 15:00</div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0">地点</span>
+                        <input placeholder="会议室 / Zoom / 地址…" style="flex:1;border:none;outline:none;background:transparent;font-size:14.5px;color:#1C1C1E;font-family:inherit" />
+                      </div>
+                      <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0">参与人</span>
+                        <div style="flex:1;display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                          <sc-for list="{{ evtPeople }}" as="pp" hint-placeholder-count="5">
+                            <div onClick="{{ pp.toggle }}" style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:600;background:{{ pp.bg }};color:{{ pp.fg }};border:{{ pp.ring }}">{{ pp.initial }}</div>
+                          </sc-for>
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0">项目</span>
+                        <div style="flex:1;display:flex;flex-wrap:wrap;gap:7px">
+                          <sc-for list="{{ evtProjects }}" as="pr" hint-placeholder-count="4">
+                            <div onClick="{{ pr.pick }}" style="padding:7px 13px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;background:{{ pr.bg }};color:{{ pr.fg }};border:0.5px solid {{ pr.bd }}">{{ pr.label }}</div>
+                          </sc-for>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <!-- note -->
+                  <sc-if value="{{ sheetIsNote }}" hint-placeholder-val="{{ false }}">
+                    <textarea placeholder="{{ sheetPh }}" style="width:100%;min-height:130px;border:none;outline:none;background:transparent;font-size:16px;line-height:1.6;color:#1C1C1E;font-family:inherit;resize:none;padding:2px 0 16px"></textarea>
+                    <div style="display:flex;align-items:center;gap:12px;padding-top:14px;border-top:0.5px solid rgba(60,60,67,0.1)">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6E63E6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l-1 6 3 3v2H7v-2l3-3-1-6z"/><path d="M12 15v5"/></svg>
+                      <span style="flex:1;font-size:15px;font-weight:500;color:#1C1C1E">置顶</span>
+                      <div onClick="{{ toggleNotePin }}" style="width:40px;height:24px;border-radius:13px;cursor:pointer;background:{{ notePinBg }};position:relative;transition:background .2s">
+                        <div style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2);transform:{{ notePinKnob }};transition:transform .2s"></div>
+                      </div>
+                    </div>
+                    <div style="font-size:12.5px;color:rgba(60,60,67,0.45);margin-top:11px">正文第一行将作为标题</div>
+                  </sc-if>
+
+                  <!-- project -->
+                  <sc-if value="{{ sheetIsProject }}" hint-placeholder-val="{{ false }}">
+                    <input placeholder="{{ sheetPh }}" style="width:100%;border:none;outline:none;background:transparent;font-size:24px;font-weight:600;letter-spacing:-0.02em;color:#1C1C1E;font-family:inherit;padding:0 0 8px" />
+                    <div style="display:flex;flex-direction:column">
+                      <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0">简介</span>
+                        <input placeholder="一两句说明这个项目…" style="flex:1;border:none;outline:none;background:transparent;font-size:14.5px;color:#1C1C1E;font-family:inherit" />
+                      </div>
+                      <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0">状态</span>
+                        <input placeholder="如：6月发布 / 评审中" style="flex:1;border:none;outline:none;background:transparent;font-size:14.5px;color:#1C1C1E;font-family:inherit" />
+                      </div>
+                      <div style="display:flex;align-items:center;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0">成员</span>
+                        <div style="flex:1;display:flex;align-items:center;gap:7px;flex-wrap:wrap">
+                          <sc-for list="{{ evtPeople }}" as="pp" hint-placeholder-count="5">
+                            <div onClick="{{ pp.toggle }}" style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:600;background:{{ pp.bg }};color:{{ pp.fg }};border:{{ pp.ring }}">{{ pp.initial }}</div>
+                          </sc-for>
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;border-top:0.5px solid rgba(60,60,67,0.1)">
+                        <span style="font-size:13.5px;font-weight:600;color:rgba(60,60,67,0.5);width:56px;flex-shrink:0;margin-top:3px">备注</span>
+                        <textarea placeholder="更详细的说明（可选）…" style="flex:1;min-height:64px;border:none;outline:none;background:transparent;font-size:14.5px;line-height:1.6;color:#1C1C1E;font-family:inherit;resize:none"></textarea>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- iOS settings sheet -->
+          <sc-if value="{{ settingsIos }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ closeSettings }}" style="position:absolute;inset:0;z-index:21;background:rgba(20,20,30,0.34);display:flex;align-items:flex-end">
+              <div onClick="{{ stop }}" style="width:100%;border-radius:30px 30px 44px 44px;background:rgba(248,248,250,0.92);backdrop-filter:blur(40px) saturate(1.6);-webkit-backdrop-filter:blur(40px) saturate(1.6);border-top:0.5px solid rgba(255,255,255,0.9);box-shadow:0 -20px 60px rgba(20,20,40,0.3);padding-bottom:30px">
+                <div style="display:flex;justify-content:center;padding:10px 0 4px"><div style="width:38px;height:5px;border-radius:3px;background:rgba(60,60,67,0.22)"></div></div>
+                <div style="display:flex;align-items:center;padding:8px 20px 14px">
+                  <div style="width:48px"></div>
+                  <div style="flex:1;text-align:center;font-size:16px;font-weight:700;letter-spacing:-0.01em">设置</div>
+                  <button onClick="{{ closeSettings }}" style="border:none;background:none;cursor:pointer;font-size:15px;font-weight:600;color:#6E63E6;font-family:inherit">完成</button>
+                </div>
+                <div style="margin:0 20px;border-radius:16px;background:rgba(255,255,255,0.6);border:0.5px solid rgba(60,60,67,0.08);overflow:hidden">
+                  <div style="display:flex;align-items:center;padding:15px 16px;border-bottom:0.5px solid rgba(60,60,67,0.08)">
+                    <span style="flex:1;font-size:15px;font-weight:500">外观</span>
+                    <span style="font-size:14px;color:rgba(60,60,67,0.55);margin-right:9px">跟随系统</span>
+                    <span style="font-size:10px;font-weight:600;font-family:ui-monospace,'SF Mono',Menlo,monospace;color:rgba(60,60,67,0.45);background:rgba(60,60,67,0.08);padding:2px 7px;border-radius:5px">锁定</span>
+                  </div>
+                  <div style="display:flex;align-items:center;padding:15px 16px;border-bottom:0.5px solid rgba(60,60,67,0.08)">
+                    <span style="flex:1;font-size:15px;font-weight:500">iCloud 同步</span>
+                    <div style="width:40px;height:24px;border-radius:13px;background:linear-gradient(135deg,#5B8DEF,#8A6DF0);position:relative"><div style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div></div>
+                  </div>
+                  <div style="display:flex;align-items:center;padding:15px 16px;border-bottom:0.5px solid rgba(60,60,67,0.08)">
+                    <span style="flex:1;font-size:15px;font-weight:500">默认页面</span>
+                    <span style="font-size:14px;color:rgba(60,60,67,0.55)">主页</span>
+                  </div>
+                  <div style="display:flex;align-items:center;padding:15px 16px">
+                    <span style="flex:1;font-size:15px;font-weight:500">关于</span>
+                    <span style="font-size:14px;color:rgba(60,60,67,0.55);font-variant-numeric:tabular-nums">LinoJ v1.0</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1860,&quot;height&quot;:1010},&quot;showBloom&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showHeadsUp&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;showRail&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = {
+    macTab: 'main', iosTab: 'main',
+    doneMap: {},
+    headsUpDismissed: false,
+    sheet: null,
+    settings: null,
+    qaUrgent: true,
+    personalDoneOpen: false,
+    workDoneOpen: false,
+    companyScope: '全部',
+    calDay: 'Tue',
+    evtProject: null,
+    evtAtt: { M: true, A: true, J: false, K: false, L: false },
+    notePinned: false,
+  };
+
+  peopleBase = [
+    { initial: 'M', name: 'Mei' },
+    { initial: 'A', name: 'Alex' },
+    { initial: 'J', name: 'Jin' },
+    { initial: 'K', name: 'Kai' },
+    { initial: 'L', name: 'Lino' },
+  ];
+  eventProjectOptions = ['LinoJ macOS v1', 'Onboarding 改版', 'Q3 规划'];
+
+  urgentBase = [
+    { id: 't1', title: '回复妈妈', project: '', scope: 'personal' },
+    { id: 't2', title: '把存款转入高息账户', project: '', scope: 'personal' },
+    { id: 't3', title: '提交 Q1 报销单', project: '', scope: 'company' },
+    { id: 't4', title: '敲定 macOS 侧栏规格', project: 'LinoJ', scope: 'company' },
+    { id: 't5', title: '审阅 onboarding 文案 v2', project: 'Onboarding 改版', scope: 'company' },
+  ];
+  normalBase = [
+    { id: 't6', title: '读《人类简史》第 3 章', project: '', scope: 'personal' },
+    { id: 't7', title: '续健身房会员', project: '', scope: 'personal' },
+    { id: 't8', title: '取干洗衣物', project: '', scope: 'personal' },
+    { id: 't9', title: '给 L 买生日礼物', project: '', scope: 'personal' },
+    { id: 't10', title: '审阅法务红线', project: '', scope: 'company' },
+    { id: 't11', title: '批准设计系统 PR', project: '', scope: 'company' },
+    { id: 't12', title: '和 @Mei 对齐发布材料', project: 'Q3 规划', scope: 'company' },
+    { id: 't13', title: '打磨空状态', project: 'LinoJ', scope: 'company' },
+    { id: 't14', title: '审计颜色 token', project: 'LinoJ', scope: 'company' },
+  ];
+  projectsBase = [
+    { title: 'LinoJ macOS v1', tag: '6月发布', intro: '原生 Swift 计划工具。个人、工作、时间三条线汇成一个安静的工作台。', open: 4, urgent: 1, members: ['L', 'M', 'A'] },
+    { title: 'Onboarding 改版', tag: '评审中', intro: '把首次启动从 7 屏砍到 3 屏，用会教学的空状态代替解释。', open: 1, urgent: 1, members: ['M', 'J'] },
+    { title: 'Q3 规划', tag: '接近完成', intro: '对齐本季度三个赌注：草拟 → 评审 → 拍板。', open: 1, urgent: 0, members: ['L', 'M', 'A', 'J', 'K'] },
+  ];
+  todayEventsBase = [
+    { t: '9:30', title: '晨会', where: 'Zoom', who: ['M', 'A', 'J'] },
+    { t: '11:00', title: '与 Mei 的 1:1', where: 'Blue Bottle', who: ['M'] },
+    { t: '14:00', title: '设计评审 — 侧栏', where: '会议室 A', who: ['M', 'A'] },
+    { t: '19:00', title: '与父母晚餐', where: '家', who: ['爸', '妈'] },
+  ];
+  daysBase = [
+    { label: '今天', date: '27', today: true, events: [{ t: '9:30', title: '晨会' }, { t: '11:00', title: '与 Mei 的 1:1' }, { t: '14:00', title: '设计评审 — 侧栏' }], more: 1 },
+    { label: '周三', date: '28', events: [{ t: '10:00', title: 'Onboarding 评审' }, { t: '15:00', title: 'Q3 拍板评审' }, { t: '18:30', title: '瑜伽' }], more: 0 },
+    { label: '周四', date: '29', events: [{ t: '9:00', title: '工程同步' }, { t: '12:00', title: '与 Andrew 午餐' }], more: 0 },
+    { label: '周五', date: '30', events: [{ t: '14:00', title: '发布复盘' }, { t: '17:00', title: '心理咨询' }], more: 0 },
+    { label: '周六', date: '31', weekend: true, events: [{ t: '7:30', title: '晨跑' }, { t: '11:00', title: '与 K 早午餐' }], more: 0 },
+    { label: '周日', date: '1', weekend: true, events: [{ t: '10:00', title: '与父母通话' }], more: 0 },
+    { label: '周一', date: '2', events: [{ t: '10:00', title: 'LinoJ kickoff v2' }, { t: '15:30', title: '牙医' }], more: 0 },
+  ];
+  yesterdayBase = [
+    { id: 'y1', t: '9:30', title: '工程站会' },
+    { id: 'y2', t: '15:00', title: '与 Andrew 咖啡' },
+  ];
+  headsUp = { inMin: 10, title: '与 Mei 的 1:1', where: 'Blue Bottle, Hayes' };
+
+  personalUrgentBase = [{ id: 'pu1', title: '回复妈妈', project: '' }, { id: 'pu2', title: '把存款转入高息账户', project: '' }];
+  personalNormalBase = [{ id: 'pn1', title: '读《人类简史》第 3 章', project: '' }, { id: 'pn2', title: '续健身房会员', project: '' }, { id: 'pn3', title: '取干洗衣物', project: '' }, { id: 'pn4', title: '给 L 买生日礼物', project: '' }];
+  personalDoneBase = [{ id: 'pd1', title: '预约牙医' }, { id: 'pd2', title: '交水电费' }];
+
+  workUrgentBase = [{ id: 'wu1', title: '提交 Q1 报销单', project: '' }, { id: 'wu2', title: '敲定 macOS 侧栏规格', project: 'LinoJ' }, { id: 'wu3', title: '审阅 onboarding 文案 v2', project: 'Onboarding 改版' }];
+  workNormalBase = [{ id: 'wn1', title: '审阅法务红线', project: '' }, { id: 'wn2', title: '批准设计系统 PR', project: '' }, { id: 'wn3', title: '和 @Mei 对齐发布材料', project: 'Q3 规划' }, { id: 'wn4', title: '打磨空状态', project: 'LinoJ' }, { id: 'wn5', title: '审计颜色 token', project: 'LinoJ' }];
+  workDoneBase = [{ id: 'wd1', title: '起草 Q3 OKR 文档' }];
+
+  companyChips = ['全部', '独立', 'LinoJ', 'Onboarding 改版', 'Q3 规划'];
+
+  richProjects = [
+    { id: 'linoj', title: 'LinoJ macOS v1', tag: '6月发布', intro: '原生 Swift 计划工具。个人、工作、时间汇成一个安静工作台。', members: ['L', 'M', 'A'], todos: ['敲定 macOS 侧栏规格', '打磨空状态', '审计颜色 token'], open: 4, urgent: 1, events: ['设计评审 — 侧栏', 'LinoJ kickoff v2'] },
+    { id: 'onboarding', title: 'Onboarding 改版', tag: '评审中', intro: '把首次启动从 7 屏砍到 3 屏，用会教学的空状态代替解释。', members: ['M', 'J'], todos: ['审阅 onboarding 文案 v2'], open: 1, urgent: 1, events: ['Onboarding 评审'] },
+    { id: 'q3', title: 'Q3 规划', tag: '接近完成', intro: '对齐本季度三个赌注：草拟 → 评审 → 拍板。', members: ['L', 'M', 'A', 'J', 'K'], todos: ['和 @Mei 对齐发布材料'], open: 1, urgent: 0, events: ['Q3 拍板评审'] },
+  ];
+
+  calHours = [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+  calWeek = [
+    { key: 'Tue', label: '周二', date: '27', today: true, events: [{ s: 9.5, e: 10, title: '晨会', where: 'Zoom', proj: true }, { s: 11, e: 11.5, title: '与 Mei 的 1:1', where: 'Blue Bottle', proj: false }, { s: 14, e: 15, title: '设计评审 — 侧栏', where: '会议室 A', proj: true }, { s: 19, e: 20.5, title: '与父母晚餐', where: '家', proj: false }] },
+    { key: 'Wed', label: '周三', date: '28', events: [{ s: 10, e: 11, title: 'Onboarding 评审', where: '会议室 C', proj: true }, { s: 15, e: 16.5, title: 'Q3 拍板评审', where: '会议室 A', proj: true }, { s: 18.5, e: 19.5, title: '瑜伽', where: 'Mission Studio', proj: false }] },
+    { key: 'Thu', label: '周四', date: '29', events: [{ s: 9, e: 10, title: '工程同步', where: 'Zoom', proj: true }, { s: 12, e: 13, title: '与 Andrew 午餐', where: 'Tartine', proj: false }] },
+    { key: 'Fri', label: '周五', date: '30', events: [{ s: 14, e: 15, title: '发布复盘', where: '会议室 B', proj: true }, { s: 17, e: 18, title: '心理咨询', where: 'Mission St', proj: false }] },
+    { key: 'Sat', label: '周六', date: '31', weekend: true, events: [{ s: 7.5, e: 9, title: '晨跑', where: 'Crissy Field', proj: false }, { s: 11, e: 13, title: '与 K 早午餐', where: 'Tartine', proj: false }] },
+    { key: 'Sun', label: '周日', date: '1', weekend: true, events: [{ s: 10, e: 11, title: '与父母通话', where: 'FaceTime', proj: false }] },
+    { key: 'Mon', label: '周一', date: '2', events: [{ s: 10, e: 11.5, title: 'LinoJ kickoff v2', where: '会议室 A', proj: true }, { s: 15.5, e: 16.5, title: '牙医', where: 'Pacific Dental', proj: false }] },
+  ];
+
+  inspirationNotes = [
+    { id: 'i1', title: '产品命名', body: 'LinoJ 留着。J = Journal + Join，把日志和连接合在一起。', date: '5月20日', tone: 'a' },
+    { id: 'i2', title: '一句话灵魂', body: '把「时间」和「待办」彻底分开——有钟点的是日程，没钟点的是待办。这是这个 app 的魂。', date: '5月18日', tone: 'b' },
+    { id: 'i3', title: '1:1 模板', body: '上周高光 · 当前卡点 · 这周重点 · 需要我的支持。', date: '5月15日', tone: 'c' },
+    { id: 'i4', title: '配色实验', body: '靛蓝→紫渐变在深色下更亮；亮色要压一档饱和度，别抢内容。', date: '5月12日', tone: 'a' },
+    { id: 'i5', title: '周末读书', body: '《Thinking in Systems》《人类简史》第四部分。', date: '5月10日', tone: 'c' },
+    { id: 'i6', title: '空状态文案', body: '别用「暂无数据」。要像朋友说话：「收件箱清空了，去喝杯咖啡。」', date: '5月8日', tone: 'b' },
+  ];
+
+  toneStyle(tone) {
+    const m = {
+      a: { bg: 'rgba(255,176,120,0.13)', bar: 'linear-gradient(180deg,#FFB078,#F39B6B)' },
+      b: { bg: 'rgba(123,123,240,0.11)', bar: 'linear-gradient(180deg,#5B8DEF,#8A6DF0)' },
+      c: { bg: 'rgba(120,170,255,0.11)', bar: 'linear-gradient(180deg,#78AAFF,#5B8DEF)' },
+    };
+    return m[tone] || m.b;
+  }
+  buildDone(t) { return { ...t }; }
+
+  addMap = {
+    personal: { title: '新建个人待办', scope: '个人', ph: '你想做什么？', kind: 'todo' },
+    company: { title: '新建公司事项', scope: '公司', ph: '你想做什么？', kind: 'todo' },
+    calendar: { title: '新建日程', scope: '日历', ph: '日程标题…', kind: 'event' },
+    inspiration: { title: '记录灵感', scope: '灵感', ph: '记点什么…', kind: 'note' },
+    _project: { title: '新建项目', scope: '公司', ph: '项目名称…', kind: 'project' },
+  };
+  addConf(scope) { return this.addMap[scope] || this.addMap.personal; }
+  addLabel(tab) {
+    return ({ personal: '新建个人待办', company: '新建公司事项', calendar: '新建日程', inspiration: '记录灵感' })[tab] || '新建';
+  }
+
+  isDone(id) { return !!this.state.doneMap[id]; }
+  toggle(id) { this.setState(s => ({ doneMap: { ...s.doneMap, [id]: !s.doneMap[id] } })); }
+
+  buildTodo(t, urgent, first) {
+    const done = this.isDone(t.id);
+    const sc = t.scope;
+    return {
+      ...t, done, hasProject: !!t.project,
+      hasScope: !!sc,
+      scopeLabel: sc === 'company' ? '公司' : '个人',
+      scopeBg: sc === 'company' ? 'rgba(123,123,240,0.12)' : 'rgba(60,60,67,0.07)',
+      scopeFg: sc === 'company' ? '#6E63E6' : 'rgba(60,60,67,0.6)',
+      scopeDot: sc === 'company' ? '#8A6DF0' : 'rgba(60,60,67,0.4)',
+      deco: done ? 'line-through' : 'none',
+      op: done ? 0.5 : 1,
+      boxBg: done ? 'linear-gradient(135deg,#5B8DEF,#8A6DF0)' : 'transparent',
+      boxBorder: done ? 'transparent' : (urgent ? 'rgba(123,123,240,0.55)' : 'rgba(60,60,67,0.3)'),
+      checkOp: done ? 1 : 0,
+      rowDivider: first ? 'transparent' : 'rgba(60,60,67,0.07)',
+      toggle: () => this.toggle(t.id),
+    };
+  }
+  buildYesterday(y) {
+    const done = this.isDone(y.id);
+    return {
+      ...y, deco: done ? 'line-through' : 'none', op: done ? 0.45 : 1,
+      boxBg: done ? 'linear-gradient(135deg,#5B8DEF,#8A6DF0)' : 'transparent',
+      boxBorder: done ? 'transparent' : 'rgba(60,60,67,0.3)',
+      checkOp: done ? 1 : 0,
+      toggle: () => this.toggle(y.id),
+    };
+  }
+
+  navFor(tab, key) {
+    const a = tab === key;
+    return {
+      rowBg: a ? 'rgba(110,110,230,0.13)' : 'transparent',
+      icon: a ? '#5B5BD6' : 'rgba(60,60,67,0.55)',
+      text: a ? '#1C1C1E' : 'rgba(60,60,67,0.72)',
+      weight: a ? '600' : '500',
+    };
+  }
+  tabColor(tab, key) { return tab === key ? '#5B5BD6' : 'rgba(60,60,67,0.5)'; }
+  pillBrand(active) {
+    return active
+      ? { bg: 'linear-gradient(135deg,#5B8DEF,#8A6DF0)', fg: '#fff', bd: 'transparent' }
+      : { bg: 'rgba(60,60,67,0.04)', fg: 'rgba(60,60,67,0.7)', bd: 'rgba(60,60,67,0.12)' };
+  }
+  pillDark(active) {
+    return active
+      ? { bg: '#1C1C1E', fg: '#fff', bd: 'transparent' }
+      : { bg: 'rgba(60,60,67,0.04)', fg: 'rgba(60,60,67,0.7)', bd: 'rgba(60,60,67,0.12)' };
+  }
+  placeholderName(tab) {
+    return ({ personal: '个人', company: '公司', calendar: '日历', inspiration: '灵感', main: '主页' })[tab] || '';
+  }
+
+  renderVals() {
+    const p = this.props || {};
+    const bloomOn = p.showBloom ?? true;
+    const railOn = p.showRail ?? true;
+    const showHeadsUp = (p.showHeadsUp ?? true) && !this.state.headsUpDismissed;
+    const mac = this.state.macTab, ios = this.state.iosTab;
+
+    const openUrgent = this.urgentBase.filter(t => !this.isDone(t.id)).length;
+    const openNormal = this.normalBase.filter(t => !this.isDone(t.id)).length;
+
+    const days = this.daysBase.map(d => ({
+      ...d,
+      rowBg: d.today ? 'rgba(110,110,230,0.08)' : 'transparent',
+      labelColor: d.today ? '#5B5BD6' : (d.weekend ? 'rgba(60,60,67,0.45)' : '#1C1C1E'),
+      hasMore: d.more > 0,
+      moreText: '+' + d.more + ' 更多',
+    }));
+
+    const sheet = this.state.sheet;
+    const conf = this.addConf(sheet ? sheet.scope : 'personal');
+
+    const evtPeople = this.peopleBase.map(pp => {
+      const on = !!this.state.evtAtt[pp.initial];
+      return {
+        ...pp, on,
+        ring: on ? '2px solid #6E63E6' : '0.5px solid rgba(60,60,67,0.18)',
+        bg: on ? 'linear-gradient(135deg,#5B8DEF,#8A6DF0)' : 'rgba(255,255,255,0.7)',
+        fg: on ? '#fff' : 'rgba(60,60,67,0.6)',
+        toggle: () => this.setState(s => ({ evtAtt: { ...s.evtAtt, [pp.initial]: !s.evtAtt[pp.initial] } })),
+      };
+    });
+    const evtProjects = [{ id: null, label: '无' }].concat(this.eventProjectOptions.map(n => ({ id: n, label: n }))).map(o => {
+      const sel = (this.state.evtProject ?? null) === o.id;
+      return {
+        ...o, sel,
+        bg: sel ? '#1C1C1E' : 'rgba(60,60,67,0.05)',
+        fg: sel ? '#fff' : 'rgba(60,60,67,0.7)',
+        bd: sel ? 'transparent' : 'rgba(60,60,67,0.12)',
+        pick: () => this.setState({ evtProject: o.id }),
+      };
+    });
+    const notePinned = this.state.notePinned;
+
+    const cs = this.state.companyScope;
+    const matchScope = (t) => {
+      if (cs === '全部') return true;
+      if (cs === '独立') return !t.project;
+      return t.project === cs;
+    };
+    const chips = this.companyChips.map(c => ({
+      label: c, sel: c === cs,
+      bg: c === cs ? '#1C1C1E' : 'rgba(255,255,255,0.5)',
+      fg: c === cs ? '#fff' : 'rgba(60,60,67,0.72)',
+      bd: c === cs ? 'transparent' : 'rgba(60,60,67,0.12)',
+      go: () => this.setState({ companyScope: c }),
+    }));
+
+    const fmt = (h) => { const hh = Math.floor(h); const mm = Math.round((h - hh) * 60); return hh + ':' + (mm === 0 ? '00' : mm); };
+    const calDays = this.calWeek.map(d => ({
+      ...d,
+      headColor: d.today ? '#5B5BD6' : (d.weekend ? 'rgba(60,60,67,0.5)' : '#1C1C1E'),
+      colBg: d.today ? 'rgba(110,110,230,0.05)' : 'transparent',
+      events: d.events.map(ev => ({
+        ...ev,
+        top: ((ev.s - 7) * 44 + 3) + 'px',
+        height: ((ev.e - ev.s) * 44 - 5) + 'px',
+        range: fmt(ev.s),
+        bg: ev.proj ? 'rgba(123,123,240,0.16)' : 'rgba(255,255,255,0.72)',
+        accent: ev.proj ? '#8A6DF0' : 'rgba(60,60,67,0.35)',
+      })),
+    }));
+    const calStrip = this.calWeek.map(d => ({
+      key: d.key, label: d.label, date: d.date,
+      pillBg: d.key === this.state.calDay ? '#1C1C1E' : 'transparent',
+      dateColor: d.key === this.state.calDay ? '#fff' : '#1C1C1E',
+      labelColor: d.key === this.state.calDay ? 'rgba(255,255,255,0.7)' : 'rgba(60,60,67,0.5)',
+      go: () => this.setState({ calDay: d.key }),
+    }));
+    const calToday = this.calWeek.find(d => d.key === this.state.calDay) || this.calWeek[0];
+    const iosCalEvents = (calToday ? calToday.events : []).map(ev => ({
+      ...ev, range: fmt(ev.s) + ' – ' + fmt(ev.e),
+      bg: ev.proj ? 'rgba(123,123,240,0.14)' : 'rgba(255,255,255,0.6)',
+      accent: ev.proj ? '#8A6DF0' : 'rgba(60,60,67,0.35)',
+    }));
+    const iosCalLabel = calToday ? (calToday.label + ' · 5月' + calToday.date + '日') : '';
+
+    const inspo = this.inspirationNotes.map(n => ({ ...n, ...this.toneStyle(n.tone) }));
+
+    return {
+      bloomOn, railOn,
+      macIsMain: mac === 'main',
+      macIsPlaceholder: mac !== 'main',
+      iosIsMain: ios === 'main',
+      iosIsPlaceholder: ios !== 'main',
+      placeholderTitle: this.placeholderName(mac),
+      placeholderTitleIos: this.placeholderName(ios),
+      placeholderAddLabel: this.addLabel(mac),
+      placeholderAddLabelIos: this.addLabel(ios),
+      macGridCols: railOn ? '1fr 348px' : '1fr',
+      headsUpMac: showHeadsUp && mac === 'main',
+      headsUpIos: showHeadsUp && ios === 'main',
+
+      urgentTodos: this.urgentBase.map(t => this.buildTodo(t, true, false)),
+      normalTodos: this.normalBase.map((t, i) => this.buildTodo(t, false, i === 0)),
+      yesterday: this.yesterdayBase.map(y => this.buildYesterday(y)),
+      projects: this.projectsBase,
+      days,
+      todayEvents: this.todayEventsBase,
+      headsUp: this.headsUp,
+
+      openTotal: openUrgent + openNormal,
+      openUrgent, openNormal,
+      eventsToday: this.todayEventsBase.length,
+
+      navMain: this.navFor(mac, 'main'),
+      navPersonal: this.navFor(mac, 'personal'),
+      navCompany: this.navFor(mac, 'company'),
+      navCalendar: this.navFor(mac, 'calendar'),
+      navInspiration: this.navFor(mac, 'inspiration'),
+      tabMain: this.tabColor(ios, 'main'),
+      tabPersonal: this.tabColor(ios, 'personal'),
+      tabCompany: this.tabColor(ios, 'company'),
+      tabCalendar: this.tabColor(ios, 'calendar'),
+      tabInspiration: this.tabColor(ios, 'inspiration'),
+
+      goMacMain: () => this.setState({ macTab: 'main' }),
+      goMacPersonal: () => this.setState({ macTab: 'personal' }),
+      goMacCompany: () => this.setState({ macTab: 'company' }),
+      goMacCalendar: () => this.setState({ macTab: 'calendar' }),
+      goMacInspiration: () => this.setState({ macTab: 'inspiration' }),
+      goIosMain: () => this.setState({ iosTab: 'main' }),
+      goIosPersonal: () => this.setState({ iosTab: 'personal' }),
+      goIosCompany: () => this.setState({ iosTab: 'company' }),
+      goIosCalendar: () => this.setState({ iosTab: 'calendar' }),
+      goIosInspiration: () => this.setState({ iosTab: 'inspiration' }),
+
+      dismissHeadsUp: () => this.setState({ headsUpDismissed: true }),
+
+      addCurrentMac: () => this.setState({ sheet: { platform: 'mac', scope: this.state.macTab }, qaUrgent: true }),
+      addCurrentIos: () => this.setState({ sheet: { platform: 'ios', scope: this.state.iosTab }, qaUrgent: true }),
+      closeSheet: () => this.setState({ sheet: null }),
+      sheetMac: !!(sheet && sheet.platform === 'mac'),
+      sheetIos: !!(sheet && sheet.platform === 'ios'),
+      sheetTitle: conf.title,
+      sheetScope: conf.scope,
+      sheetPh: conf.ph,
+      sheetShowUrgency: conf.kind === 'todo',
+      sheetIsTodo: conf.kind === 'todo',
+      sheetIsEvent: conf.kind === 'event',
+      sheetIsNote: conf.kind === 'note',
+      sheetIsProject: conf.kind === 'project',
+      addProjectMac: () => this.setState({ sheet: { platform: 'mac', scope: '_project' } }),
+      addProjectIos: () => this.setState({ sheet: { platform: 'ios', scope: '_project' } }),
+      evtPeople, evtProjects,
+      notePinned,
+      notePinBg: notePinned ? 'linear-gradient(135deg,#5B8DEF,#8A6DF0)' : 'rgba(60,60,67,0.2)',
+      notePinKnob: notePinned ? 'translateX(15px)' : 'translateX(0)',
+      toggleNotePin: () => this.setState(s => ({ notePinned: !s.notePinned })),
+
+      openSettingsMac: () => this.setState({ settings: 'mac' }),
+      openSettingsIos: () => this.setState({ settings: 'ios' }),
+      closeSettings: () => this.setState({ settings: null }),
+      settingsMac: this.state.settings === 'mac',
+      settingsIos: this.state.settings === 'ios',
+
+      urg: { on: this.pillBrand(this.state.qaUrgent), off: this.pillDark(!this.state.qaUrgent) },
+      setUrgent: () => this.setState({ qaUrgent: true }),
+      setNormal: () => this.setState({ qaUrgent: false }),
+
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+
+      macIsPersonal: mac === 'personal', macIsCompany: mac === 'company', macIsCalendar: mac === 'calendar', macIsInspiration: mac === 'inspiration',
+      iosIsPersonal: ios === 'personal', iosIsCompany: ios === 'company', iosIsCalendar: ios === 'calendar', iosIsInspiration: ios === 'inspiration',
+
+      personalUrgent: this.personalUrgentBase.map(t => this.buildTodo(t, true, false)),
+      personalNormal: this.personalNormalBase.map((t, i) => this.buildTodo(t, false, i === 0)),
+      personalDone: this.personalDoneBase,
+      personalOpenCount: this.personalUrgentBase.length + this.personalNormalBase.length,
+      personalDoneCount: this.personalDoneBase.length,
+      personalUrgentCount: this.personalUrgentBase.length,
+      personalNormalCount: this.personalNormalBase.length,
+      personalDoneOpen: this.state.personalDoneOpen,
+      personalDoneChevron: this.state.personalDoneOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+      togglePersonalDone: () => this.setState(s => ({ personalDoneOpen: !s.personalDoneOpen })),
+
+      workUrgent: this.workUrgentBase.filter(matchScope).map(t => this.buildTodo(t, true, false)),
+      workNormal: this.workNormalBase.filter(matchScope).map((t, i) => this.buildTodo(t, false, i === 0)),
+      workUrgentCount: this.workUrgentBase.filter(matchScope).length,
+      workNormalCount: this.workNormalBase.filter(matchScope).length,
+      workOpenCount: this.workUrgentBase.length + this.workNormalBase.length,
+      projectCount: this.richProjects.length,
+      richProjects: this.richProjects,
+      chips,
+
+      calDays, calHours: this.calHours, calStrip, iosCalEvents, iosCalLabel,
+
+      inspo,
+    };
+  }
+}
+</script>
+</body>
+</html>

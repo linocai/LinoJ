@@ -50,14 +50,26 @@ struct ColorTokensTests {
         assertHexRGB(Color(hex: 0x0a0a0a), r: 0x0a, g: 0x0a, b: 0x0a, label: "light ink")
     }
 
-    @Test("Light blue hex #2563eb parses correctly")
+    // v1.3：紫蓝强调（无橙）。blue 系列改值 —— accent #6E63E6 / accentDeep #5B5BD6 / 紫点 #8A6DF0。
+    @Test("Light blue (accent) hex #6E63E6 parses correctly")
     func lightBlueHexParses() {
-        assertHexRGB(Color(hex: 0x2563eb), r: 0x25, g: 0x63, b: 0xeb, label: "light blue")
+        assertHexRGB(Color(hex: 0x6E63E6), r: 0x6E, g: 0x63, b: 0xE6, label: "light blue/accent")
     }
 
-    @Test("Light blueInk hex #1e40af parses correctly")
+    @Test("Light blueInk (accentDeep) hex #5B5BD6 parses correctly")
     func lightBlueInkHexParses() {
-        assertHexRGB(Color(hex: 0x1e40af), r: 0x1e, g: 0x40, b: 0xaf, label: "light blueInk")
+        assertHexRGB(Color(hex: 0x5B5BD6), r: 0x5B, g: 0x5B, b: 0xD6, label: "light blueInk/accentDeep")
+    }
+
+    @Test("Light purpleDot hex #8A6DF0 parses correctly")
+    func lightPurpleDotHexParses() {
+        assertHexRGB(Color(hex: 0x8A6DF0), r: 0x8A, g: 0x6D, b: 0xF0, label: "light purpleDot")
+    }
+
+    @Test("Brand gradient ends #5B8DEF / #8A6DF0 parse correctly")
+    func brandGradientEndsParse() {
+        assertHexRGB(Color(hex: 0x5B8DEF), r: 0x5B, g: 0x8D, b: 0xEF, label: "brandBlue")
+        assertHexRGB(Color(hex: 0x8A6DF0), r: 0x8A, g: 0x6D, b: 0xF0, label: "brandPurple")
     }
 
     @Test("Light iosMainBg hex #f4f3ef parses correctly")
@@ -70,9 +82,9 @@ struct ColorTokensTests {
         assertHexRGB(Color(hex: 0x0d0d0e), r: 0x0d, g: 0x0d, b: 0x0e, label: "dark bg")
     }
 
-    @Test("Dark blue hex #60a5fa parses correctly")
+    @Test("Dark blue (accent) hex #9D93F2 parses correctly")
     func darkBlueHexParses() {
-        assertHexRGB(Color(hex: 0x60a5fa), r: 0x60, g: 0xa5, b: 0xfa, label: "dark blue")
+        assertHexRGB(Color(hex: 0x9D93F2), r: 0x9D, g: 0x93, b: 0xF2, label: "dark blue/accent")
     }
 
     @Test("Dark ink hex #f6f6f5 parses correctly")
@@ -120,12 +132,22 @@ struct ColorTokensTests {
         expectRGB(dc, r: 0xf6, g: 0xf6, b: 0xf5, label: "ink darkAqua")
     }
 
-    @Test("Color.lj.blue in aqua = #2563eb, in darkAqua = #60a5fa")
+    @Test("Color.lj.blue (accent) in aqua = #6E63E6, in darkAqua = #9D93F2")
     func blueResolves() {
         let lc = resolveSRGB(Color.lj.blue, appearance: .aqua)
-        expectRGB(lc, r: 0x25, g: 0x63, b: 0xeb, label: "blue aqua")
+        expectRGB(lc, r: 0x6E, g: 0x63, b: 0xE6, label: "blue/accent aqua")
         let dc = resolveSRGB(Color.lj.blue, appearance: .darkAqua)
-        expectRGB(dc, r: 0x60, g: 0xa5, b: 0xfa, label: "blue darkAqua")
+        expectRGB(dc, r: 0x9D, g: 0x93, b: 0xF2, label: "blue/accent darkAqua")
+    }
+
+    @Test("Color.lj.accent == Color.lj.blue, accentDeep == blueInk (语义别名)")
+    func accentAliases() {
+        let acc = resolveSRGB(Color.lj.accent, appearance: .aqua)
+        expectRGB(acc, r: 0x6E, g: 0x63, b: 0xE6, label: "accent aqua")
+        let deep = resolveSRGB(Color.lj.accentDeep, appearance: .aqua)
+        expectRGB(deep, r: 0x5B, g: 0x5B, b: 0xD6, label: "accentDeep aqua")
+        let dot = resolveSRGB(Color.lj.purpleDot, appearance: .aqua)
+        expectRGB(dot, r: 0x8A, g: 0x6D, b: 0xF0, label: "purpleDot aqua")
     }
 
     /// 用指定 NSAppearance 解析 SwiftUI Color 到 sRGB 分量。

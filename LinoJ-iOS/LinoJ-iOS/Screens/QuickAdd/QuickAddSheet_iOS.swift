@@ -4,7 +4,7 @@
 // 入口：右上 `+` floating button → router.showQuickAdd = true → RootTabView 的
 // `.sheet(isPresented: $router.showQuickAdd) { QuickAddSheet_iOS() }`。
 //
-// 视觉决策（依据 design_handoff_linoj/ios-overlays.jsx 的 IosNewSheet）：
+// 视觉决策（依据 design_handoff_linoj_frontend/LinoJ 主页.dc.html 的 iOS 新建 sheet）：
 //   - `.presentationDetents([.large])` + `.presentationDragIndicator(.visible)` 让系统帮忙
 //     渲染 grab handle 与底部 sheet 行为。
 //   - 顶行：Cancel（左）/ "New" 标题（中）/ Create ink pill（右）。不用 NavigationStack。
@@ -54,16 +54,18 @@ struct QuickAddSheet_iOS: View {
                 Color.lj.bg
             }
         }
-        .presentationDetents([.large])
+        // v1.3 R7：bottom sheet —— medium/large detents + 顶圆角 28（原型 border-radius:30 30）+ grabber。
+        .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .presentationCornerRadius(28)
         .onAppear {
             if vm == nil {
                 vm = QuickAddViewModel(
                     context: modelContext,
                     defaultKind: router.quickAddDefaultKind,
                     prefilledProject: router.quickAddPrefilledProject,
-                    // I5：Settings 中的 defaultTodoScope。
-                    defaultScope: settings.defaultTodoScope,
+                    // I5：子页「＋新建」可经 router.quickAddDefaultScope 覆盖 Todo scope（兜底 settings）。
+                    defaultScope: router.quickAddDefaultScope ?? settings.defaultTodoScope,
                     // V5：非 nil 则进入 Project edit 模式。
                     editingProject: router.quickAddEditingProject,
                     // W4：非 nil 则进入 Event edit 模式（预填字段 + submit 走 update）。
@@ -74,6 +76,8 @@ struct QuickAddSheet_iOS: View {
         .onDisappear {
             router.quickAddPrefilledProject = nil
             router.quickAddDefaultKind = .todo
+            // v1.3 R7：清掉子页 scope 覆盖信号（与 quickAddDefaultKind 同模式）。
+            router.quickAddDefaultScope = nil
             // V5：清掉 edit 信号，下次打开恢复 create 模式。
             router.quickAddEditingProject = nil
             // W4：清掉 event edit 信号，下次打开恢复 create 模式。
@@ -144,15 +148,16 @@ struct QuickAddSheet_iOS: View {
                 submit(vm: vm)
             } label: {
                 // V5/W4：任一 edit 模式提交按钮文案为「Save」。
+                // v1.3 R7：iOS 创建钮 = 品牌渐变（照 iOS 原型 line 982；macOS 用 ink，两端各依自家原型）。
                 Text(vm.isEditingAny ? LJStrings.quickAddSave : LJStrings.quickAddCreate)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.lj.bg)
-                    .padding(.horizontal, LJSpacing.s14)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(vm.canSubmit ? Color.lj.ink : Color.lj.inkDim)
-                    )
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, LJSpacing.s16)
+                    .padding(.vertical, 7)
+                    .background {
+                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .fill(vm.canSubmit ? AnyShapeStyle(LJGradients.brand) : AnyShapeStyle(Color.lj.inkDim))
+                    }
             }
             .buttonStyle(.plain)
             .disabled(!vm.canSubmit)

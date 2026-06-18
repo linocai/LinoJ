@@ -123,6 +123,13 @@ public final class CompanyViewModel {
         return workTodos().filter { !$0.done }.count
     }
 
+    /// v1.3 R3：全部 company 的 urgent open todos count —— 不被 chip filter 影响（与 todosCount 同维度）。
+    /// 用于 Company 标题行「N 待办 · N 紧急 · N 项目」的紧急数字（站在 Company 整体维度统计）。
+    public var urgentTotal: Int {
+        _ = tick
+        return workTodos().filter { !$0.done && $0.urgency == .urgent }.count
+    }
+
     /// Projects 数量（与 chip filter 无关）。
     public var projectsCount: Int {
         _ = tick

@@ -3,7 +3,7 @@
 //
 // 入口：⌘, → router.showSettings = true → RootWindow 的 `.sheet`。
 //
-// 视觉决策（依据 design_handoff_linoj/macos-settings.jsx）：
+// 视觉决策（依据 design_handoff_linoj_frontend/LinoJ 主页.dc.html（Settings））：
 //   - 760×540 sheet（与 QuickAdd/Search 用同一 `.sheet` 思路，不做自定义 NSWindow）。
 //   - 左侧 188pt sidebar：5 个 section（General / Notifications / Sync / Shortcuts / About），
 //     bgSoft 背景，选中项 chip 填充。
@@ -61,7 +61,9 @@ struct SettingsView_macOS: View {
             content
         }
         .frame(width: 760, height: 540)
-        .background(Color.lj.panel)
+        // v1.3 R6（对原型重建）：玻璃卡（原型 settings modal rgba(255,255,255,0.86) blur(40)）。
+        // 系统 .sheet 自带窗口阴影 + 圆角；material 让卡面半透浮起。
+        .background(.regularMaterial)
         // 关闭按钮：macOS .sheet 不会因 ESC 自动 dismiss（需绑 .cancelAction），
         // 且本面板原先没有任何关闭入口 → 打开后退不出去。右上「完成」按钮 + ESC 兜底。
         .overlay(alignment: .topTrailing) {
@@ -242,6 +244,7 @@ struct SettingsView_macOS: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                    .tint(Color.lj.accent)
             }
         )
 
@@ -296,6 +299,7 @@ struct SettingsView_macOS: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                    .tint(Color.lj.accent)
             }
         )
 
@@ -307,6 +311,7 @@ struct SettingsView_macOS: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .controlSize(.small)
+                    .tint(Color.lj.accent)
             }
         )
 
@@ -335,6 +340,9 @@ struct SettingsView_macOS: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .controlSize(.small)
+                        // v1.3 R6：ON 态用品牌强调色（原型 iCloud toggle 开=品牌渐变；
+                        // 系统 switch 不吃渐变，用 accent 近似品牌色）。
+                        .tint(Color.lj.accent)
                     Text(LJStrings.settingsICloudRestartHint)
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
                         .foregroundStyle(Color.lj.inkDim)

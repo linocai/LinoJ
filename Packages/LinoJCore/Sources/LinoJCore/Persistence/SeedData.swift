@@ -1,5 +1,5 @@
 // SeedData.swift
-// DEBUG 启动时把 `design_handoff_linoj/data.js` 的内容写入 SwiftData，
+// DEBUG 启动时把 seed 示例数据写入 SwiftData，
 // 让两端 App 一打开就能看到设计稿一样的填充态。
 //
 // 整个文件被 `#if DEBUG` 包起来 —— Release 编译时 SeedData 类型不存在，

@@ -38,6 +38,8 @@
 	<string>+ New event</string>
 	<key>Calendar.newEventAcc</key>
 	<string>New event</string>
+	<key>Calendar.newEventTitle</key>
+	<string>New event</string>
 	<key>Calendar.nextWeek</key>
 	<string>Next week</string>
 	<key>Calendar.overlapsCount</key>
@@ -50,6 +52,10 @@
 	<string>TODAY</string>
 	<key>Common.done</key>
 	<string>Done</string>
+	<key>Company.newItem</key>
+	<string>New company item</string>
+	<key>Company.newProject</key>
+	<string>New project</string>
 	<key>Completed.earlier</key>
 	<string>+%d earlier</string>
 	<key>Counts.eventCount.one</key>
@@ -182,8 +188,12 @@
 	<string>Jot something</string>
 	<key>Inspiration.recent</key>
 	<string>Recent notes</string>
+	<key>Inspiration.recordIdea</key>
+	<string>Record an idea</string>
 	<key>Inspiration.searchPlaceholder</key>
 	<string>Search notes…</string>
+	<key>Inspiration.subtitle</key>
+	<string>Stray thoughts, lists, and fragments</string>
 	<key>Inspiration.title</key>
 	<string>Inspiration</string>
 	<key>Inspiration.titlePlaceholder</key>
@@ -204,6 +214,8 @@
 	<string>New note</string>
 	<key>Nudge.urgentReflection</key>
 	<string>%d marked urgent — all still urgent?</string>
+	<key>Personal.newTodo</key>
+	<string>New personal todo</string>
 	<key>Project.addEvent</key>
 	<string>+ Add event</string>
 	<key>Project.addTodo</key>

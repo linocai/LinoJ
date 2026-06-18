@@ -4,7 +4,7 @@
 // 入口：FloatingActions 第三枚 gear 按钮 → router.showSettings = true → RootTabView 的
 // `.sheet(isPresented: $router.showSettings) { SettingsSheet_iOS() }`。
 //
-// 视觉决策（依据 design_handoff_linoj/ios-settings.jsx）：
+// 视觉决策（依据 design_handoff_linoj_frontend/LinoJ 主页.dc.html（iOS Settings））：
 //   - `.presentationDetents([.large])` —— 全屏 sheet。
 //   - 顶部 sticky bar：Cancel / "Settings" / Done。`Done` 调 dismiss。
 //     背景 `.regularMaterial` 20pt blur（设计稿要求）。
@@ -88,7 +88,10 @@ struct SettingsSheet_iOS: View {
             // 顶部 sticky bar（plan: regularMaterial 20pt blur）。
             topBar
         }
+        // v1.3 R7：bottom sheet 观感 —— grabber + 顶圆角 28（内容较多，仍用 .large 全高）。
         .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+        .presentationCornerRadius(28)
         // V1：把 App 级 CloudSyncMonitor 注入本 view 自有的 vm，驱动 Last-synced pill 实时刷新。
         .task {
             if let monitor = services.cloudSyncMonitor, vm.syncMonitor == nil {
@@ -344,14 +347,16 @@ struct SettingsSheet_iOS: View {
             VStack(spacing: 0) {
                 content()
             }
+            // v1.3 R7：分组卡 = 玻璃材质 + hairline + 顶高光（原型 rgba(255,255,255,0.6) 软玻璃）。
             .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.lj.panel)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(.regularMaterial)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(Color.lj.border, lineWidth: 0.5)
             }
+            .overlay { LJTopHighlight(radius: 14) }
 
             if let footerHint {
                 Text(footerHint)
@@ -404,8 +409,10 @@ struct SettingsSheet_iOS: View {
                     }
                 }
                 Spacer()
+                // v1.3 R7：ON 态品牌紫（原型 iCloud toggle 用品牌渐变，SwiftUI Toggle tint 取单色紫近似）。
                 Toggle("", isOn: isOn)
                     .labelsHidden()
+                    .tint(Color.lj.accent)
                     .disabled(disabled)
             }
         }

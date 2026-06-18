@@ -55,7 +55,8 @@ struct CompanyView_macOS: View {
                         }
                     }
                 } else {
-                    Color.lj.bg.ignoresSafeArea()
+                    // v1.3 R3：透明占位，让 RootWindow 背景层（底色 + orb）透上来。
+                    Color.clear
                 }
             }
             .task {
@@ -155,32 +156,57 @@ struct CompanyView_macOS: View {
             .padding(.top, LJSpacing.s22)
             .padding(.bottom, LJSpacing.s32)
         }
-        .background(Color.lj.bg)
+        // v1.3 R3：背景透明 —— 让 RootWindow 的底色渐变 + orb 透上来，玻璃卡才显浮起。
     }
 
     // MARK: - Header
 
+    /// v1.3 R3（对原型重建）：标题 + 三段计数（N 待办 · N 紧急 · N 项目）+ 右侧品牌渐变「＋新建公司事项」。
     @ViewBuilder
     private func header(vm: CompanyViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(LJStrings.tabCompany).ljDisplayTitleStyle()
-            HStack(spacing: 0) {
-                Text("\(vm.todosCount) ")
-                    .font(.system(size: 13, weight: .semibold, design: .default))
-                    .foregroundStyle(Color.lj.ink)
-                Text(LJStrings.todos)
-                    .font(.system(size: 13, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkSoft)
-                Text(" · ")
-                    .font(.system(size: 13, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkDim)
-                Text("\(vm.projectsCount) ")
-                    .font(.system(size: 13, weight: .semibold, design: .default))
-                    .foregroundStyle(Color.lj.ink)
-                Text(LJStrings.projects)
-                    .font(.system(size: 13, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkSoft)
+        HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(LJStrings.tabCompany).ljDisplayTitleStyle()
+                countsLine(todos: vm.todosCount, urgent: vm.urgentTotal, projects: vm.projectsCount)
             }
+            Spacer(minLength: LJSpacing.s16)
+            LJPrimaryButton(LJStrings.newCompanyItem) {
+                router.quickAddDefaultKind = .todo
+                router.quickAddDefaultScope = .company
+                router.showQuickAdd = true
+            }
+        }
+        .frame(maxWidth: 1100, alignment: .leading)
+    }
+
+    /// 「N 待办 · N 紧急 · N 项目」计数行（原型 13.5px/rgba(60,60,67,0.5)，紧急数字 accent）。
+    @ViewBuilder
+    private func countsLine(todos: Int, urgent: Int, projects: Int) -> some View {
+        HStack(spacing: 0) {
+            Text("\(todos) ")
+                .font(.system(size: 13, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.ink)
+            Text(LJStrings.todos)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
+            Text(" · ")
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkDim)
+            Text("\(urgent) ")
+                .font(.system(size: 13, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.blue)
+            Text(LJStrings.statUrgent)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
+            Text(" · ")
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkDim)
+            Text("\(projects) ")
+                .font(.system(size: 13, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.ink)
+            Text(LJStrings.projects)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
         }
     }
 
@@ -214,22 +240,7 @@ struct CompanyView_macOS: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Text(label)
-                .font(.system(size: 11.5, weight: selected ? .semibold : .medium, design: .default))
-                .foregroundStyle(selected ? Color.lj.panel : Color.lj.inkSoft)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 4)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(selected ? Color.lj.ink : Color.clear)
-                }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(
-                            selected ? Color.lj.ink : Color.lj.border,
-                            lineWidth: 0.5
-                        )
-                }
+            chipBody(Text(label), selected: selected)
         }
         .buttonStyle(.plain)
     }
@@ -238,24 +249,34 @@ struct CompanyView_macOS: View {
     @ViewBuilder
     private func chip(label: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(label)
-                .font(.system(size: 11.5, weight: selected ? .semibold : .medium, design: .default))
-                .foregroundStyle(selected ? Color.lj.panel : Color.lj.inkSoft)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 4)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(selected ? Color.lj.ink : Color.clear)
-                }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(
-                            selected ? Color.lj.ink : Color.lj.border,
-                            lineWidth: 0.5
-                        )
-                }
+            chipBody(Text(label), selected: selected)
         }
         .buttonStyle(.plain)
+    }
+
+    /// v1.3 R3（对原型重建）：scope chip 视觉。
+    /// 选中 = ink 黑底白字、无 border；未选 = 半透白底（.ultraThinMaterial）+ inkSoft 字 + hairline。
+    /// 原型 padding 6×14、pill、12.5px/600；未选底 rgba(255,255,255,0.5) + 0.5px rgba(60,60,67,0.12)。
+    @ViewBuilder
+    private func chipBody(_ text: Text, selected: Bool) -> some View {
+        text
+            .font(.system(size: 12.5, weight: .semibold, design: .default))
+            .foregroundStyle(selected ? Color.white : Color.lj.inkSoft)
+            .padding(.horizontal, LJSpacing.s14)
+            .padding(.vertical, 6)
+            .background {
+                Capsule(style: .continuous)
+                    .fill(selected ? AnyShapeStyle(Color.lj.ink) : AnyShapeStyle(.ultraThinMaterial))
+            }
+            .overlay {
+                if !selected {
+                    Capsule(style: .continuous)
+                        .strokeBorder(Color.lj.borderStrong, lineWidth: 0.5)
+                }
+            }
+            .overlay {
+                if !selected { LJTopHighlight(radius: 999) }
+            }
     }
 
     // MARK: - Bubble column
@@ -312,22 +333,23 @@ struct CompanyView_macOS: View {
     @ViewBuilder
     private func projectsSection(vm: CompanyViewModel, projectCardCompact: Bool) -> some View {
         VStack(alignment: .leading, spacing: LJSpacing.s12) {
-            // 上边线
-            Rectangle().fill(Color.lj.border).frame(height: 0.5)
-                .padding(.top, LJSpacing.s4)
-
-            HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s10) {
+            // v1.3 R3（对原型重建）：项目区标题行 —— 小 uppercase「项目」label + flex +「＋新建项目」次级按钮。
+            // 原型小标题 12px/600/uppercase/0.04em rgba(60,60,67,0.4)；右侧次级按钮（新功能）。
+            HStack(alignment: .center, spacing: LJSpacing.s10) {
                 Text(LJStrings.projects)
-                    .font(.system(size: 20, weight: .semibold, design: .default))
-                    .kerning(-0.4)
-                    .foregroundStyle(Color.lj.ink)
-                Text(LJStrings.allBuckets)
-                    .font(.system(size: 12, weight: .medium, design: .default))
+                    .font(.system(size: 12, weight: .semibold, design: .default))
+                    .kerning(0.48)
+                    .textCase(.uppercase)
                     .foregroundStyle(Color.lj.inkMute)
                 Spacer()
+                LJSecondaryButton(LJStrings.newProject) {
+                    router.quickAddDefaultKind = .project
+                    router.showQuickAdd = true
+                }
             }
+            .frame(maxWidth: 1100, alignment: .leading)
 
-            VStack(spacing: LJSpacing.s12) {
+            VStack(spacing: LJSpacing.s14) {
                 ForEach(vm.projects, id: \.id) { project in
                     Button {
                         navigationPath.append(project.id)
@@ -338,6 +360,7 @@ struct CompanyView_macOS: View {
                     .buttonStyle(.plain)
                 }
             }
+            .frame(maxWidth: 1100, alignment: .leading)
         }
     }
 }

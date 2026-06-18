@@ -4,7 +4,7 @@
 // 入口：右上 floating glass `magnifyingglass` 按钮 → router.showSearch = true。
 // RootTabView 用 `.sheet(isPresented:)` 绑这个视图，detents `.large`，全屏感。
 //
-// 视觉决策（design_handoff_linoj/ios-overlays.jsx IosSearchScreen）：
+// 视觉决策（design_handoff_linoj_frontend/LinoJ 主页.dc.html（iOS Search））：
 //   - 顶部一行：左侧 search field（含 magnifier icon + × clear）+ 右侧 Cancel link。
 //   - 第二行：Scope chips 横向 scroll。
 //   - 主体：每个 group 一张白色 card（rounded 12pt + border），内含 rows，row 之间细分割线。
@@ -44,6 +44,7 @@ struct SearchSheet_iOS: View {
             }
         }
         .presentationDetents([.large])
+        .presentationCornerRadius(28)
     }
 
     @ViewBuilder
@@ -190,20 +191,21 @@ struct SearchSheet_iOS: View {
                                 .foregroundStyle(Color.lj.inkMute)
                                 .padding(.horizontal, 4)
 
-                            // Card 包住该组的全部 rows
+                            // Card 包住该组的全部 rows（v1.3 R7：玻璃材质 + hairline + 顶高光）。
                             VStack(spacing: 0) {
                                 ForEach(Array(group.items.enumerated()), id: \.offset) { (idx, item) in
                                     row(item: item, isLast: idx == group.items.count - 1, vm: vm)
                                 }
                             }
                             .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.lj.panel)
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(.regularMaterial)
                             )
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
                                     .strokeBorder(Color.lj.border, lineWidth: 0.5)
                             )
+                            .overlay { LJTopHighlight(radius: 14) }
                         }
                     }
                 }

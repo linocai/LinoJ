@@ -7,8 +7,9 @@
 //   - accessoryRectangular（锁屏）：下一个事件（时间 + 标题，单/双行）。
 //   - accessoryInline（锁屏）：open 计数一行。
 //
-// 蓝色纪律：蓝色（Color.lj.blue）只给 urgent —— 这里只在「urgent > 0」时给 urgent 计数着蓝色，
-// 事件本身用中性 ink 色（事件无紧急概念）。
+// 强调色纪律（v1.3 起紫蓝、无橙）：`Color.lj.blue`（= accent #6E63E6，R0 已换为紫蓝）只给 urgent ——
+// 这里只在「urgent > 0」时给 urgent 计数着紫蓝强调色，事件本身用中性 ink 色（事件无紧急概念）。
+// Widget 不吃 .glassEffect()，保持扁平呈现，仅配色跟随 token 换值（决策 D-Widget）。
 
 import WidgetKit
 import SwiftUI
@@ -45,10 +46,10 @@ private extension WidgetTodoCounts {
 
 // MARK: - 计数行（X open · Y urgent）
 
-/// 「X open · Y urgent」计数文本。urgent > 0 时 urgent 数着蓝（仅 urgent 给蓝）。
+/// 「X open · Y urgent」计数文本。urgent > 0 时 urgent 数着紫蓝强调色（仅 urgent 给强调色）。
 ///
 /// iOS 26 弃用了 `Text + Text` 拼接，故每段用独立 `Text` 摆进 HStack（保留按段着色：
-/// 数字 / 「open」中性，urgent 段着蓝）。本地化词用 `String(localized:)` 渲染。
+/// 数字 / 「open」中性，urgent 段着紫蓝强调）。本地化词用 `String(localized:)` 渲染。
 struct LinoJCountsLabel: View {
     let counts: WidgetTodoCounts
     /// 紧凑模式（small / accessory）字号略小。

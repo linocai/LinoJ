@@ -70,52 +70,75 @@ public struct ProjectCard: View {
 
     // MARK: macOS full rich card（Company tab 主体）
 
-    /// P6 响应式：compact=true 时走 2-row 布局（上行 hero / 下行 todos + events 二分），
-    /// compact=false 走原 3-col 布局（1.4fr 1fr 1fr）。
-    /// 由调用方（CompanyView）从外层 GeometryReader 读窗口宽度后决定 —— 不用本组件内
-    /// GeometryReader，避免破坏 VStack 内的自适应高度。
+    /// v1.3 R3（对原型重建）：富项目卡 = 容器玻璃面板（圆角 16 + hairline + 顶高光 + 柔投影），
+    /// 网格 `1.5fr 1fr 1fr`（左 tag+标题+intro+avatar / 中 todos 点列表 / 右 linked events 紫点），
+    /// 列间 0.5px hairline 竖分隔。
+    /// P6 响应式：compact=true 走 2-row 布局（上行 hero / 下行 todos|events 横向二分 + 竖分隔）。
+    /// 由调用方（CompanyView）从外层 GeometryReader 读窗口宽度后决定 —— 不用本组件内 GeometryReader。
     @ViewBuilder
     private var macFullBody: some View {
-        if compact {
-            VStack(alignment: .leading, spacing: LJSpacing.s14) {
-                heroBlock()
-                Rectangle().fill(Color.lj.border).frame(height: 0.5)
-                HStack(alignment: .top, spacing: LJSpacing.s22) {
+        Group {
+            if compact {
+                VStack(alignment: .leading, spacing: LJSpacing.s14) {
+                    heroBlock()
+                    Rectangle().fill(Color.lj.border).frame(height: 0.5)
+                    HStack(alignment: .top, spacing: 0) {
+                        todosBlock()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.trailing, LJSpacing.s16)
+                        columnDivider()
+                        eventsBlock()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, LJSpacing.s16)
+                    }
+                }
+            } else {
+                // 1.5fr | 1fr | 1fr 三列，列间 0.5px 竖 hairline（原型 grid-template-columns:1.5fr 1fr 1fr gap:22）。
+                HStack(alignment: .top, spacing: 0) {
+                    heroBlock()
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .layoutPriority(1.5)
+                        .padding(.trailing, LJSpacing.s22)
+                    columnDivider()
                     todosBlock()
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, LJSpacing.s22)
+                    columnDivider()
                     eventsBlock()
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, LJSpacing.s22)
                 }
             }
-            .ljCardStyle()
-            .ljHoverLift()
-        } else {
-            HStack(alignment: .top, spacing: LJSpacing.s22) {
-                heroBlock()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                todosBlock()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                eventsBlock()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .ljCardStyle()
-            .ljHoverLift()
         }
+        // 容器级玻璃面板（圆角 16 + hairline + 顶高光 + 柔投影），从底色 / orb 上浮起。
+        .ljGlassPanel(radius: 16)
+        .ljHoverLift()
     }
 
-    /// macFull 左列 / 上行 —— title + tag + intro + members + member 计数。
+    /// 富卡列间 0.5px 竖 hairline 分隔（原型列分隔）。
+    @ViewBuilder
+    private func columnDivider() -> some View {
+        Rectangle()
+            .fill(Color.lj.border)
+            .frame(width: 0.5)
+            .frame(maxHeight: .infinity)
+    }
+
+    /// macFull 左列 / 上行 —— status tag + title + intro + members + member 计数。
     @ViewBuilder
     private func heroBlock() -> some View {
         VStack(alignment: .leading, spacing: LJSpacing.s8) {
-            HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s10) {
-                Text(project.title).ljCardTitleStyle()
-                Text(project.tag).ljTagPill()
-            }
+            // 状态 tag（原型：uppercase #6E63E6 on scopeCompanyBg 软底，10px/700/0.05em，圆角 5）。
+            statusTag(project.tag)
+            Text(project.title)
+                .font(.system(size: 17, weight: .semibold, design: .default))
+                .kerning(-0.34)
+                .foregroundStyle(Color.lj.ink)
             Text(project.intro)
-                .ljBodyStyle()
+                .font(.system(size: 12.5, weight: .medium, design: .default))
                 .foregroundStyle(Color.lj.inkSoft)
                 .lineLimit(3)
-            Spacer(minLength: 0)
+            Spacer(minLength: LJSpacing.s8)
             HStack(spacing: LJSpacing.s10) {
                 AvatarStack(people: project.members ?? [])
                 Text("\(project.memberCount) member\(project.memberCount == 1 ? "" : "s")")
@@ -125,63 +148,78 @@ public struct ProjectCard: View {
         }
     }
 
-    /// macFull 中列 / 下行左半 —— Todos 计数 + 前 4 行预览。
+    /// 状态 tag 胶囊（原型富卡：紫字 + scopeCompanyBg 软底 + 圆角 5 + uppercase）。
+    @ViewBuilder
+    private func statusTag(_ tag: String) -> some View {
+        Text(tag)
+            .font(.system(size: 10, weight: .bold, design: .default))
+            .kerning(0.5)
+            .textCase(.uppercase)
+            .foregroundStyle(Color.lj.accent)
+            .padding(.horizontal, LJSpacing.s8)
+            .padding(.vertical, 2)
+            .background {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color.lj.scopeCompanyBg)
+            }
+    }
+
+    /// macFull 中列 / 下行左半 —— Todos 计数 + 点列表预览（对原型重建）。
+    /// 原型：「待办 N · 紧急 M」单行 header（N accent / 11px/600/0.03em）+ 13px 方框 outline + 标题点列表。
     @ViewBuilder
     private func todosBlock() -> some View {
         // 实时读项目关系上的 todos。
         let openTodos = (project.todos ?? []).filter { !$0.done }
         let urgentTodos = openTodos.filter { $0.urgency == .urgent }
 
-        VStack(alignment: .leading, spacing: LJSpacing.s8) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                // I2: "Todos" / "待办"
+        VStack(alignment: .leading, spacing: LJSpacing.s10) {
+            // header：「待办 N · 紧急 M」（N accent；中英语序由词条吞）。
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(LJStrings.todos)
                     .font(.system(size: 11, weight: .semibold, design: .default))
-                    .kerning(0.66)
-                    .textCase(.uppercase)
+                    .kerning(0.33)
                     .foregroundStyle(Color.lj.inkMute)
                 Text("\(openTodos.count)")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Color.lj.ink)
-                if !urgentTodos.isEmpty {
-                    // I2: "X urgent" / "X 紧急"
-                    Text(LJStrings.projectCardUrgentSuffix(urgentTodos.count))
-                        .font(.system(size: 10.5, weight: .semibold, design: .default))
-                        .foregroundStyle(Color.lj.blue)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 1)
-                        .background {
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(Color.lj.blueSoft)
-                        }
-                }
+                    .font(.system(size: 11, weight: .bold, design: .default))
+                    .foregroundStyle(Color.lj.accent)
+                Text(verbatim: " · ")
+                    .font(.system(size: 11, weight: .medium, design: .default))
+                    .foregroundStyle(Color.lj.inkDim)
+                Text(LJStrings.statUrgent)
+                    .font(.system(size: 11, weight: .semibold, design: .default))
+                    .kerning(0.33)
+                    .foregroundStyle(Color.lj.inkMute)
+                Text("\(urgentTodos.count)")
+                    .font(.system(size: 11, weight: .bold, design: .default))
+                    .foregroundStyle(Color.lj.inkMute)
             }
-            VStack(alignment: .leading, spacing: 7) {
+            VStack(alignment: .leading, spacing: 6) {
                 ForEach((project.todos ?? []).prefix(4), id: \.id) { todo in
                     HStack(alignment: .top, spacing: LJSpacing.s8) {
+                        // 13px 方框 outline（原型 13×13 圆角4 1.5px rgba(60,60,67,0.28)）。
                         ZStack {
-                            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
                                 .strokeBorder(
-                                    todo.urgency == .urgent ? Color.lj.blue : Color.lj.inkMute,
-                                    lineWidth: 1.2
+                                    todo.urgency == .urgent ? Color.lj.accent.opacity(0.55) : Color.lj.inkMute,
+                                    lineWidth: 1.5
                                 )
-                                .frame(width: 12, height: 12)
+                                .frame(width: 13, height: 13)
                             if todo.done {
                                 RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                    .fill(todo.urgency == .urgent ? Color.lj.blue : Color.lj.ink)
+                                    .fill(todo.urgency == .urgent ? Color.lj.accent : Color.lj.ink)
                                     .frame(width: 7, height: 7)
                             }
                         }
-                        .padding(.top, 2)
+                        .padding(.top, 1)
                         Text(todo.title)
                             .font(.system(
                                 size: 12.5,
                                 weight: todo.urgency == .urgent ? .semibold : .medium,
                                 design: .default
                             ))
-                            .foregroundStyle(Color.lj.ink)
+                            .foregroundStyle(Color.lj.inkSoft)
                             .strikethrough(todo.done, color: Color.lj.inkMute)
-                            .lineLimit(2)
+                            .lineLimit(1)
                             .opacity(todo.done ? 0.4 : 1)
                     }
                 }
@@ -189,40 +227,28 @@ public struct ProjectCard: View {
         }
     }
 
-    /// macFull 右列 / 下行右半 —— Linked events 计数 + 全部按时间排序的事件 row。
+    /// macFull 右列 / 下行右半 —— Linked events 紫点列表（对原型重建）。
+    /// 原型：「关联日程」header（11px/600/0.03em）+ 紫 5px 圆点 + 事件标题点列表。
     @ViewBuilder
     private func eventsBlock() -> some View {
         let sortedEvents = (project.events ?? []).sorted { $0.start < $1.start }
 
-        VStack(alignment: .leading, spacing: LJSpacing.s8) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                // I2: "Linked events" / "关联事件"
-                Text(LJStrings.linkedEvents)
-                    .font(.system(size: 11, weight: .semibold, design: .default))
-                    .kerning(0.66)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Color.lj.inkMute)
-                Text("\(sortedEvents.count)")
-                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(Color.lj.ink)
-            }
-            VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: LJSpacing.s10) {
+            Text(LJStrings.linkedEvents)
+                .font(.system(size: 11, weight: .semibold, design: .default))
+                .kerning(0.33)
+                .foregroundStyle(Color.lj.inkMute)
+            VStack(alignment: .leading, spacing: 6) {
                 ForEach(sortedEvents, id: \.id) { event in
-                    HStack(alignment: .top, spacing: LJSpacing.s10) {
-                        Text(eventDayTimeText(event))
-                            .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                            .foregroundStyle(Color.lj.inkMute)
-                            .frame(width: 80, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(event.title)
-                                .font(.system(size: 12, weight: .medium, design: .default))
-                                .foregroundStyle(Color.lj.ink)
-                                .lineLimit(1)
-                            Text(event.location)
-                                .font(.system(size: 10.5, weight: .medium, design: .default))
-                                .foregroundStyle(Color.lj.inkMute)
-                                .lineLimit(1)
-                        }
+                    HStack(alignment: .center, spacing: LJSpacing.s8) {
+                        // 紫 5px 圆点（原型 #8A6DF0）。
+                        Circle()
+                            .fill(Color.lj.purpleDot)
+                            .frame(width: 5, height: 5)
+                        Text(event.title)
+                            .font(.system(size: 12.5, weight: .medium, design: .default))
+                            .foregroundStyle(Color.lj.inkSoft)
+                            .lineLimit(1)
                     }
                 }
             }

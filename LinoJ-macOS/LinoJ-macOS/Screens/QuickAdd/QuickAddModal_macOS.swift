@@ -10,7 +10,7 @@
 //     必须用自定义 NSWindow 或 overlay 才能实现 —— 性价比低且与系统行为不一致。
 //     选用 `.sheet` + 强行 `.frame(width: 520, height: 一定值)` —— 系统 sheet 自带遮罩与阴影，
 //     与设计稿差异在「居中 vs 从顶部下滑」一处，功能完全等价，验收文本接受 .sheet。
-//   - sheet 内部按 design_handoff_linoj/macos-overlays.jsx 的 ANewModal 组装：
+//   - sheet 内部按 design_handoff_linoj_frontend/LinoJ 主页.dc.html 的新建卡片 组装：
 //     header（"New" 标题 + 3-way segmented control）→ body（按 kind 切表单）→ footer（kbd hints + Cancel + Create）。
 //
 // 键盘：
@@ -71,7 +71,8 @@ struct QuickAddModal_macOS: View {
                     defaultKind: router.quickAddDefaultKind,
                     prefilledProject: router.quickAddPrefilledProject,
                     // I5: 应用 Settings 中的 defaultTodoScope（默认 .company）。
-                    defaultScope: settings.defaultTodoScope,
+                    // v1.3 R2/R3：子页「＋新建」按钮可经 router.quickAddDefaultScope 覆盖（Personal→.personal / Company→.company）。
+                    defaultScope: router.quickAddDefaultScope ?? settings.defaultTodoScope,
                     // V5：非 nil 则进入 Project edit 模式（预填字段 + submit 走 update）。
                     editingProject: router.quickAddEditingProject,
                     // W4：非 nil 则进入 Event edit 模式（预填字段 + submit 走 update）。
@@ -83,6 +84,8 @@ struct QuickAddModal_macOS: View {
             // S11 / 原有：sheet 关闭后清掉 router 的预填 + VM 本地状态，避免下次打开还带着上次的输入。
             router.quickAddPrefilledProject = nil
             router.quickAddDefaultKind = .todo
+            // v1.3 R2/R3：清掉子页 scope 覆盖信号，下次打开回退 Settings 默认。
+            router.quickAddDefaultScope = nil
             // V5：清掉 edit 信号，下次打开恢复 create 模式。
             router.quickAddEditingProject = nil
             // W4：清掉 event edit 信号，下次打开恢复 create 模式。
@@ -123,7 +126,10 @@ struct QuickAddModal_macOS: View {
             footer(vm: vm)
         }
         .frame(width: 520, height: 480)
-        .background(Color.lj.panel)
+        // v1.3 R6（对原型重建）：modal 卡片改为「更实玻璃」—— .regularMaterial + 顶高光（原型
+        // rgba(255,255,255,0.82) blur(40)）。系统 .sheet 自带窗口阴影 + 圆角；material 让卡面半透浮起。
+        .background(.regularMaterial)
+        .overlay { LJTopHighlight(radius: LJRadii.modalMac) }
     }
 
     // MARK: Header
@@ -137,6 +143,11 @@ struct QuickAddModal_macOS: View {
             Text(headerTitle(vm: vm))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.lj.ink)
+
+            // v1.3 R6（对原型重建）：Todo create 模式下标题右侧显示 scope pill（紫底紫字，原型 sheetScope）。
+            if vm.kind == .todo && !vm.isEditingAny {
+                scopePill(vm.todoScope)
+            }
 
             Spacer(minLength: 0)
 
@@ -178,6 +189,21 @@ struct QuickAddModal_macOS: View {
         if vm.isEditing { return LJStrings.quickAddEditProjectTitle }
         if vm.isEditingEvent { return LJStrings.quickAddEditEventTitle }
         return LJStrings.quickAddNew
+    }
+
+    /// v1.3 R6（对原型重建）：scope pill（紫底紫字，原型 sheetScope 标签，10.5px/700/0.05em/圆角6）。
+    @ViewBuilder
+    private func scopePill(_ scope: Scope) -> some View {
+        Text(scope == .company ? LJStrings.scopeCompany : LJStrings.scopePersonal)
+            .font(.system(size: 10.5, weight: .bold, design: .default))
+            .kerning(0.5)
+            .foregroundStyle(Color.lj.accent)
+            .padding(.horizontal, LJSpacing.s8)
+            .padding(.vertical, 3)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.lj.scopeCompanyBg)
+            }
     }
 
     // MARK: Footer

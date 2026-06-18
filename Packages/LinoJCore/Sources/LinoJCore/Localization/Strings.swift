@@ -49,6 +49,8 @@ public enum LJStrings {
     public static let inspirationEmpty: LocalizedStringResource = r("Inspiration.empty")
     /// 空状态副标题（EmptyState subtitle）。
     public static let inspirationEmptySubtitle: LocalizedStringResource = r("Inspiration.emptySubtitle")
+    /// v1.3 R5：masonry 笔记墙头部副标题（原型「随手记下的念头、清单与片段」）。
+    public static let inspirationSubtitle: LocalizedStringResource = r("Inspiration.subtitle")
     /// Main 右栏「最近灵感」缩略卡小节头。
     public static let inspirationRecent: LocalizedStringResource = r("Inspiration.recent")
     /// Main 右栏「随手记一条 / 快速记一条」入口文案。
@@ -292,6 +294,8 @@ public enum LJStrings {
     public static let jumpToday: LocalizedStringResource = r("Calendar.jumpToday")
     public static let newEvent: LocalizedStringResource = r("Calendar.newEvent")
     public static let newEventAcc: LocalizedStringResource = r("Calendar.newEventAcc")
+    /// v1.3 R4：日历头部品牌渐变主按钮文案（无「+」前缀，按钮自带 plus icon）。
+    public static let newEventTitle: LocalizedStringResource = r("Calendar.newEventTitle")
     /// U5：iOS 冲突提示 chip 文案「Overlaps %d / 与 %d 个日程重叠」。
     /// %d = 同簇其它事件数（`columnCount - 1`）。
     public static func calendarOverlapsCount(_ count: Int) -> LocalizedStringResource {
@@ -344,6 +348,17 @@ public enum LJStrings {
 
     public static let filterAllWork: LocalizedStringResource = r("Filter.allWork")
     public static let filterStandalone: LocalizedStringResource = r("Filter.standalone")
+
+    // MARK: - 子页主按钮（v1.3 R2–R5：对原型重建，品牌渐变「＋新建…」按钮）
+
+    /// Personal 屏「＋新建个人待办」品牌渐变主按钮（原型 macOS 个人页）。
+    public static let newPersonalTodo: LocalizedStringResource = r("Personal.newTodo")
+    /// Company 屏「＋新建公司事项」品牌渐变主按钮（原型 macOS 公司页）。
+    public static let newCompanyItem: LocalizedStringResource = r("Company.newItem")
+    /// Company 项目区标题行「＋新建项目」次级按钮（原型新功能）。
+    public static let newProject: LocalizedStringResource = r("Company.newProject")
+    /// Inspiration 屏「记录灵感」品牌渐变主按钮（原型 macOS 灵感页）。
+    public static let recordIdea: LocalizedStringResource = r("Inspiration.recordIdea")
 
     // MARK: - Done suffix
 

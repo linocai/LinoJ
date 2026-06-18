@@ -44,7 +44,7 @@ struct ProjectDetailView_iOS: View {
             if let vm {
                 content(vm: vm)
             } else {
-                Color.lj.iosMainBg.ignoresSafeArea()
+                Color.clear.ljScreenBackground(.iOS)
             }
         }
         .task {
@@ -72,8 +72,6 @@ struct ProjectDetailView_iOS: View {
     @ViewBuilder
     private func content(vm: ProjectDetailViewModel) -> some View {
         ZStack(alignment: .top) {
-            Color.lj.iosMainBg.ignoresSafeArea()
-
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     hero(vm: vm)
@@ -144,6 +142,8 @@ struct ProjectDetailView_iOS: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 58)
         }
+        // v1.3 R7：iOS 底色渐变 + bloom orb（玻璃卡才显半透浮起）。
+        .ljScreenBackground(.iOS)
     }
 
     /// v1.2 P5：CompletedBox 内单条完成 todo 行（recent / archive 复用）。
@@ -301,14 +301,16 @@ struct ProjectDetailView_iOS: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        // v1.3 R7：stats 卡玻璃化。
         .background {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.lj.panel)
+                .fill(.regularMaterial)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(Color.lj.border, lineWidth: 0.5)
         }
+        .overlay { LJTopHighlight(radius: 14) }
     }
 
     @ViewBuilder
@@ -355,14 +357,16 @@ struct ProjectDetailView_iOS: View {
                 }
             }
         }
+        // v1.3 R7：normal 列表卡玻璃化。
         .background {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.lj.panel)
+                .fill(.regularMaterial)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(Color.lj.border, lineWidth: 0.5)
         }
+        .overlay { LJTopHighlight(radius: 14) }
     }
 
     @ViewBuilder
@@ -370,25 +374,28 @@ struct ProjectDetailView_iOS: View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .strokeBorder(Color.lj.inkMute, lineWidth: 1.4)
-                        .frame(width: 16, height: 16)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(Color.lj.inkMute, lineWidth: 1.5)
+                        .frame(width: 18, height: 18)
                     if todo.done {
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .fill(Color.lj.ink)
-                            .frame(width: 10, height: 10)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(LJGradients.brand)
+                            .frame(width: 18, height: 18)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
                     }
                 }
                 Text(todo.title)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 14.5, weight: .medium))
                     .foregroundStyle(Color.lj.ink)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .strikethrough(todo.done, color: Color.lj.inkMute)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
             .opacity(todo.done ? 0.45 : 1)
             .contentShape(Rectangle())
         }
@@ -399,17 +406,16 @@ struct ProjectDetailView_iOS: View {
 
     @ViewBuilder
     private func sectionHeader(label: LocalizedStringResource, count: Int, withBlueDot: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            if withBlueDot {
-                Circle()
-                    .fill(Color.lj.blue)
-                    .frame(width: 7, height: 7)
-                    .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 3.5 }
-            }
+        // v1.3 R7：urgent 段标小圆点 = 品牌渐变；normal = 灰点。标题统一 ink。
+        HStack(alignment: .firstTextBaseline, spacing: 9) {
+            Circle()
+                .fill(withBlueDot ? AnyShapeStyle(LJGradients.brand) : AnyShapeStyle(Color.lj.inkMute))
+                .frame(width: 9, height: 9)
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4 }
             Text(label)
                 .font(.system(size: 17, weight: .bold))
                 .kerning(-0.34)
-                .foregroundStyle(withBlueDot ? Color.lj.blueInk : Color.lj.ink)
+                .foregroundStyle(Color.lj.ink)
             Text("\(count)")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.lj.inkMute)
@@ -481,14 +487,16 @@ struct ProjectDetailView_iOS: View {
                                 }
                             }
                         }
+                        // v1.3 R7：关联日程日卡玻璃化。
                         .background {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color.lj.panel)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(.regularMaterial)
                         }
                         .overlay {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .strokeBorder(Color.lj.border, lineWidth: 0.5)
                         }
+                        .overlay { LJTopHighlight(radius: 14) }
                     }
                 }
             }
@@ -549,14 +557,16 @@ struct ProjectDetailView_iOS: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 14)
                 .frame(maxWidth: .infinity, alignment: .leading)
+                // v1.3 R7：备注卡玻璃化。
                 .background {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.lj.panel)
+                        .fill(.regularMaterial)
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .strokeBorder(Color.lj.border, lineWidth: 0.5)
                 }
+                .overlay { LJTopHighlight(radius: 14) }
         }
         .padding(.horizontal, 16)
     }

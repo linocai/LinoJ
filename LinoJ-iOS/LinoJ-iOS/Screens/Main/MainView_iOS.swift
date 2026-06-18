@@ -50,7 +50,7 @@ struct MainView_iOS: View {
             if let vm {
                 content(vm: vm)
             } else {
-                Color.lj.iosMainBg.ignoresSafeArea()
+                Color.clear.ljScreenBackground(.iOS)
             }
         }
         .task {
@@ -141,9 +141,8 @@ struct MainView_iOS: View {
 
     @ViewBuilder
     private func content(vm: MainViewModel) -> some View {
+        // v1.3 R7：底色暖渐变 + bloom orb（替换 iosMainBg 实心遮挡），玻璃材质才显半透浮起。
         ZStack {
-            Color.lj.iosMainBg.ignoresSafeArea()
-
             let isEmpty = vm.openCount == 0 && vm.todayEventsCount == 0
             if isEmpty {
                 // I4: CTA 打开 Quick Add，预选 .todo。
@@ -224,6 +223,8 @@ struct MainView_iOS: View {
                 }
             }
         }
+        // v1.3 R7：iOS 底色渐变 + bloom orb（玻璃可见的前提）。
+        .ljScreenBackground(.iOS)
     }
 
     // MARK: - Header
@@ -314,10 +315,11 @@ struct MainView_iOS: View {
 
     @ViewBuilder
     private func urgentSection(vm: MainViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionHeader(label: LJStrings.urgent, count: vm.urgentTodos.count, withBlueDot: true)
+            // v1.3 R7：主页待办来源标签胶囊（showSource: true，仅主页）。
             ForEach(vm.urgentTodos, id: \.id) { todo in
-                TodoBubble(todo: todo, onToggleDone: { vm.toggleDone(todo) })
+                TodoBubble(todo: todo, showSource: true, onToggleDone: { vm.toggleDone(todo) })
             }
             if vm.urgentTodos.isEmpty {
                 Text(LJStrings.nothingUrgentNice)
@@ -334,14 +336,16 @@ struct MainView_iOS: View {
 
     @ViewBuilder
     private func normalSection(vm: MainViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             sectionHeader(label: LJStrings.normal, count: vm.normalTodos.count, withBlueDot: false)
+            // v1.3 R7：整组玻璃卡（.regularMaterial + hairline + 顶高光 + 柔投影），行内 0.5px hairline。
             VStack(spacing: 0) {
                 ForEach(Array(vm.normalTodos.enumerated()), id: \.element.id) { index, todo in
                     if index > 0 {
                         Rectangle().fill(Color.lj.border).frame(height: 0.5)
                     }
-                    compactNormalRow(todo: todo, onToggle: { vm.toggleDone(todo) })
+                    // v1.3 R7：主页 normal 行也显来源标签胶囊（showSource: true）。
+                    compactNormalRow(todo: todo, showSource: true, onToggle: { vm.toggleDone(todo) })
                 }
                 if vm.normalTodos.isEmpty {
                     Text(LJStrings.nothingInNormal)
@@ -352,50 +356,61 @@ struct MainView_iOS: View {
                         .padding(.vertical, LJSpacing.s14)
                 }
             }
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.lj.panel)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.lj.border, lineWidth: 0.5)
-            }
+            .ljGlassPanel(radius: 16, padded: false)
         }
     }
 
+    /// 主页 / 同 scope 页通用的 compact normal 行。
+    /// - showSource: true（主页）显示来源标签胶囊（个人灰 / 公司紫）；false 时仅显项目名（若有）。
     @ViewBuilder
-    private func compactNormalRow(todo: Todo, onToggle: @escaping () -> Void) -> some View {
+    private func compactNormalRow(todo: Todo, showSource: Bool = false, onToggle: @escaping () -> Void) -> some View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
                 // checkbox 占位
                 ZStack {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .strokeBorder(Color.lj.inkMute, lineWidth: 1.4)
-                        .frame(width: 16, height: 16)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(Color.lj.inkMute, lineWidth: 1.5)
+                        .frame(width: 18, height: 18)
                     if todo.done {
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .fill(Color.lj.ink)
-                            .frame(width: 10, height: 10)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(LJGradients.brand)
+                            .frame(width: 18, height: 18)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
                     }
                 }
 
                 Text(todo.title)
-                    .font(.system(size: 14, weight: .medium, design: .default))
+                    .font(.system(size: 14.5, weight: .medium, design: .default))
                     .foregroundStyle(Color.lj.ink)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .strikethrough(todo.done, color: Color.lj.inkMute)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                if let project = todo.project {
+                // v1.3 R7：来源标签（个人灰 / 公司紫）小胶囊（仅主页）；非主页仅显项目名。
+                if showSource {
+                    Text(todo.scope == .company ? LJStrings.tabCompany : LJStrings.tabPersonal)
+                        .font(.system(size: 10.5, weight: .semibold, design: .default))
+                        .foregroundStyle(todo.scope == .company ? Color.lj.scopeCompanyFg : Color.lj.inkSoft)
+                        .padding(.horizontal, LJSpacing.s8)
+                        .padding(.vertical, 3)
+                        .background {
+                            RoundedRectangle(cornerRadius: LJRadii.sourceLabel, style: .continuous)
+                                .fill(todo.scope == .company ? Color.lj.scopeCompanyBg : Color.lj.chip)
+                        }
+                        .lineLimit(1)
+                        .fixedSize()
+                } else if let project = todo.project {
                     Text(project.title.split(separator: " ").first.map(String.init) ?? project.title)
                         .font(.system(size: 10.5, weight: .medium, design: .default))
                         .foregroundStyle(Color.lj.inkMute)
                         .lineLimit(1)
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
             .opacity(todo.done ? 0.45 : 1)
             .contentShape(Rectangle())
         }
@@ -520,12 +535,13 @@ struct MainView_iOS: View {
             .frame(width: 150, height: 86, alignment: .topLeading)
             .background {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.lj.panel)
+                    .fill(.regularMaterial)
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(Color.lj.border, lineWidth: 0.5)
             }
+            .overlay { LJTopHighlight(radius: 14) }
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -568,17 +584,16 @@ struct MainView_iOS: View {
 
     @ViewBuilder
     private func sectionHeader(label: LocalizedStringResource, count: Int, withBlueDot: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            if withBlueDot {
-                Circle()
-                    .fill(Color.lj.blue)
-                    .frame(width: 7, height: 7)
-                    .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 3.5 }
-            }
+        // v1.3 R7：urgent 段标小圆点 = 品牌渐变（原型）；normal = 灰点。标题统一 ink（不再染蓝）。
+        HStack(alignment: .firstTextBaseline, spacing: 9) {
+            Circle()
+                .fill(withBlueDot ? AnyShapeStyle(LJGradients.brand) : AnyShapeStyle(Color.lj.inkMute))
+                .frame(width: 9, height: 9)
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4 }
             Text(label)
                 .font(.system(size: 17, weight: .bold, design: .default))
                 .kerning(-0.34)
-                .foregroundStyle(withBlueDot ? Color.lj.blueInk : Color.lj.ink)
+                .foregroundStyle(Color.lj.ink)
             Text("\(count)")
                 .font(.system(size: 13, weight: .medium, design: .default))
                 .foregroundStyle(Color.lj.inkMute)

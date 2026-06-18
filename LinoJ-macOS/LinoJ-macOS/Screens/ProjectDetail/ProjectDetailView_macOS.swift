@@ -45,7 +45,8 @@ struct ProjectDetailView_macOS: View {
             if let vm {
                 content(vm: vm)
             } else {
-                Color.lj.bg.ignoresSafeArea()
+                // v1.3 R6：透明占位，让 RootWindow 背景层（底色 + orb）透上来。
+                Color.clear
             }
         }
         .task {
@@ -79,7 +80,7 @@ struct ProjectDetailView_macOS: View {
                 bodyGrid(vm: vm)
             }
         }
-        .background(Color.lj.bg)
+        // v1.3 R6：背景透明 —— 让 RootWindow 底色 + orb 透上来。
     }
 
     // MARK: - Breadcrumb

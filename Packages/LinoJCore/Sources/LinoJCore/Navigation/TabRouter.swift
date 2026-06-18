@@ -36,6 +36,12 @@ public final class TabRouter {
     /// Quick Add sheet 在 onAppear 时把这个值喂给新 VM 的 `defaultKind`。
     public var quickAddDefaultKind: QuickAddViewModel.Kind = .todo
 
+    /// v1.3 R2/R3：打开 Quick Add 时若非 nil，覆盖 VM 的初始 Todo scope。
+    /// Personal 屏「＋新建个人待办」设 `.personal`、Company 屏「＋新建公司事项」设 `.company`，
+    /// 让从子页发起的新建待办默认落在当前页的 scope。nil 时回退 Settings 的 `defaultTodoScope`。
+    /// sheet onDisappear 清回 nil（与 quickAddDefaultKind 同模式）。
+    public var quickAddDefaultScope: Scope? = nil
+
     /// 打开 Quick Add 时可选的预填 Project。
     /// 用 `Project?` 引用而非 ID —— router 自身已 `@MainActor`，与 @Model 同线程，无需跨 actor。
     /// 当前 P3.6 没有任何入口设置它（Project detail 的 `+ Add todo` 不在范围内），保留接口给未来。

@@ -45,11 +45,11 @@ struct InspirationView_iOS: View {
                 if let listVM {
                     listContent(listVM: listVM)
                 } else {
-                    Color.lj.iosMainBg.ignoresSafeArea()
+                    Color.clear.ljScreenBackground(.iOS)
                 }
             }
-            .background(Color.lj.iosMainBg)
-            .navigationTitle(Text(LJStrings.inspirationTitle))
+            // v1.3 R7：H1 段标题改为内容内渲染（让出 FloatingActions），隐藏系统大标题导航栏。
+            .toolbar(.hidden, for: .navigationBar)
             // push 编辑器（全屏）。绑 pushedNoteID，对应的 note 从 @Query 取（删除后失效回列表）。
             .navigationDestination(item: $pushedNoteID) { id in
                 if let note = notes.first(where: { $0.id == id }) {
@@ -79,179 +79,90 @@ struct InspirationView_iOS: View {
     @ViewBuilder
     private func listContent(listVM: NoteListViewModel) -> some View {
         @Bindable var vm = listVM
-        let results = vm.results
-        let total = vm.sortedNotes.count
+        // v1.3 R7：移除内嵌搜索框（对齐原型 + macOS R5；笔记仍可经全局 Search sheet 搜）。
+        let results = vm.sortedNotes
+        let total = results.count
 
         ZStack {
-            Color.lj.iosMainBg.ignoresSafeArea()
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Hero header（让出 FloatingActions）= H1 + 副标 + 记录灵感主按钮。
+                    header(listVM: listVM)
+                        .padding(.top, 64)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 22)
 
-            if total == 0 {
-                // 空状态：EmptyState + CTA（新建并 push 编辑器）。
-                EmptyState(
-                    variant: .inboxZero,
-                    ctaTitle: LJStrings.inspirationNewNote,
-                    action: { createAndPush(listVM: listVM) }
-                )
-            } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        // 计数副标（大标题由 navigationTitle 提供）。
-                        Text(LJStrings.inspirationNotesCount(total))
-                            .font(.system(size: 13.5, weight: .medium, design: .default))
-                            .foregroundStyle(Color.lj.inkMute)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 4)
-
-                        // 搜索栏（chip 样式，绑 vm.searchText）。
-                        searchField(vm: vm)
-                            .padding(.horizontal, 16)
-
-                        // 「+ New note」醒目 ink 按钮（列表顶、搜索框下方；对齐 macOS 版）。
-                        // 不放导航栏 trailing —— 会与全局 FloatingActions 在右上角重叠被遮挡。
-                        newNoteButton(listVM: listVM)
-                            .padding(.horizontal, 16)
-
-                        // note 卡列表（白卡 + swipe actions）。
-                        VStack(spacing: 10) {
+                    if total == 0 {
+                        // 空状态：EmptyState + CTA（新建并 push 编辑器）。
+                        EmptyState(
+                            variant: .inboxZero,
+                            ctaTitle: LJStrings.inspirationNewNote,
+                            action: { createAndPush(listVM: listVM) }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 24)
+                    } else {
+                        // v1.3 R7：单列笔记墙 —— 复用 R0 `NoteCard` 件（多色调浅底 + 左渐变色条 + mono 日期）。
+                        // swipe actions（置顶 / 删除）包在 NoteCard 外层保留。
+                        VStack(spacing: 12) {
                             ForEach(results, id: \.id) { note in
-                                noteRow(note: note, listVM: listVM)
+                                noteCardRow(note: note, listVM: listVM)
                             }
                         }
                         .padding(.horizontal, 16)
-
-                        // U8：原生 tab bar 已由系统安全区让位，仅保留小段视觉呼吸。
-                        Color.clear.frame(height: 24)
                     }
-                    .padding(.top, 4)
+
+                    // U8：原生 tab bar 已由系统安全区让位，仅保留小段视觉呼吸。
+                    Color.clear.frame(height: 24)
                 }
+            }
+        }
+        // v1.3 R7：iOS 底色渐变 + bloom orb。
+        .ljScreenBackground(.iOS)
+    }
+
+    // MARK: - Header
+
+    /// v1.3 R7（对原型重建）：H1 标题「灵感」+ 副标 + 记录灵感品牌渐变主按钮。
+    @ViewBuilder
+    private func header(listVM: NoteListViewModel) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(LJStrings.inspirationTitle).ljDisplayTitleStyle()
+                Text(LJStrings.inspirationSubtitle)
+                    .font(.system(size: 13.5, weight: .medium, design: .default))
+                    .foregroundStyle(Color.lj.inkSoft)
+            }
+            LJPrimaryButton(LJStrings.recordIdea) {
+                createAndPush(listVM: listVM)
             }
         }
     }
 
-    /// chip 样式搜索输入框（与 macOS InspirationView 同观感）。
+    /// 单条笔记卡（NoteCard 件 + swipe actions：leading 置顶 / trailing 删除红）。
     @ViewBuilder
-    private func searchField(vm: NoteListViewModel) -> some View {
-        @Bindable var vm = vm
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.lj.inkMute)
-            TextField(text: $vm.searchText) {
-                Text(LJStrings.inspirationSearchPlaceholder)
-            }
-            .textFieldStyle(.plain)
-            .font(.system(size: 15, weight: .medium))
-            .foregroundStyle(Color.lj.ink)
-            .submitLabel(.search)
-            if !vm.searchText.isEmpty {
-                Button { vm.searchText = "" } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.lj.inkMute)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 12)
-        .frame(height: 36)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(Color.lj.chip)
-        )
-    }
-
-    /// 「+ New note」醒目 ink 按钮（列表顶；对齐 macOS InspirationView 的同名按钮：ink 底 / 白字 / 圆角）。
-    /// action 不变：createAndPush → push 进编辑器。
-    @ViewBuilder
-    private func newNoteButton(listVM: NoteListViewModel) -> some View {
-        Button {
-            createAndPush(listVM: listVM)
-        } label: {
-            Label {
-                Text(LJStrings.inspirationNewNote)
-            } icon: {
-                Image(systemName: "plus")
-            }
-            .font(.system(size: 15, weight: .semibold))
-            .foregroundStyle(Color.lj.bg)
-            .frame(maxWidth: .infinity)
-            .frame(height: 38)
-            .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(Color.lj.ink)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// 单个 note 行：白卡 14pt radius + displayTitle + 正文摘要 + updatedAt mono 时间 + 置顶标记。
-    /// swipe：trailing 删除（红）/ leading 置顶。
-    @ViewBuilder
-    private func noteRow(note: Note, listVM: NoteListViewModel) -> some View {
-        let snippet = bodySnippet(note)
-
-        Button {
-            pushedNoteID = note.id
-        } label: {
-            HStack(alignment: .top, spacing: 10) {
-                if note.isPinned {
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Color.lj.inkMute)
-                        .padding(.top, 4)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(note.displayTitle)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(Color.lj.ink)
-                            .lineLimit(1)
-                        Spacer(minLength: 8)
-                        Text(timeText(note.updatedAt))
-                            .font(.lj.mono)
-                            .foregroundStyle(Color.lj.inkMute)
+    private func noteCardRow(note: Note, listVM: NoteListViewModel) -> some View {
+        NoteCard(note: note, onOpen: { pushedNoteID = note.id })
+            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                Button {
+                    listVM.togglePinned(note)
+                } label: {
+                    Label {
+                        Text(note.isPinned ? LJStrings.noteUnpin : LJStrings.notePin)
+                    } icon: {
+                        Image(systemName: note.isPinned ? "pin.slash" : "pin")
                     }
-                    Text(snippet.isEmpty ? " " : snippet)
-                        .font(.system(size: 13.5, weight: .medium))
-                        .foregroundStyle(Color.lj.inkSoft)
-                        .lineLimit(1)
+                }
+                .tint(Color.lj.inkSoft)
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                Button(role: .destructive) {
+                    if pushedNoteID == note.id { pushedNoteID = nil }
+                    listVM.delete(note)
+                } label: {
+                    Label { Text(LJStrings.noteDelete) } icon: { Image(systemName: "trash") }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.lj.panel)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.lj.border, lineWidth: 0.5)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        // iOS swipe actions —— leading 置顶 / trailing 删除（红）。
-        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-            Button {
-                listVM.togglePinned(note)
-            } label: {
-                Label {
-                    Text(note.isPinned ? LJStrings.noteUnpin : LJStrings.notePin)
-                } icon: {
-                    Image(systemName: note.isPinned ? "pin.slash" : "pin")
-                }
-            }
-            .tint(Color.lj.inkSoft)
-        }
-        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-            Button(role: .destructive) {
-                if pushedNoteID == note.id { pushedNoteID = nil }
-                listVM.delete(note)
-            } label: {
-                Label { Text(LJStrings.noteDelete) } icon: { Image(systemName: "trash") }
-            }
-        }
     }
 
     // MARK: - Helpers
@@ -260,27 +171,6 @@ struct InspirationView_iOS: View {
     private func createAndPush(listVM: NoteListViewModel) {
         let note = listVM.createNote()
         pushedNoteID = note.id
-    }
-
-    /// 正文摘要单行：取纯文本去掉首行（displayTitle 已用首行）后的第一段非空文本；无则空串。
-    private func bodySnippet(_ note: Note) -> String {
-        let plain = String(note.body.characters)
-        let lines = plain.split(separator: "\n", omittingEmptySubsequences: false)
-        var seenTitle = false
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { continue }
-            if !seenTitle { seenTitle = true; continue }  // 跳过首行（= displayTitle）
-            return trimmed
-        }
-        return ""
-    }
-
-    /// "09:30" 等 mono 时间（与 MainView 同格式）。
-    private func timeText(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
     }
 }
 

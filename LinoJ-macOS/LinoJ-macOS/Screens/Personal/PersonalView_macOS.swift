@@ -125,32 +125,58 @@ struct PersonalView_macOS: View {
             .padding(.top, LJSpacing.s22)
             .padding(.bottom, LJSpacing.s28)
         }
-        .background(Color.lj.bg)
+        // v1.3 R2：背景透明 —— 让 RootWindow 的 ljScreenBackground（底色渐变 + orb）透上来，
+        // 玻璃材质（urgent 气泡 / completed box）才显半透浮起。不再用 Color.lj.bg 实心遮挡。
     }
 
     // MARK: - Header
 
+    /// v1.3 R2（对原型重建）：标题 + 三段计数（N 待办 · N 紧急 · N 已完成）+ 右侧品牌渐变「＋新建个人待办」。
     @ViewBuilder
     private func header(vm: PersonalViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(LJStrings.tabPersonal).ljDisplayTitleStyle()
-            HStack(spacing: 0) {
-                Text("\(vm.openCount) ")
-                    .font(.system(size: 13, weight: .semibold, design: .default))
-                    .foregroundStyle(Color.lj.ink)
-                Text(LJStrings.statOpen)
-                    .font(.system(size: 13, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkSoft)
-                Text(" · ")
-                    .font(.system(size: 13, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkDim)
-                Text("\(vm.doneCount) ")
-                    .font(.system(size: 13, weight: .semibold, design: .default))
-                    .foregroundStyle(Color.lj.ink)
-                Text(LJStrings.statDone)
-                    .font(.system(size: 13, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkSoft)
+        HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(LJStrings.tabPersonal).ljDisplayTitleStyle()
+                countsLine(open: vm.openCount, urgent: vm.urgent.count, done: vm.doneCount)
             }
+            Spacer(minLength: LJSpacing.s16)
+            LJPrimaryButton(LJStrings.newPersonalTodo) {
+                router.quickAddDefaultKind = .todo
+                router.quickAddDefaultScope = .personal
+                router.showQuickAdd = true
+            }
+        }
+        .frame(maxWidth: 1100, alignment: .leading)
+    }
+
+    /// 「N 待办 · N 紧急 · N 已完成」计数行（原型 13.5px/rgba(60,60,67,0.5)，紧急数字 accent）。
+    @ViewBuilder
+    private func countsLine(open: Int, urgent: Int, done: Int) -> some View {
+        HStack(spacing: 0) {
+            Text("\(open) ")
+                .font(.system(size: 13, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.ink)
+            Text(LJStrings.statOpen)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
+            Text(" · ")
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkDim)
+            Text("\(urgent) ")
+                .font(.system(size: 13, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.blue)
+            Text(LJStrings.statUrgent)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
+            Text(" · ")
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkDim)
+            Text("\(done) ")
+                .font(.system(size: 13, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.ink)
+            Text(LJStrings.statDone)
+                .font(.system(size: 13, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
         }
     }
 

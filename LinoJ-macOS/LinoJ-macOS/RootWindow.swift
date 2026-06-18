@@ -46,21 +46,19 @@ struct RootWindow: View {
         @Bindable var router = router
 
         VStack(spacing: 0) {
-            // V4：顶栏三段式，对齐 direction-a.jsx 的 macOS window chrome（AWindow 顶栏）。
-            // 设计稿原结构是单行 HStack（traffic lights → wordmark → tabs → flex spacer →
-            // Search pill → + New），其中彩色 dot 是 macOS 系统红绿灯（由窗口系统原生提供，
-            // 我们不绘制）。V4 在 wordmark 右侧补一个语义状态 dot（v1.0 暂为中性色）。
-            //
-            // 设计稿数值：顶栏 height 44；padding 0 16；wordmark 13pt/600/-0.01em；
-            // tab marginLeft 16；Search pill chip 背景 + radius 7 + minWidth 200 + ⌘K mono hint；
-            // + New ink 按钮（背景 ink、文字 bg、radius 7、"+" 14pt）。
+            // v1.3 R1 重做：顶栏按新原型重建结构（design_handoff_linoj_frontend «主页» macOS chrome）。
+            // 三区布局：左 210pt（系统红绿灯 + 暗灰 LinoJ wordmark）/ 中 flex 居中玻璃分段 pill（5 目的地）/
+            // 右 210pt（搜索 icon + 齿轮 + 品牌渐变头像）。丢弃旧「左聚簇 wordmark+tab+搜索条+＋新建钮」布局。
+            // 红绿灯仍是系统原生（不绘制）；nav bar 底 rgba(255,255,255,0.5) 材质 + 0.5px 底边 + 52pt 高。
             toolbar(router: router)
 
             // 主内容区：按 router.current switch。切 tab 不要动画（README NON-NEGOTIABLE: instant）。
             // ⚠️ 必须 .topLeading：默认 ZStack 是 .center，会把「没填满容器」的子视图垂直/水平居中
             // （Calendar 曾因此出现星期表头上下均等空白）。topLeading 对已填满的 Main/Personal/Company 无副作用。
             ZStack(alignment: .topLeading) {
-                Color.lj.bg.ignoresSafeArea()
+                // v1.3：屏幕背景层（底色渐变 + bloom orb）。玻璃材质背后需要它才显半透浮起。
+                // 一处生效铺所有屏（R1 起 Main 用玻璃件，R2+ 各屏陆续套）。
+                Color.clear.ljScreenBackground(.macOS)
                 switch router.current {
                 case .main:
                     MainView_macOS()
@@ -80,9 +78,9 @@ struct RootWindow: View {
         // 否则即使 hiddenTitleBar，VStack 仍尊重顶部安全区 → 顶栏带被下推 ~28pt（title bar 高度），
         // 红绿灯浮在带之上形成「交错」（调试边框截图实证）。吃掉后带 content 中线≈22pt 与红绿灯对齐。
         .ignoresSafeArea(.container, edges: .top)
-        // V4 修订：把系统红绿灯垂直居中到 44pt 顶栏中线（hiddenTitleBar 下默认偏上）。
+        // v1.3 R1：把系统红绿灯垂直居中到 52pt 顶栏中线（原型 nav bar 高 52）。
         // 零尺寸 NSView accessor，clamp 保证最坏情况不把按钮挪出标题栏。
-        .background(TrafficLightConfigurator(barHeight: 44))
+        .background(TrafficLightConfigurator(barHeight: 52))
         // P4：service 容器注入子树。AppServices 是 @Observable，子 View 在 services.headsUp
         // 从 nil 变成实际 service 时会自动重渲。
         .environment(services)
@@ -198,46 +196,46 @@ struct RootWindow: View {
         }
     }
 
-    // MARK: - V4 顶栏
+    // MARK: - v1.3 R1 顶栏（对原型重建）
 
-    /// macOS 顶栏单行布局（左聚簇）：左 wordmark + 状态 dot + 紧跟的 4-tab Picker；
-    /// 中间单个 Spacer；右 Search pill + "+ New" ink 按钮。对齐 direction-a.jsx 的 AWindow chrome。
+    /// macOS 顶栏（design_handoff_linoj_frontend «主页» macOS chrome 重建）。
+    /// 三区：左 210pt（系统红绿灯空位 + 暗灰 LinoJ wordmark）/ 中 flex 居中玻璃分段 pill /
+    /// 右 210pt（搜索 icon + 齿轮 + 品牌渐变头像）。高 52pt，底材质 + 0.5px 底边。
     @ViewBuilder
     private func toolbar(router: TabRouter) -> some View {
-        // Picker selection 需要一个 Binding<AppTab>；@Bindable 把 @Observable 引用暴露成可 binding。
         @Bindable var router = router
-        HStack(spacing: LJSpacing.s12) {
-            // 左：wordmark + 状态 dot。
-            wordmark()
-
-            // 左聚簇：自定义 4-tab 按钮（对齐 direction-a.jsx 第 94-112 行）。
-            // active = chip 灰底 + ink 字 + 600；inactive = 透明 + inkSoft + 500；
-            // padding 5×11、radius 7、fontSize 12.5、tab 间距 2。
-            // 不用 .pickerStyle(.segmented)——那是 macOS 蓝底系统控件，与设计稿不符。
-            HStack(spacing: 2) {
-                tabButton(.main, LJStrings.tabMain, router: router)
-                tabButton(.personal, LJStrings.tabPersonal, router: router)
-                tabButton(.company, LJStrings.tabCompany, router: router)
-                tabButton(.calendar, LJStrings.tabCalendar, router: router)
-                // U3：第 5 个 tab「灵感 / Inspiration」。
-                tabButton(.inspiration, LJStrings.tabInspiration, router: router)
+        HStack(spacing: 0) {
+            // 左 210pt：系统红绿灯（不绘制，仅留宽）+ 暗灰 LinoJ wordmark（原型 rgba(60,60,67,0.5)）。
+            HStack {
+                wordmark()
+                Spacer(minLength: 0)
             }
-            .padding(.leading, LJSpacing.s4)   // wordmark→tab ≈16pt（HStack spacing 12 + 4）
+            .frame(width: 210)
+            // 左侧 ~64pt 让位给系统红绿灯，wordmark 接在其右。
+            .padding(.leading, 64)
 
-            // 单个 Spacer 把 Search + New 推到最右；tabs 留在左侧。
-            Spacer(minLength: LJSpacing.s16)
+            // 中 flex：居中玻璃分段导航 pill。
+            navPill(router: router)
+                .frame(maxWidth: .infinity)
 
-            // 右：Search or jump + New。
-            searchButton(router: router)
-            newButton(router: router)
+            // 右 210pt：搜索 icon + 齿轮 + 头像，靠右。
+            HStack(spacing: LJSpacing.s8) {
+                Spacer(minLength: 0)
+                iconButton(systemName: "magnifyingglass", a11y: LJStrings.a11ySearch) {
+                    router.showSearch = true
+                }
+                iconButton(systemName: "gearshape", a11y: LJStrings.a11ySettings) {
+                    router.showSettings = true
+                }
+                avatarButton(router: router)
+            }
+            .frame(width: 210)
         }
-        // 左侧留出 macOS 红绿灯（traffic lights）宽度，让 wordmark 紧跟其右、同排融合。
-        // 窗口用 .hiddenTitleBar，红绿灯浮在内容左上；~78pt 足够清开三枚按钮。
-        .padding(.leading, 78)
-        .padding(.trailing, LJSpacing.s16)
-        .frame(height: 44)
-        .background(Color.lj.bg)
-        // 顶栏下沿一条极细分隔线，与设计稿 chrome 一致（0.5px solid border）。
+        .padding(.horizontal, LJSpacing.s16)
+        .frame(height: 52)
+        // 玻璃 nav bar —— 原生 .regularMaterial（原型 rgba(255,255,255,0.5) + blur(24)）。
+        .background(.regularMaterial)
+        // 顶栏下沿 0.5px 分隔线（原型 border-bottom rgba(60,60,67,0.08)）。
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(Color.lj.border)
@@ -245,121 +243,126 @@ struct RootWindow: View {
         }
     }
 
-    /// 单个 tab 按钮。对齐 direction-a.jsx：active=chip 底+ink 字+semibold，inactive=透明+inkSoft+medium。
+    /// 居中玻璃分段导航 pill：5 目的地（主页 icon + 4 个带 icon 的 tab）。
+    /// 原型：内层 padding 4、radius 13、底 rgba(255,255,255,0.55) 材质 + 顶高光 + 0 2px 8px 投影；
+    /// 主页 tab 与其余之间一条 1px 分隔；选中项底 navMain.rowBg = rgba(110,110,230,0.13)。
     @ViewBuilder
-    private func tabButton(_ tab: AppTab, _ label: LocalizedStringResource, router: TabRouter) -> some View {
+    private func navPill(router: TabRouter) -> some View {
+        HStack(spacing: 2) {
+            navItem(.main, LJStrings.tabMain, icon: "house.fill", router: router)
+            // 主页与其余目的地之间的 1px 分隔（原型 width:1 height:18 rgba(60,60,67,0.12)）。
+            Rectangle()
+                .fill(Color.lj.borderStrong)
+                .frame(width: 1, height: 18)
+                .padding(.horizontal, 5)
+            navItem(.personal, LJStrings.tabPersonal, icon: "person", router: router)
+            navItem(.company, LJStrings.tabCompany, icon: "building.2", router: router)
+            navItem(.calendar, LJStrings.tabCalendar, icon: "calendar", router: router)
+            navItem(.inspiration, LJStrings.tabInspiration, icon: "lightbulb", router: router)
+        }
+        .padding(4)
+        .background {
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .fill(.regularMaterial)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                .strokeBorder(Color.lj.border, lineWidth: 0.5)
+        }
+        .overlay { LJTopHighlight(radius: 13) }
+        .shadow(color: Color.lj.shadowCard, radius: 4, x: 0, y: 2)
+    }
+
+    /// 分段 pill 内单个目的地：icon + label。选中 = navSelected 底 + ink 字 + 600 + accentDeep icon；
+    /// 未选 = 透明 + inkSoft 字 + 500 + inkSoft icon。原型 padding 6×13、radius 9、字 13.5pt。
+    @ViewBuilder
+    private func navItem(_ tab: AppTab, _ label: LocalizedStringResource, icon: String, router: TabRouter) -> some View {
         let isActive = router.current == tab
         Button {
             router.current = tab
         } label: {
-            Text(label)
-                .font(.system(size: 12.5, weight: isActive ? .semibold : .medium))
-                .tracking(-0.06)   // -0.005em @ 12.5pt
-                .foregroundStyle(isActive ? Color.lj.ink : Color.lj.inkSoft)
-                .padding(.horizontal, 11)
-                .padding(.vertical, 5)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(isActive ? Color.lj.chip : Color.clear)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            HStack(spacing: 7) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: isActive ? .semibold : .regular))
+                    .foregroundStyle(isActive ? Color.lj.accentDeep : Color.lj.inkSoft)
+                Text(label)
+                    .font(.system(size: 13.5, weight: isActive ? .semibold : .medium))
+                    .tracking(-0.135)   // -0.01em @ 13.5pt
+                    .foregroundStyle(isActive ? Color.lj.ink : Color.lj.inkSoft)
+            }
+            .padding(.horizontal, 13)
+            .padding(.vertical, 6)
+            .background {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(isActive ? Color.lj.navSelected : Color.clear)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
         .buttonStyle(.plain)
     }
 
-    /// 左侧：「LinoJ」文字 logo（品牌名不翻译）+ 语义状态 dot。
-    /// 设计稿 wordmark：A_DISPLAY 13pt / weight 600 / letterSpacing -0.01em / 色 ink。
-    /// 状态 dot：设计稿顶栏的彩色圆点是系统红绿灯（不由 App 绘制），V4 plan 要求另置一个
-    /// 反映同步状态的语义 dot。0.9.1：接上 CloudSyncMonitor.status（与 SettingsView_macOS 的
-    /// sync pill dot 同一套颜色映射）。还原 6pt 小圆点。
+    /// 左侧：「LinoJ」文字 logo（暗灰，品牌名不翻译）。原型 13pt/700/rgba(60,60,67,0.5)/-0.01em。
     @ViewBuilder
     private func wordmark() -> some View {
-        HStack(spacing: LJSpacing.s6) {
-            Text(verbatim: "LinoJ")
-                .font(.system(size: 13, weight: .semibold, design: .default))
-                .tracking(-0.13)   // -0.01em @ 13pt ≈ -0.13pt
-                .foregroundStyle(Color.lj.ink)
-            // 状态 dot —— 接 CloudSyncMonitor：syncing=蓝 / synced=绿 / error=红 / idle / nil / 本地=中性。
+        Text(verbatim: "LinoJ")
+            .font(.system(size: 13, weight: .bold, design: .default))
+            .tracking(-0.13)   // -0.01em @ 13pt
+            .foregroundStyle(Color.lj.inkMute)
+    }
+
+    /// 右上玻璃圆角图标按钮（搜索 / 齿轮）。原型 32pt 方、radius 9、rgba(255,255,255,0.5) 材质 + 顶高光 + 投影。
+    @ViewBuilder
+    private func iconButton(systemName: String, a11y: LocalizedStringResource, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color.lj.inkSoft)
+                .frame(width: 32, height: 32)
+                .background {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .fill(.regularMaterial)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(Color.lj.border, lineWidth: 0.5)
+                }
+                .overlay { LJTopHighlight(radius: 9) }
+                .shadow(color: Color.lj.shadowCard, radius: 3, x: 0, y: 2)
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(a11y))
+    }
+
+    /// 右上头像：品牌渐变圆 + 用户首字母（登录则取 displayName 首字，否则回退「L」）。
+    /// 点击打开 Settings（账户 / 设置入口，与齿轮同 sheet）。原型 30pt 圆 + 渐变 + 白字 700。
+    @ViewBuilder
+    private func avatarButton(router: TabRouter) -> some View {
+        Button {
+            router.showSettings = true
+        } label: {
             Circle()
-                .fill(syncDotColor)
-                .frame(width: 6, height: 6)
-        }
-    }
-
-    /// 0.9.1：顶栏状态 dot 颜色 —— 跟随 services.cloudSyncMonitor.status。
-    /// 与 SettingsView_macOS.syncDotColor 同一套映射；monitor 为 nil / idle / 本地模式时用中性色。
-    private var syncDotColor: Color {
-        guard let status = services.cloudSyncMonitor?.status else {
-            return Color.lj.inkDim
-        }
-        switch status {
-        case .syncing:  return Color.lj.blue
-        case .synced:   return Color(red: 0.098, green: 0.764, blue: 0.196)   // #19c332
-        case .error:    return Color(red: 0.86, green: 0.18, blue: 0.18)
-        case .idle:     return Color.lj.inkDim
-        }
-    }
-
-    /// 右侧 Search pill：放大镜 icon + "Search or jump" + ⌘K mono hint。
-    /// 点击翻 router.showSearch（与 ⌘K 同路径）。设计稿：chip 背景 / radius 7 / minWidth 200。
-    @ViewBuilder
-    private func searchButton(router: TabRouter) -> some View {
-        Button {
-            router.showSearch = true
-        } label: {
-            HStack(spacing: LJSpacing.s8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.lj.inkSoft)
-                Text(LJStrings.toolbarSearchOrJump)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.lj.inkSoft)
-                Spacer(minLength: LJSpacing.s8)
-                Text(verbatim: "⌘K")
-                    .font(.lj.mono)
-                    .foregroundStyle(Color.lj.inkMute)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .fill(Color.lj.chip)
-                    )
-            }
-            .padding(.horizontal, LJSpacing.s10)
-            .frame(width: 200, height: 28)
-            .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(Color.lj.chip)
-            )
+                .fill(LJGradients.brand)
+                .frame(width: 30, height: 30)
+                .overlay {
+                    Text(verbatim: avatarInitial)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color.white)
+                }
+                .shadow(color: Color.lj.brandGlow, radius: 3, x: 0, y: 2)
+                .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(LJStrings.a11ySearch))
+        .accessibilityLabel(Text(LJStrings.settingsTitle))
     }
 
-    /// 右侧 "+ New" ink 按钮：点击翻 router.showQuickAdd（默认 Todo，与 ⌘N 同路径）。
-    /// 设计稿：背景 ink、文字 bg、radius 7、"+" 14pt。
-    @ViewBuilder
-    private func newButton(router: TabRouter) -> some View {
-        Button {
-            router.quickAddDefaultKind = .todo
-            router.showQuickAdd = true
-        } label: {
-            HStack(spacing: LJSpacing.s6) {
-                Text(verbatim: "+")
-                    .font(.system(size: 14, weight: .semibold))
-                Text(LJStrings.toolbarNew)
-                    .font(.system(size: 12.5, weight: .semibold))
-            }
-            .foregroundStyle(Color.lj.bg)
-            .padding(.horizontal, LJSpacing.s12)
-            .frame(height: 28)
-            .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(Color.lj.ink)
-            )
+    /// 头像首字母：登录用户 displayName 首字（大写），否则品牌占位「L」。
+    private var avatarInitial: String {
+        if let name = services.appleSignIn?.displayName,
+           let first = name.trimmingCharacters(in: .whitespaces).first {
+            return String(first).uppercased()
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(Text(LJStrings.a11yQuickAdd))
+        return "L"
     }
 
     @ViewBuilder

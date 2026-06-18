@@ -46,7 +46,7 @@ struct CompanyView_iOS: View {
                             }
                     }
                 } else {
-                    Color.lj.iosMainBg.ignoresSafeArea()
+                    Color.clear.ljScreenBackground(.iOS)
                 }
             }
             .task {
@@ -113,18 +113,16 @@ struct CompanyView_iOS: View {
     @ViewBuilder
     private func content(vm: CompanyViewModel) -> some View {
         ZStack {
-            Color.lj.iosMainBg.ignoresSafeArea()
-
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     header(vm: vm)
                         .padding(.top, 64)
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 14)
+                        .padding(.bottom, 16)
 
                     // 横向 scope chips
                     scopeChips(vm: vm)
-                        .padding(.bottom, 16)
+                        .padding(.bottom, 18)
 
                     // Urgent
                     urgentSection(vm: vm)
@@ -144,31 +142,56 @@ struct CompanyView_iOS: View {
                 }
             }
         }
+        // v1.3 R7：iOS 底色渐变 + bloom orb。
+        .ljScreenBackground(.iOS)
     }
 
     // MARK: - Header
 
+    /// v1.3 R7（对原型重建）：H1 标题 + 三段计数（N 待办 · N 紧急 · N 项目）+ ＋新建公司事项主按钮。
     @ViewBuilder
     private func header(vm: CompanyViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(LJStrings.tabCompany).ljDisplayTitleStyle()
-            HStack(spacing: 0) {
-                Text("\(vm.todosCount) ")
-                    .font(.system(size: 13.5, weight: .semibold, design: .default))
-                    .foregroundStyle(Color.lj.ink)
-                Text(LJStrings.todos)
-                    .font(.system(size: 13.5, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkSoft)
-                Text(" · ")
-                    .font(.system(size: 13.5, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkDim)
-                Text("\(vm.projectsCount) ")
-                    .font(.system(size: 13.5, weight: .semibold, design: .default))
-                    .foregroundStyle(Color.lj.ink)
-                Text(LJStrings.projects)
-                    .font(.system(size: 13.5, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkSoft)
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(LJStrings.tabCompany).ljDisplayTitleStyle()
+                countsLine(todos: vm.todosCount, urgent: vm.urgentTotal, projects: vm.projectsCount)
             }
+            LJPrimaryButton(LJStrings.newCompanyItem) {
+                router.quickAddDefaultKind = .todo
+                router.quickAddDefaultScope = .company
+                router.showQuickAdd = true
+            }
+        }
+    }
+
+    /// 「N 待办 · N 紧急 · N 项目」计数行（紧急数字紫蓝；urgent 用 urgentTotal 不被 chip filter 影响）。
+    @ViewBuilder
+    private func countsLine(todos: Int, urgent: Int, projects: Int) -> some View {
+        HStack(spacing: 0) {
+            Text("\(todos) ")
+                .font(.system(size: 13.5, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.ink)
+            Text(LJStrings.todos)
+                .font(.system(size: 13.5, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
+            Text(" · ")
+                .font(.system(size: 13.5, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkDim)
+            Text("\(urgent) ")
+                .font(.system(size: 13.5, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.blue)
+            Text(LJStrings.statUrgent)
+                .font(.system(size: 13.5, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
+            Text(" · ")
+                .font(.system(size: 13.5, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkDim)
+            Text("\(projects) ")
+                .font(.system(size: 13.5, weight: .semibold, design: .default))
+                .foregroundStyle(Color.lj.ink)
+            Text(LJStrings.projects)
+                .font(.system(size: 13.5, weight: .medium, design: .default))
+                .foregroundStyle(Color.lj.inkSoft)
         }
     }
 
@@ -203,22 +226,7 @@ struct CompanyView_iOS: View {
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
-            Text(label)
-                .font(.system(size: 12.5, weight: selected ? .semibold : .medium, design: .default))
-                .foregroundStyle(selected ? Color.lj.panel : Color.lj.inkSoft)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(selected ? Color.lj.ink : Color.clear)
-                }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(
-                            selected ? Color.lj.ink : Color.lj.border,
-                            lineWidth: 0.5
-                        )
-                }
+            chipLabel(Text(label), selected: selected)
         }
         .buttonStyle(.plain)
     }
@@ -227,24 +235,48 @@ struct CompanyView_iOS: View {
     @ViewBuilder
     private func chip(label: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(label)
-                .font(.system(size: 12.5, weight: selected ? .semibold : .medium, design: .default))
-                .foregroundStyle(selected ? Color.lj.panel : Color.lj.inkSoft)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 5)
-                .background {
-                    Capsule(style: .continuous)
-                        .fill(selected ? Color.lj.ink : Color.clear)
-                }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(
-                            selected ? Color.lj.ink : Color.lj.border,
-                            lineWidth: 0.5
-                        )
-                }
+            chipLabel(Text(label), selected: selected)
         }
         .buttonStyle(.plain)
+    }
+
+    /// chip 造型：选中 ink 黑底白字 / 未选半透玻璃 + hairline + 顶高光（原型 c.bg/fg/bd）。
+    @ViewBuilder
+    private func chipLabel(_ text: Text, selected: Bool) -> some View {
+        text
+            .font(.system(size: 13, weight: selected ? .semibold : .medium, design: .default))
+            .foregroundStyle(selected ? Color.white : Color.lj.inkSoft)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 15)
+            .padding(.vertical, 8)
+            .background {
+                if selected {
+                    Capsule(style: .continuous).fill(Color.lj.ink)
+                } else {
+                    Capsule(style: .continuous).fill(.ultraThinMaterial)
+                }
+            }
+            .overlay {
+                Capsule(style: .continuous)
+                    .strokeBorder(selected ? Color.clear : Color.lj.border, lineWidth: 0.5)
+            }
+            .overlay {
+                if !selected {
+                    Capsule(style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.6), Color.white.opacity(0)],
+                                startPoint: .top, endPoint: .bottom
+                            ),
+                            lineWidth: 0.75
+                        )
+                        .mask(
+                            LinearGradient(colors: [.black, .black.opacity(0)], startPoint: .top, endPoint: .center)
+                        )
+                        .allowsHitTesting(false)
+                }
+            }
     }
 
     // MARK: - Urgent
@@ -292,14 +324,8 @@ struct CompanyView_iOS: View {
                         .padding(.vertical, LJSpacing.s14)
                 }
             }
-            .background {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.lj.panel)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.lj.border, lineWidth: 0.5)
-            }
+            // v1.3 R7：整组玻璃卡（.regularMaterial + hairline + 顶高光 + 柔投影）。
+            .ljGlassPanel(radius: 16, padded: false)
         }
     }
 
@@ -308,31 +334,42 @@ struct CompanyView_iOS: View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .strokeBorder(Color.lj.inkMute, lineWidth: 1.4)
-                        .frame(width: 16, height: 16)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(Color.lj.inkMute, lineWidth: 1.5)
+                        .frame(width: 18, height: 18)
                     if todo.done {
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .fill(Color.lj.ink)
-                            .frame(width: 10, height: 10)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(LJGradients.brand)
+                            .frame(width: 18, height: 18)
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.white)
                     }
                 }
                 Text(todo.title)
-                    .font(.system(size: 14, weight: .medium, design: .default))
+                    .font(.system(size: 14.5, weight: .medium, design: .default))
                     .foregroundStyle(Color.lj.ink)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .strikethrough(todo.done, color: Color.lj.inkMute)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                // 项目名小胶囊（原型 company normal 行右侧灰底）。
                 if let project = todo.project {
                     Text(project.title.split(separator: " ").first.map(String.init) ?? project.title)
-                        .font(.system(size: 10.5, weight: .medium, design: .default))
-                        .foregroundStyle(Color.lj.inkMute)
+                        .font(.system(size: 10.5, weight: .semibold, design: .default))
+                        .foregroundStyle(Color.lj.inkSoft)
+                        .padding(.horizontal, LJSpacing.s8)
+                        .padding(.vertical, 3)
+                        .background {
+                            RoundedRectangle(cornerRadius: LJRadii.sourceLabel, style: .continuous)
+                                .fill(Color.lj.chip)
+                        }
                         .lineLimit(1)
+                        .fixedSize()
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 13)
             .opacity(todo.done ? 0.45 : 1)
             .contentShape(Rectangle())
         }
@@ -344,10 +381,21 @@ struct CompanyView_iOS: View {
     @ViewBuilder
     private func projectsSection(vm: CompanyViewModel) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(label: LJStrings.projects, count: vm.projects.count, withBlueDot: false)
-                .padding(.horizontal, 16)
+            // v1.3 R7：项目区标题行 = 「项目」H2 + 右侧「＋新建项目」次级按钮（新功能件）。
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(LJStrings.projects)
+                    .font(.system(size: 17, weight: .bold, design: .default))
+                    .kerning(-0.34)
+                    .foregroundStyle(Color.lj.ink)
+                Spacer()
+                LJSecondaryButton(LJStrings.newProject) {
+                    router.quickAddDefaultKind = .project
+                    router.showQuickAdd = true
+                }
+            }
+            .padding(.horizontal, 16)
 
-            VStack(spacing: 10) {
+            VStack(spacing: 12) {
                 ForEach(vm.projects, id: \.id) { project in
                     Button {
                         navigationPath.append(project.id)
@@ -365,17 +413,16 @@ struct CompanyView_iOS: View {
 
     @ViewBuilder
     private func sectionHeader(label: LocalizedStringResource, count: Int, withBlueDot: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            if withBlueDot {
-                Circle()
-                    .fill(Color.lj.blue)
-                    .frame(width: 7, height: 7)
-                    .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 3.5 }
-            }
+        // v1.3 R7：urgent 段标小圆点 = 品牌渐变；normal = 灰点。标题统一 ink。
+        HStack(alignment: .firstTextBaseline, spacing: 9) {
+            Circle()
+                .fill(withBlueDot ? AnyShapeStyle(LJGradients.brand) : AnyShapeStyle(Color.lj.inkMute))
+                .frame(width: 9, height: 9)
+                .alignmentGuide(.firstTextBaseline) { d in d[VerticalAlignment.center] + 4 }
             Text(label)
                 .font(.system(size: 17, weight: .bold, design: .default))
                 .kerning(-0.34)
-                .foregroundStyle(withBlueDot ? Color.lj.blueInk : Color.lj.ink)
+                .foregroundStyle(Color.lj.ink)
             Text("\(count)")
                 .font(.system(size: 13, weight: .medium, design: .default))
                 .foregroundStyle(Color.lj.inkMute)

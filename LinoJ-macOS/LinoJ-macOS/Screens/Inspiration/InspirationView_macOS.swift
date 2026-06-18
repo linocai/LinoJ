@@ -1,24 +1,20 @@
 // InspirationView_macOS.swift
-// U3（v1.1）：灵感版块 macOS 双栏实现 —— 左列表（~320pt）+ 右富文本编辑器。
+// v1.3 R5（对原型重建）：灵感版块 macOS 改为 **masonry 笔记墙**（决策 D-Inspiration）。
 //
-// 视觉 / 交互契约（plan U3，定死）：
-//   - 左列表：大标题「Inspiration」+ 计数副标「X notes」+ 搜索框（chip 样式，绑 vm.searchText）
-//     + note 行（displayTitle + 正文摘要单行截断 + updatedAt mono 时间 + 置顶 pin 标记）
-//     + 「+ New note」按钮（ink 观感）+ 空状态用 EmptyState。
-//   - 右编辑器：标题占位 + 富文本工具条（加粗/斜体/标题/项目符号/勾选清单）+ `⋯` 菜单（Pin/Unpin/Delete）
-//     + TextEditor 富文本区（绑 AttributedString）。
-//   - 删除走二次确认 `.confirmationDialog`（抽成 ViewModifier 防 body type-check 超时，见 CLAUDE.md）。
-//   - note 行 `.contextMenu` 含 Pin / Delete。
+// 结构差异核对（U3 旧双栏列表+编辑器 → 原型 masonry 笔记墙）：
+//   旧：左列表（320pt：标题 + 计数 + 搜索 + 「+New note」+ note 行）| 右常驻富文本编辑器。
+//   原型：单列 **column-count:3 瀑布流**——头部（标题「灵感」+ 副标「随手记下的念头、清单与片段」+
+//        品牌渐变「记录灵感」按钮）+ 多色调浅底笔记卡（左 3px 色条 + 标题 + 正文 + mono 日期 + 置顶标记）。
+//   → 浏览态按原型重建为 masonry 墙（NoteCard 件，3 列轮转分配近似 column-count:3）。
 //
-// 富文本 API 结论（U3 施工首步验证，落地原生方案）：
-//   macOS 26.5 下 `TextEditor(text: $attributedString, selection: $selection)` 编译 + 运行可用。
-//   - 加粗 / 斜体 / 标题：`selectedText.transformAttributes(in:&selection) { $0.font = ... }`。
-//   - 项目符号 / 勾选清单：编辑器内 `replaceSelection(&selection, withCharacters:)` 在行首插入
-//     「• 」/「☐ 」前缀（可编辑 TextEditor 不交互渲染 presentationIntent 列表，故用前缀方案）。
-//   正文存储仍走 U1 `Note.bodyData`（AttributedString JSON）不变，U1/U2 契约不破。
+// 编辑能力保留（最小改动方案，写进实施记录）：富文本编辑机制（NoteEditorPane = TextEditor(AttributedString)
+//   + 加粗/斜体/标题/项目符号/勾选清单 工具条 + ⋯ 菜单 Pin/Delete）**完整保留不丢**，改为
+//   **点击卡片 / 「记录灵感」→ 打开编辑 `.sheet`**（detail-on-demand），而非旧的常驻右栏。
+//   删除二次确认 `.confirmationDialog`（抽成 ViewModifier 防 body type-check 超时）+ note 卡 contextMenu
+//   Pin/Delete 全保留。正文存储仍走 U1 `Note.bodyData`（AttributedString JSON），U1/U2 契约不破。
 //
-// 数据流：左列表自持 NoteListViewModel；选中某 note 后右侧用 NoteEditorViewModel 编辑。
-// selection 用 note.id（UUID）跟踪 —— note 被删除 / 列表刷新后能稳健失效回 nil。
+// 数据流：自持 NoteListViewModel（排序 / 搜索 / 增删置顶）；编辑用 NoteEditorViewModel（NoteEditorPane 内）。
+// 编辑目标用 note.id（UUID）跟踪 —— note 被删除 / 列表刷新后能稳健失效。
 
 import SwiftUI
 import SwiftData
@@ -35,18 +31,22 @@ struct InspirationView_macOS: View {
     /// `@Query` 拉所有 Note，仅用于触发 invalidation（数据变化 → onChange → listVM.refresh()）。
     @Query private var notes: [Note]
 
-    /// 当前选中的 note id（nil = 未选中，右侧显示空态）。用 id 而非引用，删除后能稳健失效。
-    @State private var selectedNoteID: UUID?
+    /// 当前编辑中的 note id（nil = 未打开编辑 sheet）。用 id 而非引用，删除后能稳健失效。
+    @State private var editingNoteID: UUID?
 
     /// W4 同模式：待删除确认的 note（驱动 `.confirmationDialog`）。nil = 无弹窗。
     @State private var notePendingDelete: Note?
+
+    /// masonry 列数。
+    private let columnCount = 3
 
     var body: some View {
         Group {
             if let listVM {
                 content(listVM: listVM)
             } else {
-                Color.lj.bg
+                // v1.3 R5：透明占位，让 RootWindow 背景层（底色 + orb）透上来。
+                Color.clear
             }
         }
         .task {
@@ -57,190 +57,101 @@ struct InspirationView_macOS: View {
         // SwiftData 数据变化时让 ViewModel 重算 computed property。
         .onChange(of: notes.count) { _, _ in listVM?.refresh() }
         .onChange(of: notes.map(\.updatedAt)) { _, _ in listVM?.refresh() }
+        // 编辑 sheet（detail-on-demand）：点击卡片 / 「记录灵感」打开；保留完整富文本编辑能力。
+        .sheet(item: editingNoteBinding) { note in
+            noteEditorSheet(note: note)
+        }
         // 删除笔记二次确认（抽成 modifier 减轻 body 类型检查负担，见 CLAUDE.md）。
         .modifier(NoteDeleteConfirmModifier(
             pending: $notePendingDelete,
             onConfirm: { note in
-                if selectedNoteID == note.id { selectedNoteID = nil }
+                if editingNoteID == note.id { editingNoteID = nil }
                 listVM?.delete(note)
             }
         ))
     }
 
-    // MARK: - 双栏布局
+    /// 把 editingNoteID（UUID?）桥接成 `.sheet(item:)` 需要的 `Binding<Note?>`。
+    /// note 在 notes 查不到（被删）时自动回 nil，sheet 关闭。
+    private var editingNoteBinding: Binding<Note?> {
+        Binding(
+            get: { editingNoteID.flatMap { id in notes.first { $0.id == id } } },
+            set: { editingNoteID = $0?.id }
+        )
+    }
+
+    // MARK: - masonry 笔记墙布局
 
     @ViewBuilder
     private func content(listVM: NoteListViewModel) -> some View {
-        HStack(spacing: 0) {
-            // 左列表 320pt
-            noteList(listVM: listVM)
-                .frame(width: 320)
-                .overlay(alignment: .trailing) {
-                    Rectangle()
-                        .fill(Color.lj.border)
-                        .frame(width: 0.5)
-                }
-
-            // 右编辑器（flex）
-            editorPane(listVM: listVM)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.lj.bg)
-    }
-
-    // MARK: - 左列表
-
-    @ViewBuilder
-    private func noteList(listVM: NoteListViewModel) -> some View {
         @Bindable var vm = listVM
         let results = vm.results
         let total = vm.sortedNotes.count
 
-        VStack(alignment: .leading, spacing: LJSpacing.s12) {
-            // 大标题 + 计数副标
-            HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s10) {
-                Text(LJStrings.inspirationTitle).ljDisplayTitleStyle()
-                Text(LJStrings.inspirationNotesCount(total))
-                    .font(.system(size: 12.5, weight: .medium, design: .default))
-                    .foregroundStyle(Color.lj.inkMute)
-                Spacer()
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: LJSpacing.s22) {
+                header(listVM: listVM)
+
+                if total == 0 {
+                    emptyWall(listVM: listVM)
+                } else {
+                    masonryWall(notes: results, listVM: listVM)
+                }
             }
+            .padding(.horizontal, LJSpacing.s28)
+            .padding(.top, LJSpacing.s22)
+            .padding(.bottom, LJSpacing.s28)
+            .frame(maxWidth: 1100, alignment: .leading)
+        }
+        // v1.3 R5：背景透明 —— 让 RootWindow 底色 + orb 透上来。
+    }
 
-            // 搜索框（chip 样式）
-            searchField(vm: vm)
+    // MARK: - Header（标题 + 副标 + 品牌渐变「记录灵感」）
 
-            // 「+ New note」按钮（ink 观感）
-            newNoteButton(listVM: listVM)
+    @ViewBuilder
+    private func header(listVM: NoteListViewModel) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(LJStrings.inspirationTitle).ljDisplayTitleStyle()
+                Text(LJStrings.inspirationSubtitle)
+                    .font(.system(size: 13, weight: .medium, design: .default))
+                    .foregroundStyle(Color.lj.inkSoft)
+            }
+            Spacer(minLength: LJSpacing.s16)
+            LJPrimaryButton(LJStrings.recordIdea, systemImage: "plus") {
+                createAndEdit(listVM: listVM)
+            }
+        }
+    }
 
-            // 列表 / 空状态
-            if total == 0 {
-                Spacer()
-                EmptyState(
-                    variant: .inboxZero,
-                    ctaTitle: LJStrings.inspirationNewNote,
-                    action: { createAndSelect(listVM: listVM) }
-                )
-                Spacer()
-            } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: LJSpacing.s4) {
-                        ForEach(results, id: \.id) { note in
-                            noteRow(note: note, listVM: listVM)
+    // MARK: - masonry 墙（3 列轮转分配近似 column-count:3）
+
+    @ViewBuilder
+    private func masonryWall(notes: [Note], listVM: NoteListViewModel) -> some View {
+        // 轮转分配：第 i 张卡进第 (i % columnCount) 列，逐列纵向堆叠（近似 CSS column-count 的列内 top-down 流）。
+        let columns: [[Note]] = (0..<columnCount).map { col in
+            notes.enumerated().compactMap { idx, n in idx % columnCount == col ? n : nil }
+        }
+        HStack(alignment: .top, spacing: LJSpacing.s16) {
+            ForEach(0..<columnCount, id: \.self) { col in
+                VStack(alignment: .leading, spacing: LJSpacing.s16) {
+                    ForEach(columns[col], id: \.id) { note in
+                        NoteCard(note: note) {
+                            editingNoteID = note.id
+                        }
+                        .contextMenu {
+                            noteCardActions(note: note, listVM: listVM)
                         }
                     }
-                    .padding(.trailing, 2)
                 }
+                .frame(maxWidth: .infinity, alignment: .top)
             }
-        }
-        .padding(.horizontal, LJSpacing.s18)
-        .padding(.top, LJSpacing.s22)
-        .padding(.bottom, LJSpacing.s18)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.lj.bg)
-    }
-
-    /// chip 样式搜索输入框。
-    @ViewBuilder
-    private func searchField(vm: NoteListViewModel) -> some View {
-        @Bindable var vm = vm
-        HStack(spacing: LJSpacing.s8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.lj.inkMute)
-            TextField(text: $vm.searchText) {
-                Text(LJStrings.inspirationSearchPlaceholder)
-            }
-            .textFieldStyle(.plain)
-            .font(.system(size: 12.5, weight: .medium))
-            .foregroundStyle(Color.lj.ink)
-            if !vm.searchText.isEmpty {
-                Button { vm.searchText = "" } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color.lj.inkMute)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, LJSpacing.s10)
-        .frame(height: 28)
-        .background(
-            RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.lj.chip)
-        )
-    }
-
-    /// 「+ New note」ink 按钮。
-    @ViewBuilder
-    private func newNoteButton(listVM: NoteListViewModel) -> some View {
-        Button {
-            createAndSelect(listVM: listVM)
-        } label: {
-            Text(LJStrings.inspirationNewNote)
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(Color.lj.bg)
-                .frame(maxWidth: .infinity)
-                .frame(height: 30)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(Color.lj.ink)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// 单个 note 行：displayTitle + 正文摘要 + updatedAt mono 时间 + 置顶标记。
-    @ViewBuilder
-    private func noteRow(note: Note, listVM: NoteListViewModel) -> some View {
-        let isSelected = selectedNoteID == note.id
-        let snippet = bodySnippet(note)
-
-        Button {
-            selectedNoteID = note.id
-        } label: {
-            HStack(alignment: .top, spacing: LJSpacing.s8) {
-                if note.isPinned {
-                    Image(systemName: "pin.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(Color.lj.inkMute)
-                        .padding(.top, 3)
-                }
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(alignment: .firstTextBaseline, spacing: LJSpacing.s8) {
-                        Text(note.displayTitle)
-                            .font(.system(size: 13.5, weight: .semibold))
-                            .foregroundStyle(Color.lj.ink)
-                            .lineLimit(1)
-                        Spacer(minLength: LJSpacing.s8)
-                        Text(timeText(note.updatedAt))
-                            .font(.lj.mono)
-                            .foregroundStyle(Color.lj.inkMute)
-                    }
-                    Text(snippet.isEmpty ? " " : snippet)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(Color.lj.inkSoft)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, LJSpacing.s10)
-            .padding(.vertical, LJSpacing.s8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(isSelected ? Color.lj.chip : Color.clear)
-            )
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            noteRowActions(note: note, listVM: listVM)
         }
     }
 
-    /// note 行 contextMenu：Pin / Unpin + Delete（二次确认）。
+    /// note 卡 contextMenu：Pin / Unpin + Delete（二次确认）。
     @ViewBuilder
-    private func noteRowActions(note: Note, listVM: NoteListViewModel) -> some View {
+    private func noteCardActions(note: Note, listVM: NoteListViewModel) -> some View {
         Button {
             listVM.togglePinned(note)
         } label: {
@@ -254,60 +165,68 @@ struct InspirationView_macOS: View {
         }
     }
 
-    // MARK: - 右编辑器
+    // MARK: - 空状态
 
     @ViewBuilder
-    private func editorPane(listVM: NoteListViewModel) -> some View {
-        if let id = selectedNoteID, let note = notes.first(where: { $0.id == id }) {
-            // 用 .id(note.id) 强制在切换 note 时重建编辑器（NoteEditorViewModel 持有具体 note）。
+    private func emptyWall(listVM: NoteListViewModel) -> some View {
+        VStack {
+            Spacer(minLength: LJSpacing.s32)
+            EmptyState(
+                variant: .inboxZero,
+                ctaTitle: LJStrings.recordIdea,
+                action: { createAndEdit(listVM: listVM) }
+            )
+            Spacer(minLength: LJSpacing.s32)
+        }
+        .frame(maxWidth: .infinity, minHeight: 360)
+    }
+
+    // MARK: - 编辑 sheet（保留完整富文本编辑能力）
+
+    @ViewBuilder
+    private func noteEditorSheet(note: Note) -> some View {
+        VStack(spacing: 0) {
             NoteEditorPane(
                 note: note,
-                onTogglePin: { listVM.togglePinned(note) },
+                onTogglePin: { listVM?.togglePinned(note) },
                 onRequestDelete: { notePendingDelete = note }
             )
             .id(note.id)
-        } else {
-            // 未选中：温和提示。
-            VStack(spacing: LJSpacing.s14) {
-                Image(systemName: "lightbulb")
-                    .font(.system(size: 30, weight: .light))
-                    .foregroundStyle(Color.lj.inkDim)
-                Text(LJStrings.inspirationEmptySubtitle)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.lj.inkMute)
+
+            // 底部「完成」收口（macOS .sheet ESC 不自动 dismiss，需绑 .cancelAction，见 CLAUDE.md）。
+            Divider().overlay(Color.lj.border)
+            HStack {
+                Spacer()
+                Button {
+                    editingNoteID = nil
+                } label: {
+                    Text(LJStrings.commonDone)
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(Color.lj.bg)
+                        .padding(.horizontal, LJSpacing.s14)
+                        .frame(height: 28)
+                        .background(
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .fill(Color.lj.ink)
+                        )
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.cancelAction)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.lj.bg)
+            .padding(.horizontal, LJSpacing.s16)
+            .padding(.vertical, LJSpacing.s12)
+            .background(Color.lj.bgSoft)
         }
+        .frame(width: 560, height: 520)
+        .background(Color.lj.panel)
     }
 
     // MARK: - Helpers
 
-    /// 新建 note 并立即选中（右侧打开编辑器）。
-    private func createAndSelect(listVM: NoteListViewModel) {
+    /// 新建 note 并立即打开编辑 sheet。
+    private func createAndEdit(listVM: NoteListViewModel) {
         let note = listVM.createNote()
-        selectedNoteID = note.id
-    }
-
-    /// 正文摘要单行：取纯文本去掉首行（displayTitle 已用首行）后的第一段非空文本；无则空串。
-    private func bodySnippet(_ note: Note) -> String {
-        let plain = String(note.body.characters)
-        let lines = plain.split(separator: "\n", omittingEmptySubsequences: false)
-        var seenTitle = false
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.isEmpty { continue }
-            if !seenTitle { seenTitle = true; continue }  // 跳过首行（= displayTitle）
-            return trimmed
-        }
-        return ""
-    }
-
-    /// "09:30" 等 mono 时间（与 MainView 同格式）。
-    private func timeText(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.dateFormat = "HH:mm"
-        return f.string(from: date)
+        editingNoteID = note.id
     }
 }
 

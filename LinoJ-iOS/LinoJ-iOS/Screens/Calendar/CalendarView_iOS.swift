@@ -45,7 +45,7 @@ struct CalendarView_iOS: View {
             if let vm {
                 content(vm: vm)
             } else {
-                Color.lj.iosMainBg.ignoresSafeArea()
+                Color.clear.ljScreenBackground(.iOS)
             }
         }
         .task {
@@ -134,25 +134,22 @@ struct CalendarView_iOS: View {
     @ViewBuilder
     private func content(vm: CalendarViewModel) -> some View {
         ZStack {
-            Color.lj.iosMainBg.ignoresSafeArea()
-
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    // Hero header（让出 FloatingActions）
+                    // Hero header（让出 FloatingActions）= H1 标题 + ＋新建日程主按钮。
                     header(vm: vm)
                         .padding(.top, 64)
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 12)
+                        .padding(.bottom, 18)
 
-                    // 周 nav 行
+                    // 周 nav 行（保留周翻页 — 原型横滑条单条不含翻周，功能必需，造型从简）。
                     weekNavRow(vm: vm)
                         .padding(.horizontal, 20)
-                        .padding(.bottom, 14)
+                        .padding(.bottom, 12)
 
-                    // 7-day strip
+                    // 7-day 横滑日期条
                     weekStrip(vm: vm)
-                        .padding(.horizontal, 14)
-                        .padding(.bottom, 18)
+                        .padding(.bottom, 20)
 
                     // 单日 list 标题（"Today" / "Tomorrow" / weekday, May d）
                     dayHeader(vm: vm)
@@ -193,17 +190,21 @@ struct CalendarView_iOS: View {
                 }
             }
         }
+        // v1.3 R7：iOS 底色渐变 + bloom orb。
+        .ljScreenBackground(.iOS)
     }
 
     // MARK: - Header
 
+    /// v1.3 R7（对原型重建）：H1 标题 + ＋新建日程品牌渐变主按钮（原型无副标）。
     @ViewBuilder
     private func header(vm: CalendarViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 14) {
             Text(LJStrings.tabCalendar).ljDisplayTitleStyle()
-            Text(LJStrings.countsEventsNext7Days(vm.weekTotal))
-                .font(.system(size: 13.5, weight: .medium, design: .default))
-                .foregroundStyle(Color.lj.inkSoft)
+            LJPrimaryButton(LJStrings.newEventTitle) {
+                router.quickAddDefaultKind = .event
+                router.showQuickAdd = true
+            }
         }
     }
 
@@ -274,12 +275,16 @@ struct CalendarView_iOS: View {
 
     // MARK: - 7-day strip
 
+    /// v1.3 R7（对原型重建）：横滑 7 日条，每枚 pill 50pt 宽，选中 = 浅紫软底 + 紫数字（原型 d.pillBg）。
     @ViewBuilder
     private func weekStrip(vm: CalendarViewModel) -> some View {
-        HStack(spacing: 6) {
-            ForEach(vm.weekDays, id: \.self) { day in
-                dayPill(day: day, vm: vm)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(vm.weekDays, id: \.self) { day in
+                    dayPill(day: day, vm: vm)
+                }
             }
+            .padding(.horizontal, 18)
         }
     }
 
@@ -293,35 +298,28 @@ struct CalendarView_iOS: View {
         Button {
             vm.selectDay(day)
         } label: {
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Text(isToday
                      ? String(localized: LJStrings.today)
                      : weekdayShortLabel(for: day))
-                    .font(.system(size: 10, weight: .semibold, design: .default))
-                    .kerning(0.6)
-                    .textCase(.uppercase)
-                    .foregroundStyle(isSelected ? Color.lj.panel.opacity(0.75) : Color.lj.inkMute)
+                    .font(.system(size: 11, weight: .semibold, design: .default))
+                    .foregroundStyle(isSelected ? Color.lj.accent : Color.lj.inkMute)
                 Text(dayNumber(for: day))
                     .font(.system(size: 18, weight: .bold, design: .default))
-                    .kerning(-0.36)
-                    .foregroundStyle(isSelected ? Color.lj.panel : Color.lj.ink)
+                    .monospacedDigit()
+                    .foregroundStyle(isSelected ? Color.lj.accentDeep : Color.lj.ink)
                 // 占位 dot：有事件时显示，确保所有 pill 高度一致。
                 Circle()
-                    .fill(count > 0 ? (isSelected ? Color.lj.panel.opacity(0.8) : Color.lj.ink) : Color.clear)
+                    .fill(count > 0 ? (isSelected ? Color.lj.purpleDot : Color.lj.inkMute) : Color.clear)
                     .frame(width: 4, height: 4)
-                    .padding(.top, 1)
             }
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: 48)
+            .padding(.vertical, 10)
+            .frame(width: 50)
             .background {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(isSelected ? Color.lj.ink : Color.clear)
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(isSelected ? Color.lj.scopeCompanyBg : Color.clear)
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(isSelected ? Color.lj.ink : Color.lj.border, lineWidth: 0.5)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
         }
         .buttonStyle(.plain)
     }

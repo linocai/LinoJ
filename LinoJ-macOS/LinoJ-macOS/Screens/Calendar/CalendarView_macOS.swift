@@ -55,7 +55,8 @@ struct CalendarView_macOS: View {
     private let startHour: Int = 7
     private let endHour: Int = 21
     private var hoursVisible: Int { endHour - startHour }   // 14
-    private let pxPerHour: CGFloat = 46
+    // v1.3 R4：对原型重建 —— 行高 44pt（原型 repeating-linear-gradient 44px / (ev.s-7)*44 定位）。
+    private let pxPerHour: CGFloat = 44
     private let timeColumnWidth: CGFloat = 52
 
     var body: some View {
@@ -63,7 +64,8 @@ struct CalendarView_macOS: View {
             if let vm {
                 content(vm: vm)
             } else {
-                Color.lj.bg.ignoresSafeArea()
+                // v1.3 R4：透明占位，让 RootWindow 背景层（底色 + orb）透上来。
+                Color.clear
             }
         }
         .task {
@@ -188,8 +190,11 @@ struct CalendarView_macOS: View {
                     ? threeDayWindow(vm: vm)
                     : vm.weekDays
 
-                let hPadding = LJSpacing.s28 * 2
-                let availableWidth = geo.size.width - hPadding - timeColumnWidth
+                // v1.3 R4：标准布局下网格在玻璃面板内 —— 可用宽 = 窗口宽 - 外边距(s28×2)
+                // - 面板内边距(s18×2) - 时间 gutter。横向 scroll 模式仍用窗口宽减外边距。
+                let outerH = LJSpacing.s28 * 2
+                let panelInner = needsHorizontalScroll ? 0 : LJSpacing.s18 * 2
+                let availableWidth = geo.size.width - outerH - panelInner - timeColumnWidth
                 let evenColumnWidth = max(40, availableWidth / CGFloat(visibleDays.count))
                 let columnWidth: CGFloat = needsHorizontalScroll ? 130 : evenColumnWidth
 
@@ -197,30 +202,38 @@ struct CalendarView_macOS: View {
                     if needsHorizontalScroll {
                         scrollableWeekGrid(vm: vm, visibleDays: visibleDays, columnWidth: columnWidth)
                     } else {
-                        // 星期表头行：紧贴 header 下方。
-                        weekdayHeaderRow(vm: vm, visibleDays: visibleDays, columnWidth: columnWidth)
-                            .padding(.horizontal, LJSpacing.s28)
-                            .padding(.top, LJSpacing.s6)
-                            .padding(.bottom, LJSpacing.s8)
+                        // v1.3 R4（对原型重建）：周网格整体 = 容器玻璃面板（圆角 18 + hairline + 顶高光 + 柔投影）。
+                        // 内部仍是「表头行 + 0.5px 分隔 + 滚动网格」结构（保留三坑防护：Color.clear 限高 /
+                        // GeometryReader 测宽 / ZStack .topLeading）。面板自带 s18 边距，故内部网格 padding 收窄。
+                        VStack(alignment: .leading, spacing: 0) {
+                            // 星期表头行：紧贴面板顶部。
+                            weekdayHeaderRow(vm: vm, visibleDays: visibleDays, columnWidth: columnWidth)
+                                .padding(.top, LJSpacing.s4)
+                                .padding(.bottom, LJSpacing.s8)
 
-                        Rectangle().fill(Color.lj.border).frame(height: 0.5)
+                            Rectangle().fill(Color.lj.border).frame(height: 0.5)
 
-                        // ScrollView 吃剩余高度；weekGrid 顶对齐，多余高度落 9PM 之后（网格底部）。
-                        ScrollView(.vertical, showsIndicators: true) {
-                            weekGrid(vm: vm, visibleDays: visibleDays, columnWidth: columnWidth)
-                                .padding(.horizontal, LJSpacing.s28)
-                                .padding(.top, LJSpacing.s8)
-                                .padding(.bottom, LJSpacing.s16)
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                            // ScrollView 吃剩余高度；weekGrid 顶对齐，多余高度落 9PM 之后（网格底部）。
+                            ScrollView(.vertical, showsIndicators: true) {
+                                weekGrid(vm: vm, visibleDays: visibleDays, columnWidth: columnWidth)
+                                    .padding(.top, LJSpacing.s8)
+                                    .padding(.bottom, LJSpacing.s8)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                            }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .padding(LJSpacing.s18)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                        .ljGlassPanel(radius: LJRadii.panel, padded: false)
+                        .padding(.horizontal, LJSpacing.s28)
+                        .padding(.bottom, LJSpacing.s22)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color.lj.bg)
+        // v1.3 R4：背景透明 —— 让 RootWindow 底色 + orb 透上来，周网格玻璃面板浮起。
     }
 
     /// < 1100pt：横向 ScrollView 包整组日列；时间标签列保持在最左（不滚），
@@ -346,20 +359,26 @@ struct CalendarView_macOS: View {
 
             Button { vm.goToday() } label: {
                 Text(LJStrings.today)
-                    .font(.system(size: 11.5, weight: .semibold, design: .default))
+                    .font(.system(size: 12.5, weight: .semibold, design: .default))
                     .foregroundStyle(Color.lj.inkSoft)
-                    .padding(.horizontal, 10)
-                    .frame(height: 26)
+                    .padding(.horizontal, LJSpacing.s14)
+                    .frame(height: 28)
                     .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .strokeBorder(Color.lj.border, lineWidth: 0.5)
                     )
+                    .overlay { LJTopHighlight(radius: 10) }
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text(LJStrings.jumpToday))
         }
     }
 
+    /// v1.3 R4（对原型重建）：周区间左右 nav 箭头 —— 26pt 玻璃方块（材质 + hairline + 顶高光，圆角 8）。
     @ViewBuilder
     private func navIconLabel(_ symbol: String) -> some View {
         Text(symbol)
@@ -367,29 +386,23 @@ struct CalendarView_macOS: View {
             .foregroundStyle(Color.lj.inkSoft)
             .frame(width: 26, height: 26)
             .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(Color.lj.border, lineWidth: 0.5)
             )
+            .overlay { LJTopHighlight(radius: 8) }
     }
 
-    /// `+ New event` ink 按钮 —— P3.6 接通：预设 Quick Add 的 Event tab。
+    /// v1.3 R4（对原型重建）：`+新建日程` 品牌渐变主按钮（原型 macOS 日历页头部）。
     @ViewBuilder
     private func newEventButton() -> some View {
-        Button {
+        LJPrimaryButton(LJStrings.newEventTitle, systemImage: "plus") {
             router.quickAddDefaultKind = .event
             router.showQuickAdd = true
-        } label: {
-            Text(LJStrings.newEvent)
-                .font(.system(size: 12.5, weight: .semibold, design: .default))
-                .foregroundStyle(Color.lj.bg)
-                .padding(.horizontal, LJSpacing.s12)
-                .frame(height: 28)
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(Color.lj.ink)
-                )
         }
-        .buttonStyle(.plain)
         .accessibilityLabel(Text(LJStrings.newEventAcc))
     }
 
@@ -423,6 +436,9 @@ struct CalendarView_macOS: View {
     @ViewBuilder
     private func weekdayHeaderCell(vm: CalendarViewModel, dayStart: Date, columnWidth: CGFloat) -> some View {
         let isToday = CalendarViewModel.calendar.isDate(dayStart, inSameDayAs: vm.todayStart)
+        let isWeekend = CalendarViewModel.calendar.isDateInWeekend(dayStart)
+        // v1.3 R4（对原型重建）：今日表头 = 紫（accentDeep #5B5BD6）；周末 = inkMute；平日 = ink。
+        let headColor: Color = isToday ? Color.lj.accentDeep : (isWeekend ? Color.lj.inkMute : Color.lj.ink)
         VStack(alignment: .leading, spacing: 2) {
             // today 列顶部小标签显示本地化 "TODAY" / "今天"；其余日显示周缩写（MON/TUE…）。
             Text(isToday
@@ -431,21 +447,24 @@ struct CalendarView_macOS: View {
                 .font(.system(size: 10.5, weight: .semibold, design: .default))
                 .kerning(0.63)
                 .textCase(.uppercase)
-                .foregroundStyle(Color.lj.inkMute)
+                .foregroundStyle(isToday ? Color.lj.accentDeep : Color.lj.inkMute)
             HStack(spacing: 6) {
                 Text(dayNumber(for: dayStart))
                     .font(.system(size: 20, weight: .semibold, design: .default))
                     .kerning(-0.4)
-                    .foregroundStyle(Color.lj.ink)
+                    .foregroundStyle(headColor)
                 if isToday {
                     Circle()
-                        .fill(Color.lj.ink)
+                        .fill(Color.lj.accentDeep)
                         .frame(width: 5, height: 5)
                 }
             }
         }
-        .frame(width: columnWidth, alignment: .leading)
+        // ⚠️ padding 必须在 frame 内侧：若 .padding 在 .frame 外，单元实宽 = columnWidth + 8，
+        // 而下方网格列宽 = columnWidth → 表头日期号逐列右漂 8pt（today 列 0、末列 +48pt，对不准网格列）。
+        // 先 padding 再 frame：标签在 columnWidth 内左缩 8pt，单元实宽严格 = columnWidth，与网格对齐。
         .padding(.leading, 8)
+        .frame(width: columnWidth, alignment: .leading)
     }
 
     // MARK: - Week grid
@@ -530,11 +549,10 @@ struct CalendarView_macOS: View {
                 .fill(Color.lj.border)
                 .frame(width: 0.5, height: totalHeight)
 
-            // today 背景微染
+            // v1.3 R4（对原型重建）：today 列浅紫高亮（原型 colBg rgba(110,110,230,0.05)）。
             if isToday {
-                Color.lj.bgSoft
+                Color.lj.navSelected.opacity(0.4)
                     .frame(width: columnWidth, height: totalHeight)
-                    .opacity(0.8)
             }
 
             // 横向小时分隔线

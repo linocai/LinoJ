@@ -308,6 +308,23 @@
         }
       }
     },
+    "Calendar.newEventTitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New event"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建日程"
+          }
+        }
+      }
+    },
     "Calendar.nextWeek": {
       "extractionState": "manual",
       "localizations": {
@@ -406,6 +423,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "完成"
+          }
+        }
+      }
+    },
+    "Company.newItem": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New company item"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建公司事项"
+          }
+        }
+      }
+    },
+    "Company.newProject": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New project"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建项目"
           }
         }
       }
@@ -1532,6 +1583,23 @@
         }
       }
     },
+    "Inspiration.recordIdea": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Record an idea"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "记录灵感"
+          }
+        }
+      }
+    },
     "Inspiration.searchPlaceholder": {
       "extractionState": "manual",
       "localizations": {
@@ -1545,6 +1613,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "搜索笔记…"
+          }
+        }
+      }
+    },
+    "Inspiration.subtitle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stray thoughts, lists, and fragments"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "随手记下的念头、清单与片段"
           }
         }
       }
@@ -1715,6 +1800,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "%d 件都标急了——还都急吗？"
+          }
+        }
+      }
+    },
+    "Personal.newTodo": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New personal todo"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新建个人待办"
           }
         }
       }
