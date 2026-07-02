@@ -389,19 +389,11 @@ struct MainView_iOS: View {
                     .strikethrough(todo.done, color: Color.lj.inkMute)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                // v1.3 R7：来源标签（个人灰 / 公司紫）小胶囊（仅主页）；非主页仅显项目名。
+                // v1.3 签收前修复（🟡-5）：来源标签胶囊 + 项目名胶囊并排（仅主页，§E 契约 / 原型 728-734 行）；
+                // 非主页仅显项目名。复用 LJSourceLabel（与 TodoBubble urgent 行同款），修前只渲 scope、
+                // 项目名分支误落 else-if 导致挂 project 的公司待办不显示项目名。
                 if showSource {
-                    Text(todo.scope == .company ? LJStrings.tabCompany : LJStrings.tabPersonal)
-                        .font(.system(size: 10.5, weight: .semibold, design: .default))
-                        .foregroundStyle(todo.scope == .company ? Color.lj.scopeCompanyFg : Color.lj.inkSoft)
-                        .padding(.horizontal, LJSpacing.s8)
-                        .padding(.vertical, 3)
-                        .background {
-                            RoundedRectangle(cornerRadius: LJRadii.sourceLabel, style: .continuous)
-                                .fill(todo.scope == .company ? Color.lj.scopeCompanyBg : Color.lj.chip)
-                        }
-                        .lineLimit(1)
-                        .fixedSize()
+                    LJSourceLabel(scope: todo.scope, projectName: todo.project?.title)
                 } else if let project = todo.project {
                     Text(project.title.split(separator: " ").first.map(String.init) ?? project.title)
                         .font(.system(size: 10.5, weight: .medium, design: .default))

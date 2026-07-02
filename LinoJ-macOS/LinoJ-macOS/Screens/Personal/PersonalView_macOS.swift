@@ -236,14 +236,14 @@ struct PersonalView_macOS: View {
     private func completedRow(todo: Todo, onToggle: @escaping () -> Void) -> some View {
         Button(action: onToggle) {
             HStack(alignment: .top, spacing: LJSpacing.s10) {
-                // 已完成 checkbox（实心方框）
+                // 已完成 checkbox（品牌渐变实心方块 + 白勾，与 TodoBubble/compactNormalRow done 态同款，§G/R2 契约）。
                 ZStack {
-                    RoundedRectangle(cornerRadius: 3, style: .continuous)
-                        .strokeBorder(Color.lj.inkMute, lineWidth: 1.2)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(LJGradients.brand)
                         .frame(width: 13, height: 13)
-                    RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(Color.lj.ink)
-                        .frame(width: 8, height: 8)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(.white)
                 }
                 .padding(.top, 2)
 

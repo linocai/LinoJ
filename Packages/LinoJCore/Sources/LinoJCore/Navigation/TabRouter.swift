@@ -61,6 +61,11 @@ public final class TabRouter {
     /// Settings 是否展示。P3.8 接通；当前 ⌘, 只翻这个 flag。
     public var showSettings: Bool = false
 
+    /// v1.3 签收前修复（🟡-4）：iOS 笔记编辑器（push 层）打开时置 true，隐藏 RootTabView 全局
+    /// FloatingActions（search/gear），避免与编辑器导航栏 `⋯` 菜单在右上角几何重叠。
+    /// InspirationView_iOS push/pop 编辑器时设置，pop 后清回 false（与既有 pending* 信号同模式）。
+    public var hideFloatingActions: Bool = false
+
     // MARK: - W3 精确定位信号（Search 结果 → 跨视图定位）
 
     /// W3：Search 选中 project 后写入目标 project.id。CompanyView 监听非 nil 时把它

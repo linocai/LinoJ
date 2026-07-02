@@ -261,7 +261,7 @@ struct CompanyView_macOS: View {
     private func chipBody(_ text: Text, selected: Bool) -> some View {
         text
             .font(.system(size: 12.5, weight: .semibold, design: .default))
-            .foregroundStyle(selected ? Color.white : Color.lj.inkSoft)
+            .foregroundStyle(selected ? Color.lj.panel : Color.lj.inkSoft)
             .padding(.horizontal, LJSpacing.s14)
             .padding(.vertical, 6)
             .background {

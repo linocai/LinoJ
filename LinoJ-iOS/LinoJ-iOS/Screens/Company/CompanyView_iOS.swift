@@ -245,7 +245,7 @@ struct CompanyView_iOS: View {
     private func chipLabel(_ text: Text, selected: Bool) -> some View {
         text
             .font(.system(size: 13, weight: selected ? .semibold : .medium, design: .default))
-            .foregroundStyle(selected ? Color.white : Color.lj.inkSoft)
+            .foregroundStyle(selected ? Color.lj.panel : Color.lj.inkSoft)
             .lineLimit(1)
             .fixedSize()
             .padding(.horizontal, 15)

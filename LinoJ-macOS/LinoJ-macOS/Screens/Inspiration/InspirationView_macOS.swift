@@ -34,8 +34,12 @@ struct InspirationView_macOS: View {
     /// 当前编辑中的 note id（nil = 未打开编辑 sheet）。用 id 而非引用，删除后能稳健失效。
     @State private var editingNoteID: UUID?
 
-    /// W4 同模式：待删除确认的 note（驱动 `.confirmationDialog`）。nil = 无弹窗。
+    /// W4 同模式：待删除确认的 note（驱动根级 `.confirmationDialog`，卡片 contextMenu 路径 / sheet 未开时）。
     @State private var notePendingDelete: Note?
+
+    /// v1.3 签收前修复（🟡-3）：sheet 内 ⋯ 菜单删除的独立确认状态。与 `notePendingDelete` 分离，
+    /// 避免 sheet 打开时两个呈现源同挂 confirmationDialog 导致兄弟级弹窗被 sheet 覆盖静默不弹。
+    @State private var sheetNotePendingDelete: Note?
 
     /// masonry 列数。
     private let columnCount = 3
@@ -61,7 +65,9 @@ struct InspirationView_macOS: View {
         .sheet(item: editingNoteBinding) { note in
             noteEditorSheet(note: note)
         }
-        // 删除笔记二次确认（抽成 modifier 减轻 body 类型检查负担，见 CLAUDE.md）。
+        // v1.3 签收前修复（🟡-3）：删除确认仅挂在卡片 contextMenu 路径的根级（sheet 未开时可达）。
+        // sheet 内路径的确认框改挂进 noteEditorSheet 内容本身（见下方 noteEditorSheet），
+        // 避免与 .sheet 同级呈现源冲突（sheet 开时兄弟级 confirmationDialog 会被覆盖静默不弹）。
         .modifier(NoteDeleteConfirmModifier(
             pending: $notePendingDelete,
             onConfirm: { note in
@@ -92,8 +98,12 @@ struct InspirationView_macOS: View {
             VStack(alignment: .leading, spacing: LJSpacing.s22) {
                 header(listVM: listVM)
 
+                searchField(listVM: listVM)
+
                 if total == 0 {
                     emptyWall(listVM: listVM)
+                } else if results.isEmpty {
+                    noResultsWall(query: vm.searchText)
                 } else {
                     masonryWall(notes: results, listVM: listVM)
                 }
@@ -122,6 +132,45 @@ struct InspirationView_macOS: View {
                 createAndEdit(listVM: listVM)
             }
         }
+    }
+
+    // MARK: - 搜索框（v1.3 签收前修复：恢复内嵌搜索，接回既有 NoteListViewModel.searchText）
+
+    /// 小玻璃输入框（`.ultraThinMaterial`），贴合紫蓝玻璃体系；不破坏 masonry 布局（放在头部与墙之间）。
+    @ViewBuilder
+    private func searchField(listVM: NoteListViewModel) -> some View {
+        @Bindable var vm = listVM
+        HStack(spacing: LJSpacing.s8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.lj.inkMute)
+            TextField(text: $vm.searchText) {
+                Text(LJStrings.inspirationSearchPlaceholder)
+            }
+            .textFieldStyle(.plain)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(Color.lj.ink)
+            if !vm.searchText.isEmpty {
+                Button {
+                    vm.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.lj.inkMute)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, LJSpacing.s14)
+        .frame(height: 34)
+        .background {
+            Capsule(style: .continuous).fill(.ultraThinMaterial)
+        }
+        .overlay {
+            Capsule(style: .continuous).strokeBorder(Color.lj.borderStrong, lineWidth: 0.5)
+        }
+        .overlay { LJTopHighlight(radius: 999) }
+        .frame(maxWidth: 320, alignment: .leading)
     }
 
     // MARK: - masonry 墙（3 列轮转分配近似 column-count:3）
@@ -181,6 +230,17 @@ struct InspirationView_macOS: View {
         .frame(maxWidth: .infinity, minHeight: 360)
     }
 
+    /// 搜索无结果态（复用既有 EmptyState.noResults variant，不新增本地化 key）。
+    @ViewBuilder
+    private func noResultsWall(query: String) -> some View {
+        VStack {
+            Spacer(minLength: LJSpacing.s32)
+            EmptyState(variant: .noResults(query))
+            Spacer(minLength: LJSpacing.s32)
+        }
+        .frame(maxWidth: .infinity, minHeight: 360)
+    }
+
     // MARK: - 编辑 sheet（保留完整富文本编辑能力）
 
     @ViewBuilder
@@ -189,7 +249,8 @@ struct InspirationView_macOS: View {
             NoteEditorPane(
                 note: note,
                 onTogglePin: { listVM?.togglePinned(note) },
-                onRequestDelete: { notePendingDelete = note }
+                // v1.3 签收前修复（🟡-3）：设独立 sheet 内状态，确认框挂在 sheet 内容树上（见下方 modifier）。
+                onRequestDelete: { sheetNotePendingDelete = note }
             )
             .id(note.id)
 
@@ -219,6 +280,15 @@ struct InspirationView_macOS: View {
         }
         .frame(width: 560, height: 520)
         .background(Color.lj.panel)
+        // v1.3 签收前修复（🟡-3）：删除确认挂在 sheet 内容树内，与根级 modifier 分离的独立状态，
+        // 确保 sheet 打开时点击 ⋯ 删除能正常弹出（不被根级同级 presentation 覆盖）。
+        .modifier(NoteDeleteConfirmModifier(
+            pending: $sheetNotePendingDelete,
+            onConfirm: { deletedNote in
+                if editingNoteID == deletedNote.id { editingNoteID = nil }
+                listVM?.delete(deletedNote)
+            }
+        ))
     }
 
     // MARK: - Helpers

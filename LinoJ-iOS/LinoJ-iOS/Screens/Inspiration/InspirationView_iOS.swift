@@ -10,8 +10,10 @@
 //     → createNote() → push 编辑器。**不放导航栏 trailing**——会与 RootTabView 全局 Floating
 //     Actions（.overlay(.topTrailing)）在右上角重叠被遮挡（模拟器实测无法新建）。
 //     **不复用全局 Quick Add `+`**（Quick Add 专属 Todo/Event/Project）。
-//   - 删除 / 置顶：note 行用 iOS swipe actions（左滑删除红 / leading 置顶）
-//     + 编辑器导航栏 `⋯` 菜单（Pin/Unpin/Delete，删除 `.confirmationDialog`）。
+//   - 删除 / 置顶：note 行用 `.contextMenu`（长按 Pin/Unpin/Delete + 二次确认，v1.3 签收前修复
+//     🟡-4 由 `.swipeActions` 迁来——该 API 挂在 ScrollView+ForEach 上仅 List 行内生效，原实现静默无效）
+//     + 编辑器导航栏 `⋯` 菜单（Pin/Unpin/Delete，删除 `.confirmationDialog`）。编辑器 push 期间
+//     隐藏 RootTabView 全局 FloatingActions（router.hideFloatingActions），避免与 `⋯` 几何重叠。
 //   - 空状态：复用 EmptyState 组件 + CTA。
 //
 // 富文本 API 结论（沿用 U3 —— iOS 26 同属一套 SDK，原生 TextEditor(AttributedString) 可用）：
@@ -29,6 +31,7 @@ import LinoJCore
 struct InspirationView_iOS: View {
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(TabRouter.self) private var router
 
     /// 列表 ViewModel —— `.task` 中由 modelContext 实例化（Optional 兜底让 body 在 task fire 前可编译）。
     @State private var listVM: NoteListViewModel?
@@ -38,6 +41,11 @@ struct InspirationView_iOS: View {
 
     /// push 进编辑器的目标 note id（nil = 在列表根）。用 id 而非引用，删除后能稳健失效。
     @State private var pushedNoteID: UUID?
+
+    /// v1.3 签收前修复（🟡-4）：列表 contextMenu 删除的二次确认（迁自 `.swipeActions`，
+    /// ScrollView+ForEach 下 swipeActions 静默无效，改长按 contextMenu 后误触风险更高，
+    /// 与 macOS 版 `notePendingDelete` 同模式补确认框）。nil = 无弹窗。
+    @State private var notePendingDelete: Note?
 
     var body: some View {
         NavigationStack {
@@ -72,6 +80,22 @@ struct InspirationView_iOS: View {
         // SwiftData 数据变化时让 ViewModel 重算 computed property。
         .onChange(of: notes.count) { _, _ in listVM?.refresh() }
         .onChange(of: notes.map(\.updatedAt)) { _, _ in listVM?.refresh() }
+        // v1.3 签收前修复（🟡-4）：push/pop 编辑器（含删除后自动回列表）都经过 pushedNoteID 变化，
+        // 用 onChange 统一同步 router.hideFloatingActions，避免多个设值点各自维护漏更新。
+        .onChange(of: pushedNoteID) { _, newValue in
+            router.hideFloatingActions = newValue != nil
+        }
+        .onDisappear {
+            router.hideFloatingActions = false
+        }
+        // v1.3 签收前修复（🟡-4）：contextMenu 删除二次确认（与 macOS 版 NoteDeleteConfirmModifier 同结构）。
+        .modifier(NoteListDeleteConfirmModifier(
+            pending: $notePendingDelete,
+            onConfirm: { note in
+                if pushedNoteID == note.id { pushedNoteID = nil }
+                listVM?.delete(note)
+            }
+        ))
     }
 
     // MARK: - 列表根
@@ -79,9 +103,9 @@ struct InspirationView_iOS: View {
     @ViewBuilder
     private func listContent(listVM: NoteListViewModel) -> some View {
         @Bindable var vm = listVM
-        // v1.3 R7：移除内嵌搜索框（对齐原型 + macOS R5；笔记仍可经全局 Search sheet 搜）。
-        let results = vm.sortedNotes
-        let total = results.count
+        // v1.3 签收前修复：恢复内嵌搜索框（🔴-1，接回既有 NoteListViewModel.searchText/results）。
+        let total = vm.sortedNotes.count
+        let results = vm.results
 
         ZStack {
             ScrollView(.vertical, showsIndicators: false) {
@@ -92,6 +116,10 @@ struct InspirationView_iOS: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 22)
 
+                    searchField(listVM: listVM)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
+
                     if total == 0 {
                         // 空状态：EmptyState + CTA（新建并 push 编辑器）。
                         EmptyState(
@@ -101,6 +129,11 @@ struct InspirationView_iOS: View {
                         )
                         .padding(.horizontal, 16)
                         .padding(.top, 24)
+                    } else if results.isEmpty {
+                        // 搜索无结果（复用既有 EmptyState.noResults variant）。
+                        EmptyState(variant: .noResults(vm.searchText))
+                            .padding(.horizontal, 16)
+                            .padding(.top, 24)
                     } else {
                         // v1.3 R7：单列笔记墙 —— 复用 R0 `NoteCard` 件（多色调浅底 + 左渐变色条 + mono 日期）。
                         // swipe actions（置顶 / 删除）包在 NoteCard 外层保留。
@@ -139,11 +172,51 @@ struct InspirationView_iOS: View {
         }
     }
 
-    /// 单条笔记卡（NoteCard 件 + swipe actions：leading 置顶 / trailing 删除红）。
+    // MARK: - 搜索框（v1.3 签收前修复：恢复内嵌搜索，接回既有 NoteListViewModel.searchText）
+
+    /// 小玻璃输入框（`.ultraThinMaterial`），贴合紫蓝玻璃体系；不破坏单列笔记墙布局。
+    @ViewBuilder
+    private func searchField(listVM: NoteListViewModel) -> some View {
+        @Bindable var vm = listVM
+        HStack(spacing: LJSpacing.s8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color.lj.inkMute)
+            TextField(text: $vm.searchText) {
+                Text(LJStrings.inspirationSearchPlaceholder)
+            }
+            .textFieldStyle(.plain)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(Color.lj.ink)
+            if !vm.searchText.isEmpty {
+                Button {
+                    vm.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.lj.inkMute)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, LJSpacing.s14)
+        .frame(height: 38)
+        .background {
+            Capsule(style: .continuous).fill(.ultraThinMaterial)
+        }
+        .overlay {
+            Capsule(style: .continuous).strokeBorder(Color.lj.borderStrong, lineWidth: 0.5)
+        }
+        .overlay { LJTopHighlight(radius: 999) }
+    }
+
+    /// 单条笔记卡（NoteCard 件 + contextMenu：Pin/Unpin + Delete）。
+    /// v1.3 签收前修复（🟡-4）：原 `.swipeActions` 挂在 ScrollView+ForEach 上，该 API 仅 List 行内
+    /// 生效，此处静默无效——迁到 `.contextMenu`（长按，ScrollView 下可用，与 macOS 版对齐）。
     @ViewBuilder
     private func noteCardRow(note: Note, listVM: NoteListViewModel) -> some View {
         NoteCard(note: note, onOpen: { pushedNoteID = note.id })
-            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+            .contextMenu {
                 Button {
                     listVM.togglePinned(note)
                 } label: {
@@ -153,12 +226,9 @@ struct InspirationView_iOS: View {
                         Image(systemName: note.isPinned ? "pin.slash" : "pin")
                     }
                 }
-                .tint(Color.lj.inkSoft)
-            }
-            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                Divider()
                 Button(role: .destructive) {
-                    if pushedNoteID == note.id { pushedNoteID = nil }
-                    listVM.delete(note)
+                    notePendingDelete = note
                 } label: {
                     Label { Text(LJStrings.noteDelete) } icon: { Image(systemName: "trash") }
                 }
@@ -340,6 +410,42 @@ private struct NoteEditorScreen_iOS: View {
     /// 勾选清单：插入「☐ 」前缀（勾选切换由用户手动改 ☐/☑ 字形，MVP A 方案）。
     private func insertChecklist() {
         text.replaceSelection(&selection, withCharacters: "☐ ")
+    }
+}
+
+// MARK: - 列表 contextMenu 删除确认对话框 modifier（iOS，v1.3 签收前修复 🟡-4）
+
+/// 列表页 contextMenu 删除用的 item 版确认框（与 macOS `NoteDeleteConfirmModifier` 同结构）。
+/// 与下方 `NoteDeleteConfirmModifier_iOS`（Bool 版，编辑器页专用）分离——两处呈现源独立，
+/// 互不干扰。抽成独立 modifier 减轻 body 类型检查负担（见 CLAUDE.md）。
+private struct NoteListDeleteConfirmModifier: ViewModifier {
+    @Binding var pending: Note?
+    let onConfirm: (Note) -> Void
+
+    func body(content: Content) -> some View {
+        content.confirmationDialog(
+            Text(LJStrings.noteDeleteConfirmTitle),
+            isPresented: Binding(
+                get: { pending != nil },
+                set: { if !$0 { pending = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: pending
+        ) { note in
+            Button(role: .destructive) {
+                onConfirm(note)
+                pending = nil
+            } label: {
+                Text(LJStrings.eventDeleteConfirmConfirm)
+            }
+            Button(role: .cancel) {
+                pending = nil
+            } label: {
+                Text(LJStrings.quickAddCancel)
+            }
+        } message: { _ in
+            Text(LJStrings.eventDeleteConfirmMessage)
+        }
     }
 }
 

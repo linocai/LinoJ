@@ -101,10 +101,13 @@ struct RootTabView: View {
             // 会叠加成两条 tab bar（原生没被隐藏 + 手搓 capsule）。原生 bar 本身就是 Liquid Glass。
         }
         // 右上：两枚 floating glass 按钮（search / + / gear）。
+        // v1.3 签收前修复（🟡-4）：笔记编辑器（push 层）打开时隐藏，避免与编辑器导航栏 `⋯` 菜单几何重叠。
         .overlay(alignment: .topTrailing) {
-            FloatingActions()
-                .padding(.horizontal, LJSpacing.s14)
-                .padding(.top, LJSpacing.s10)
+            if !router.hideFloatingActions {
+                FloatingActions()
+                    .padding(.horizontal, LJSpacing.s14)
+                    .padding(.top, LJSpacing.s10)
+            }
         }
         // P4：service 容器注入子树。
         .environment(services)
